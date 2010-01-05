@@ -18,7 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from advmap.file import Savefile
+from advmap.file import *
 
 # TODO:
 #   * right now only two-way connections are possible, and
@@ -142,7 +142,7 @@ class Room(object):
                 df.writeint(self.conns[dir].id)
 
     @staticmethod
-    def load(df, xyfunc):
+    def load(df, version, xyfunc):
         """
         Loads a room from the given filehandle and a function
         to translate ID to (x, y) pair
@@ -372,7 +372,7 @@ class Map(object):
                 room.save(df)
 
     @staticmethod
-    def load(df):
+    def load(df, version):
         """
         Loads a map from the given filehandle
         """
@@ -381,7 +381,7 @@ class Map(object):
         num_rooms = df.readshort()
         connmap = {}
         for i in range(num_rooms):
-            (room, conns) = Room.load(df, map._xy)
+            (room, conns) = Room.load(df, version, map._xy)
             connmap[room.id] = conns
             map.inject_room_obj(room)
         # Now connect the rooms that need connecting
@@ -439,14 +439,14 @@ class Game(object):
         df.open_r()
         openstr = df.read(6)
         if (openstr != 'ADVMAP'):
-            raise Exception('Invalid Map File specified')
+            raise LoadException('Invalid Map File specified')
         version = df.readint()
         if (version > SAVEFILE_VER):
-            raise Exception('Map file is version %d, we can only open versions %d and lower' % (version, SAVEFILE_VER))
+            raise LoadException('Map file is version %d, we can only open versions %d and lower' % (version, SAVEFILE_VER))
         name = df.readstr()
         game = Game(name)
         num_maps = df.readshort()
         for i in range(num_maps):
-            game.add_map_obj(Map.load(df))
+            game.add_map_obj(Map.load(df, version))
         df.close()
         return game

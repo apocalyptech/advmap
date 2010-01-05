@@ -8,6 +8,8 @@ GUI stuffs:
  * Ampersands in text (room names, etc) fail because it's attempting to
    be markup, should fix that
  * Mouseover hover notes text, when available
+ * Should really draw some little icons for mouseovers, instead of just
+   highlighting in green
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap

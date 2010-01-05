@@ -18,7 +18,13 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import sys
 from advmap.gui import GUI
 
-gui = GUI()
+if (len(sys.argv) > 1):
+    file = sys.argv[1]
+else:
+    file = None
+
+gui = GUI(file)
 gui.run()

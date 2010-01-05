@@ -42,7 +42,12 @@ class GUI(object):
     HOVER_CONN = 3
     HOVER_CONN_NEW = 4
 
-    def __init__(self):
+    def __init__(self, initfile=None):
+        """
+        Initializes everything; this is where just about everything is set
+        up.  We'll load an initial file if told too, as well - otherwise we'll
+        just start out with a minimal map.
+        """
 
         # Make sure to dampen signals if we need to
         self.initgfx = False
@@ -193,7 +198,13 @@ class GUI(object):
 
         # For now, let's just create a new game by default, will check args later
         self.curfile = None
-        self.create_new_game()
+        if (initfile):
+            try:
+                self.load_from_file(initfile)
+            except Exception, e:
+                self.errordialog('Unable to load file: %s - starting with a blank map' % e)
+        if not self.curfile:
+            self.create_new_game()
 
         # Set the game name and level dropdown
         self.updating_gameinfo = False
@@ -439,8 +450,10 @@ class GUI(object):
             rundialog = False
             response = dialog.run()
             if response == gtk.RESPONSE_OK:
-                if not self.load_from_file(dialog.get_filename()):
-                    self.errordialog('Unable to open file.', dialog)
+                try:
+                    self.load_from_file(dialog.get_filename())
+                except Exception, e:
+                    self.errordialog('Unable to open file: %s' % e, dialog)
                     rundialog = True
 
         dialog.destroy()
@@ -452,11 +465,12 @@ class GUI(object):
         """
         # TODO: grey out Revert until we've actually loaded
         if (self.curfile):
-            if self.load_from_file(self.curfile):
+            try:
+                self.load_from_file(self.curfile)
                 self.set_delayed_edit()
                 self.set_status('Reverted to on-disk copy of %s' % self.curfile)
-            else:
-                self.errordialog('Unable to revert, error in on-disk file.')
+            except Exception, e:
+                self.errordialog('Unable to revert, error in on-disk file: %s' % e)
         else:
             self.errordialog('Cannot revert, this map has never been saved to disk.')
                 
@@ -521,23 +535,23 @@ class GUI(object):
 
     def load_from_file(self, filename):
         """
-        Loads a game from a file
+        Loads a game from a file.  Note that we always return
+        true; if loading failed, the load() method should raise an
+        exception, which should be caught by anything attempting
+        the load.
         """
-        try:
-            game = Game.load(filename)
-            self.menu_revert.set_sensitive(True)
-            self.game = game
-            self.map = self.game.maps[0]
-            self.map_idx = 0
-            self.curfile = filename
-            if (self.initgfx):
-                self.update_gameinfo()
-                self.trigger_redraw()
-            self.cancel_delayed_status()
-            self.set_status('Editing %s' % filename)
-            return True
-        except Exception:
-            return False
+        game = Game.load(filename)
+        self.menu_revert.set_sensitive(True)
+        self.game = game
+        self.map = self.game.maps[0]
+        self.map_idx = 0
+        self.curfile = filename
+        if (self.initgfx):
+            self.update_gameinfo()
+            self.trigger_redraw()
+        self.cancel_delayed_status()
+        self.set_status('Editing %s' % filename)
+        return True
 
     def update_title(self):
         """

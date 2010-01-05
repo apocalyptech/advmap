@@ -21,10 +21,13 @@
 import os
 from struct import pack, unpack
 
+__all__ = [ 'LoadException', 'Savefile' ]
+
 class LoadException(Exception):
 
-    def __init__(self, text):
+    def __init__(self, text, orig_exception=None):
         self.text = text
+        self.orig_exception = orig_exception
 
     def __str__(self):
         return repr(self.text)
