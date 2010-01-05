@@ -6,7 +6,6 @@
    pretty slow
  * Ampersands in text
  * Mouseover hover notes text
- * mention coordinates somewhere
 
 GUI:
  * write out to PNG (crop appropriately)

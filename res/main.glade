@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Tue Jan  5 11:22:02 2010 -->
+<!--Generated with glade3 3.4.5 on Tue Jan  5 11:35:41 2010 -->
 <glade-interface>
   <widget class="GtkWindow" id="mainwindow">
     <property name="width_request">1000</property>
@@ -454,6 +454,20 @@
           </packing>
         </child>
         <child>
+          <widget class="GtkLabel" id="hoverlabel">
+            <property name="visible">True</property>
+            <property name="use_markup">True</property>
+            <property name="justify">GTK_JUSTIFY_CENTER</property>
+            <property name="ellipsize">PANGO_ELLIPSIZE_END</property>
+            <property name="single_line_mode">True</property>
+          </widget>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
+        <child>
           <widget class="GtkStatusbar" id="statusbar">
             <property name="visible">True</property>
             <property name="spacing">2</property>
@@ -461,7 +475,7 @@
           </widget>
           <packing>
             <property name="expand">False</property>
-            <property name="position">3</property>
+            <property name="position">4</property>
           </packing>
         </child>
       </widget>

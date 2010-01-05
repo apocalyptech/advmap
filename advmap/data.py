@@ -32,7 +32,7 @@ from advmap.file import Savefile
 
 __all__ = [ 'Room', 'Map', 'Game', 
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
-        'DIR_OPP', 'TXT_2_DIR' ]
+        'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 
 DIR_N = 0
 DIR_NE = 1
@@ -62,6 +62,17 @@ TXT_2_DIR = {
         'sw': DIR_SW,
         'w': DIR_W,
         'nw': DIR_NW
+    }
+
+DIR_2_TXT = {
+        DIR_N: 'N',
+        DIR_NE: 'NE',
+        DIR_E: 'E',
+        DIR_SE: 'SE',
+        DIR_S: 'S',
+        DIR_SW: 'SW',
+        DIR_W: 'W',
+        DIR_NW: 'NW'
     }
 
 SAVEFILE_VER = 1

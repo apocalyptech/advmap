@@ -54,6 +54,7 @@ class GUI(object):
         self.mainscroll = self.wtree.get_widget('mainscroll')
         self.mainarea = self.wtree.get_widget('mainarea')
         self.titlelabel = self.wtree.get_widget('titlelabel')
+        self.hoverlabel = self.wtree.get_widget('hoverlabel')
         self.map_combo = self.wtree.get_widget('map_combo')
         self.nudge_lock = self.wtree.get_widget('nudge_lock')
         self.menu_revert = self.wtree.get_widget('menu_revert')
@@ -283,6 +284,14 @@ class GUI(object):
             renderer.set_property('text', '1 room')
         else:
             renderer.set_property('text', '%d rooms' % (roomcount))
+
+    def set_hover(self, text):
+        """
+        Sets the text of our hover
+        """
+        if (text != ''):
+            text = '<i>%s</i>' % (text)
+        self.hoverlabel.set_markup(text)
 
     def set_status(self, text):
         """
@@ -1064,6 +1073,7 @@ class GUI(object):
                     self.curhover = room
                     self.hover_room()
                     self.mainarea.queue_draw()
+                    self.set_hover('(%d, %d) - Edit Room' % (room.x+1, room.y+1))
             elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
                 conn = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_CONN or self.curhover[0] != conn[0] or self.curhover[1] != conn[1]):
@@ -1072,6 +1082,10 @@ class GUI(object):
                     self.curhover = conn
                     self.hover_conn()
                     self.mainarea.queue_draw()
+                    if (self.hover == self.HOVER_CONN):
+                        self.set_hover('(%d, %d) - Remove %s connection' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                    else:
+                        self.set_hover('(%d, %d) - New connection to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
                 edge = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
@@ -1080,11 +1094,13 @@ class GUI(object):
                     self.curhover = edge
                     self.hover_edge()
                     self.mainarea.queue_draw()
+                    self.set_hover('(%d, %d) - Nudge Room to %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             else:
                 raise Exception("Invalid R code in bit mousemap")
         else:
             self.clean_hover()
             self.mainarea.queue_draw()
+            self.set_hover('')
 
     def key_handler(self, widget, event):
         """
