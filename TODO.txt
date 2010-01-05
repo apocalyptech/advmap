@@ -5,7 +5,6 @@
  * Put in a cache surface to draw to, after all - forwarding this over X is
    pretty slow
  * Ampersands in text
- * Highlight room name for (unexplored), instead of notes
  * Mouseover hover notes text
  * mention coordinates somewhere
 

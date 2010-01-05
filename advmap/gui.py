@@ -574,7 +574,7 @@ class GUI(object):
 
         # Rooms with a name of "(unexplored)" become labels, effectively.
         # So that's what we're doing here.
-        if (room.type == Room.TYPE_LABEL or room.name == '(unexplored)'):
+        if (room.type == Room.TYPE_LABEL or room.unexplored()):
             is_label = True
         else:
             is_label = False
@@ -917,7 +917,10 @@ class GUI(object):
                     self.room_up_entry.set_position(0)
                     self.room_down_entry.set_text(room.down)
                     self.room_down_entry.set_position(0)
-                    self.roomnotes_view.grab_focus()
+                    if (room.unexplored()):
+                        self.roomname_entry.grab_focus()
+                    else:
+                        self.roomnotes_view.grab_focus()
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
                     # TODO: should we poke around with scroll/cursor here?

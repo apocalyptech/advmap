@@ -89,6 +89,12 @@ class Room(object):
         for dir in DIR_OPP:
             self.conns.append(None)
 
+    def unexplored(self):
+        """
+        Special-case magic string here.  Yay!
+        """
+        return (self.name == '(unexplored)')
+
     def connect(self, dir, room):
         """
         Connects ourself to another room.  Note
