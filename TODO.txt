@@ -1,12 +1,20 @@
- * set_active(False) for global nudge buttons when not available
- * non-immediately-adjacent linking?
- * Have a flag to draw_room() which lets us only re-draw the mousemap
- * Notes in Labels
- * Put in a cache surface to draw to, after all - forwarding this over X is
-   pretty slow
- * Ampersands in text
- * Mouseover hover notes text
-
-GUI:
+RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
+
+GUI stuffs:
+ * set_sensitive(False) for global nudge buttons when not available
+ * Show "(notes)" on map for Label rooms
+ * Ampersands in text (room names, etc) fail because it's attempting to
+   be markup, should fix that
+ * Mouseover hover notes text, when available
+
+Internal stuffs:
+ * Have a flag to draw_room() which lets us only re-draw the mousemap
+ * Put in a cache surface to draw to, after all - forwarding this over X is
+   pretty slow
+
+Possibly, sometime:
+ * non-immediately-adjacent linking (across gaps, etc)
+ * non-symmetrical linking
+ * multiple links from the same direction
