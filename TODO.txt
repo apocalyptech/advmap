@@ -1,0 +1,14 @@
+ * set_active(False) for global nudge buttons when not available
+ * non-immediately-adjacent linking?
+ * Have a flag to draw_room() which lets us only re-draw the mousemap
+ * Notes in Labels
+ * Put in a cache surface to draw to, after all - forwarding this over X is
+   pretty slow
+ * Ampersands in text
+ * Highlight room name for (unexplored), instead of notes
+ * Mouseover hover notes text
+ * mention coordinates somewhere
+
+GUI:
+ * write out to PNG (crop appropriately)
+ * write whole group out to PNG

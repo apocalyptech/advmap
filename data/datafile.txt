@@ -1,0 +1,29 @@
+Game savefile format, binaryish
+
+# int4
+% short (int2)
+$ string, int4 size followed by the actual string
+& char (unsigned)
+| char bitfield
+
+ADVMAP (first six bytes, identifier)
+% Savefile version number (1)
+$ Game Name
+% Number of Maps
+
+Then groups of Maps, for each map:
+  $ Map Name
+  & Width
+  & Height
+  % Number of active rooms
+
+  Followed by groups of rooms, for each room:
+    # Map idx (x, y are computed from the ID, basd on map WxH)
+    $ Room Name
+    & Room type (0: Normal, 1: Entrance, 2: Label)
+    $ up
+    $ down
+    $ Notes
+    | connections (MSB: N, LSB: NW, going clockwise)
+    Nx# connection ID, starting with N...  Could be no bytes for an
+        unconnected room
