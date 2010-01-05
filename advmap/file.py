@@ -158,15 +158,25 @@ class Savefile(object):
             raise IOError('File is not open for reading')
         length = self.readint()
         if (length == 0):
-            return ''
-        str = self.df.read(length)
+            str = ''
+        else:
+            str = self.df.read(length)
         if (len(str) != length):
             raise LoadException('Error reading string, expected %d, read %d' % (length, len(str)))
+        # Discard the NULL byte
+        self.readchar()
         return str
 
     def writestr(self, strval):
-        """ Write a string to the savefile, prepended by the length """
+        """
+        Write a string to the savefile, prepended by the length.
+        It's a bit silly to both prepend with the length and then pad with a
+        NULL, but personally I like having the length, and other C-based apps
+        are more comfortable with NULL.  So, whatever.  We can afford one more
+        byte per string.
+        """
         if (not self.opened_w):
             raise IOError('File is not open for writing')
         self.writeint(len(strval))
         self.df.write(strval)
+        self.df.write("\0")

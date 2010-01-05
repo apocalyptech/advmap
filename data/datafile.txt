@@ -2,7 +2,7 @@ Game savefile format, binaryish
 
 # int4
 % short (int2)
-$ string, int4 size followed by the actual string
+$ string, int4 size followed by the actual string (null terminated, size does not include the NULL)
 & char (unsigned)
 | char bitfield
 
