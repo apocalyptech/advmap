@@ -441,6 +441,8 @@ class GUI(object):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             self.curfile = dialog.get_filename()
+            if (self.curfile[-4:] != '.adv'):
+                self.curfile = '%s.adv' % (self.curfile)
             self.game.save(self.curfile)
             self.menu_revert.set_sensitive(True)
             self.set_delayed_edit()
