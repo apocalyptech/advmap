@@ -1,5 +1,22 @@
 #!/usr/bin/python
 # vim: set expandtab tabstop=4 shiftwidth=4:
+#
+# Adventure Game Mapper
+# Copyright (C) 2010 CJ Kucera
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import os.path
 import gtk
@@ -42,6 +59,7 @@ class GUI(object):
         self.menu_revert = self.wtree.get_widget('menu_revert')
         self.statusbar = self.wtree.get_widget('statusbar')
         self.sbcontext = self.statusbar.get_context_id('Main Messages')
+        self.aboutwindow = None
 
         # New Room / Edit Room dialog
         self.edit_room_dialog = self.wtree.get_widget('edit_room_dialog')
@@ -82,6 +100,7 @@ class GUI(object):
                 'on_revert': self.on_revert,
                 'on_save': self.on_save,
                 'on_save_as': self.on_save_as,
+                'on_about': self.on_about,
                 'on_expose': self.on_expose,
                 'on_notes_close': self.on_notes_close,
                 'on_map_clicked': self.on_map_clicked,
@@ -352,6 +371,32 @@ class GUI(object):
         Throws up a Yes/No dialog.
         """
         return self.userdialog(gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, markup, parent)
+
+    def on_about(self, widget):
+        """
+        Display an About screen
+        """
+        if (not self.aboutwindow):
+            about = gtk.AboutDialog()
+            about.set_transient_for(self.window)
+            about.set_position(gtk.WIN_POS_CENTER_ON_PARENT)
+            about.set_name('Adventure Game Mapper')
+            about.set_version('0.1')
+            about.set_website('http://apocalyptech.com/adv_map/')
+            about.set_authors(['CJ Kucera'])
+            licensepath = self.reldir('COPYING.txt')
+            if (os.path.isfile(licensepath)):
+                try:
+                    df = open(licensepath, 'r')
+                    about.set_license(df.read())
+                    df.close()
+                except:
+                    pass
+            self.aboutwindow = about
+
+        # Now run
+        self.aboutwindow.run()
+        self.aboutwindow.hide()
 
     def on_new(self, widget=None):
         """
