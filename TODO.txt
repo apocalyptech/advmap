@@ -23,6 +23,9 @@ Possibly, sometime:
  * non-symmetrical linking (including one-way)
  * multiple links from the same direction
  * option double-sized rooms
+ * easier/more intuitive handling of up/down (specifically would like to
+   have an option to "replace" N/S with up/down, on a room-by-room basis
+   See the Planetfall map, etc.
 
 See http://www.neogaf.com/forum/showthread.php?t=147082 for a few maps
 that are basically impossible with this tool...  Zork 1 basically just
