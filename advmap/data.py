@@ -130,7 +130,9 @@ class Room(object):
             connbits = connbits << 1
             if (self.conns[dir]):
                 connbits = connbits | 0x1
-        df.writeint(self.id)
+        df.writeshort(self.id)
+        df.writeuchar(self.x)
+        df.writeuchar(self.y)
         df.writestr(self.name)
         df.writeuchar(self.type)
         df.writestr(self.up)
@@ -139,16 +141,16 @@ class Room(object):
         df.writeuchar(connbits)
         for dir in range(len(DIR_OPP)):
             if (self.conns[dir]):
-                df.writeint(self.conns[dir].id)
+                df.writeshort(self.conns[dir].id)
 
     @staticmethod
-    def load(df, version, xyfunc):
+    def load(df, version):
         """
-        Loads a room from the given filehandle and a function
-        to translate ID to (x, y) pair
+        Loads a room from the given filehandle
         """
-        id = df.readint()
-        (x, y) = xyfunc(id)
+        id = df.readshort()
+        x = df.readuchar()
+        y = df.readuchar()
         room = Room(id, x, y)
         room.name = df.readstr()
         room.type = df.readuchar()
@@ -160,7 +162,7 @@ class Room(object):
         for dir in range(len(DIR_OPP)):
             haveconn = (connbits >> (7-dir)) & 0x1
             if (haveconn == 1):
-                conns.append(df.readint())
+                conns.append(df.readshort())
             else:
                 conns.append(None)
         return (room, conns)
@@ -381,7 +383,7 @@ class Map(object):
         num_rooms = df.readshort()
         connmap = {}
         for i in range(num_rooms):
-            (room, conns) = Room.load(df, version, map._xy)
+            (room, conns) = Room.load(df, version)
             connmap[room.id] = conns
             map.inject_room_obj(room)
         # Now connect the rooms that need connecting
@@ -423,7 +425,7 @@ class Game(object):
         df = Savefile(filename)
         df.open_w()
         df.write('ADVMAP')
-        df.writeint(SAVEFILE_VER)
+        df.writeshort(SAVEFILE_VER)
         df.writestr(self.name)
         df.writeshort(len(self.maps))
         for map in self.maps:
@@ -440,7 +442,7 @@ class Game(object):
         openstr = df.read(6)
         if (openstr != 'ADVMAP'):
             raise LoadException('Invalid Map File specified')
-        version = df.readint()
+        version = df.readshort()
         if (version > SAVEFILE_VER):
             raise LoadException('Map file is version %d, we can only open versions %d and lower' % (version, SAVEFILE_VER))
         name = df.readstr()

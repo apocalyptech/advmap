@@ -1,10 +1,18 @@
 Game savefile format, binaryish
+The string format is kind of dumb; personally I just wanted to have the size first,
+followed by the string, but then I wanted to patch my local magic(4) file to
+recognize 'em, which will only really process NULL-terminated strings, so I put in
+the NULL byte as well.  C'est la vie.
+
+Datatypes:
 
 # int4
 % short (int2)
-$ string, int4 size followed by the actual string (null terminated, size does not include the NULL)
+$ string, int2 size followed by the actual string (null terminated, size does not include the NULL)
 & char (unsigned)
 | char bitfield
+
+The file:
 
 ADVMAP (first six bytes, identifier)
 % Savefile version number (1)
@@ -18,12 +26,14 @@ Then groups of Maps, for each map:
   % Number of active rooms
 
   Followed by groups of rooms, for each room:
-    # Map idx (x, y are computed from the ID, basd on map WxH)
+    % Map idx
+    & x
+    & y
     $ Room Name
     & Room type (0: Normal, 1: Entrance, 2: Label)
     $ up
     $ down
     $ Notes
     | connections (MSB: N, LSB: NW, going clockwise)
-    Nx# connection ID, starting with N...  Could be no bytes for an
+    Nx% connection ID, starting with N...  Could be no bytes for an
         unconnected room

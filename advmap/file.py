@@ -159,7 +159,7 @@ class Savefile(object):
         """ Read a string from the savefile, read the string length first """
         if (not self.opened_r):
             raise IOError('File is not open for reading')
-        length = self.readint()
+        length = self.readshort()
         if (length == 0):
             str = ''
         else:
@@ -180,6 +180,8 @@ class Savefile(object):
         """
         if (not self.opened_w):
             raise IOError('File is not open for writing')
-        self.writeint(len(strval))
+        if (len(strval) > 65535):
+            raise IOError('Maximum string length is currently 65535')
+        self.writeshort(len(strval))
         self.df.write(strval)
         self.df.write("\0")
