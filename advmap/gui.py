@@ -72,7 +72,10 @@ class GUI(object):
         self.edit_room_dialog = self.wtree.get_widget('edit_room_dialog')
         self.edit_room_label = self.wtree.get_widget('edit_room_label')
         self.roomtype_radio_normal = self.wtree.get_widget('roomtype_radio_normal')
-        self.roomtype_radio_entrance = self.wtree.get_widget('roomtype_radio_entrance')
+        self.roomtype_radio_hi_green = self.wtree.get_widget('roomtype_radio_hi_green')
+        self.roomtype_radio_hi_red = self.wtree.get_widget('roomtype_radio_hi_red')
+        self.roomtype_radio_hi_blue = self.wtree.get_widget('roomtype_radio_hi_blue')
+        self.roomtype_radio_faint = self.wtree.get_widget('roomtype_radio_faint')
         self.roomtype_radio_label = self.wtree.get_widget('roomtype_radio_label')
         self.roomname_entry = self.wtree.get_widget('roomname_entry')
         self.room_up_entry = self.wtree.get_widget('room_up_entry')
@@ -601,7 +604,7 @@ class GUI(object):
         """
         map = Map(name)
         room = map.add_room_at(4, 4, 'Starting Room')
-        room.type = Room.TYPE_ENTRANCE
+        room.type = Room.TYPE_HI_GREEN
         return map
 
     def draw_room(self, room, ctx, mmctx):
@@ -618,19 +621,26 @@ class GUI(object):
         else:
             is_label = False
 
-        # Draw the box
+        # Figure out our colors
+        if (room.type in self.c_type_map):
+            border = self.c_type_map[room.type][0]
+            background = self.c_type_map[room.type][1]
+            textcolor = self.c_type_map[room.type][2]
+        else:
+            border = self.c_type_default[0]
+            background = self.c_type_default[1]
+            textcolor = self.c_type_default[2]
+
+        # Draw the room
         ctx.save()
-        if (not is_label):
-            ctx.set_source_rgba(*self.c_room_background)
-            ctx.rectangle(x, y, self.room_w, self.room_h)
-            ctx.fill()
         if (is_label):
             ctx.set_source_rgba(*self.c_label)
             ctx.set_dash([9.0], 0)
-        elif (room.type == Room.TYPE_ENTRANCE):
-            ctx.set_source_rgba(*self.c_entrance)
         else:
-            ctx.set_source_rgba(*self.c_borders)
+            ctx.set_source_rgba(*background)
+            ctx.rectangle(x, y, self.room_w, self.room_h)
+            ctx.fill()
+            ctx.set_source_rgba(*border)
         ctx.set_line_width(1)
         ctx.rectangle(x, y, self.room_w, self.room_h)
         ctx.stroke()
@@ -700,7 +710,7 @@ class GUI(object):
                 if (width <= max_width and height <= max_height):
                     break
             ctx.move_to(x+self.room_spc_h, y+((self.room_h - height)/2))
-            ctx.set_source_rgba(*self.c_text)
+            ctx.set_source_rgba(*textcolor)
             pangoctx = pangocairo.CairoContext(ctx)
             pangoctx.show_layout(label_layout)
         else:
@@ -718,14 +728,14 @@ class GUI(object):
                 if (width <= max_width and height <= max_height):
                     break
             ctx.move_to(x+self.room_spc_h, y+(self.room_spc_h/2))
-            ctx.set_source_rgba(*self.c_text)
+            ctx.set_source_rgba(*textcolor)
             pangoctx = pangocairo.CairoContext(ctx)
             pangoctx.show_layout(title_layout)
 
             # ... show "notes" identifier
             if (room.notes and room.notes != ''):
                 ctx.move_to(x+self.notes_layout_x_off, y+self.notes_layout_y_off)
-                ctx.set_source_rgba(*self.c_text)
+                ctx.set_source_rgba(*textcolor)
                 pangoctx.show_layout(self.notes_layout)
 
             # ... and any up/down arrows
@@ -764,7 +774,7 @@ class GUI(object):
                     # ... and render the text
                     # TODO: y processing, text can overlap somewhat
                     ctx.move_to(text_x, cur_y)
-                    ctx.set_source_rgba(*self.c_text)
+                    ctx.set_source_rgba(*textcolor)
                     pangoctx = pangocairo.CairoContext(ctx)
                     pangoctx.show_layout(layout)
 
@@ -798,12 +808,18 @@ class GUI(object):
 
         # Colors
         self.c_background = (1, 1, 1, 1)
-        self.c_room_background = (.98, .98, .98, 1)
         self.c_borders = (0, 0, 0, 1)
         self.c_label = (.7, .7, .7, 1)
         self.c_highlight = (.5, 1, .5, .2)
-        self.c_text = (0, 0, 0, 1)
-        self.c_entrance = (0, .5, 0, 1)
+
+        c_default_text = (0, 0, 0, 1)
+        self.c_type_map = {
+                Room.TYPE_HI_RED: ((.5, 0, 0, 1), (1, .98, .98, 1), c_default_text),
+                Room.TYPE_HI_GREEN: ((0, .5, 0, 1), (.98, 1, .98, 1), c_default_text),
+                Room.TYPE_HI_BLUE: ((0, 0, .5, 1), (.98, .98, 1, 1), c_default_text),
+                Room.TYPE_FAINT: ((.6, .6, .6, 1), (1, 1, 1, 1), (.4, .4, .4, 1))
+            }
+        self.c_type_default = (self.c_borders, (.98, .98, .98, 1), c_default_text)
 
         # Set initial sizing information
         self.set_area_size()
@@ -964,10 +980,16 @@ class GUI(object):
                     self.edit_room_label.set_markup('<b>Edit Room</b>')
                     self.roomname_entry.set_text(room.name)
                     self.roomnotes_view.get_buffer().set_text(room.notes)
-                    if (room.type == Room.TYPE_ENTRANCE):
-                        self.roomtype_radio_entrance.set_active(True)
+                    if (room.type == Room.TYPE_HI_GREEN):
+                        self.roomtype_radio_hi_green.set_active(True)
+                    elif (room.type == Room.TYPE_HI_BLUE):
+                        self.roomtype_radio_hi_blue.set_active(True)
+                    elif (room.type == Room.TYPE_HI_RED):
+                        self.roomtype_radio_hi_red.set_active(True)
                     elif (room.type == Room.TYPE_LABEL):
                         self.roomtype_radio_label.set_active(True)
+                    elif (room.type == Room.TYPE_FAINT):
+                        self.roomtype_radio_faint.set_active(True)
                     else:
                         self.roomtype_radio_normal.set_active(True)
                     self.room_up_entry.set_text(room.up)
@@ -989,10 +1011,16 @@ class GUI(object):
                         if (room.name != self.roomname_entry.get_text()):
                             need_gfx_update = True
                             room.name = self.roomname_entry.get_text()
-                        if (self.roomtype_radio_entrance.get_active()):
-                            new_type = Room.TYPE_ENTRANCE
+                        if (self.roomtype_radio_hi_green.get_active()):
+                            new_type = Room.TYPE_HI_GREEN
+                        elif (self.roomtype_radio_hi_red.get_active()):
+                            new_type = Room.TYPE_HI_RED
+                        elif (self.roomtype_radio_hi_blue.get_active()):
+                            new_type = Room.TYPE_HI_BLUE
                         elif (self.roomtype_radio_label.get_active()):
                             new_type = Room.TYPE_LABEL
+                        elif (self.roomtype_radio_faint.get_active()):
+                            new_type = Room.TYPE_FAINT
                         else:
                             new_type = Room.TYPE_NORMAL
                         if (room.type != new_type):
@@ -1051,10 +1079,16 @@ class GUI(object):
                                 except Exception, e:
                                     self.errordialog("Couldn't add room: %s" % (e))
                                     return
-                                if (self.roomtype_radio_entrance.get_active()):
-                                    newroom.type = Room.TYPE_ENTRANCE
+                                if (self.roomtype_radio_hi_green.get_active()):
+                                    newroom.type = Room.TYPE_HI_GREEN
+                                elif (self.roomtype_radio_hi_red.get_active()):
+                                    newroom.type = Room.TYPE_HI_RED
+                                elif (self.roomtype_radio_hi_blue.get_active()):
+                                    newroom.type = Room.TYPE_HI_BLUE
                                 elif (self.roomtype_radio_label.get_active()):
                                     newroom.type = Room.TYPE_LABEL
+                                elif (self.roomtype_radio_faint.get_active()):
+                                    newroom.type = Room.TYPE_FAINT
                                 else:
                                     newroom.type = Room.TYPE_NORMAL
                                 newroom.up = self.room_up_entry.get_text()

@@ -30,7 +30,13 @@ Then groups of Maps, for each map:
     & x
     & y
     $ Room Name
-    & Room type (0: Normal, 1: Entrance, 2: Label)
+    & Room type
+        0: Normal
+        1: Green Highlight
+        2: Label
+        3: Blue Highlight
+        4: Red Highlight
+        5: Faint
     $ up
     $ down
     $ Notes

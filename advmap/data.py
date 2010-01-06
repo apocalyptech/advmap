@@ -84,8 +84,11 @@ class Room(object):
 
     # Type constants
     TYPE_NORMAL = 0
-    TYPE_ENTRANCE = 1
+    TYPE_HI_GREEN = 1
     TYPE_LABEL = 2
+    TYPE_HI_BLUE = 3
+    TYPE_HI_RED = 4
+    TYPE_FAINT = 5
 
     def __init__(self, id, x, y):
         self.id = id
