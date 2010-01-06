@@ -22,6 +22,7 @@ Possibly, sometime:
  * non-immediately-adjacent linking (across gaps, etc)
  * non-symmetrical linking (including one-way)
  * multiple links from the same direction
+ * option double-sized rooms
 
 See http://www.neogaf.com/forum/showthread.php?t=147082 for a few maps
 that are basically impossible with this tool...  Zork 1 basically just

@@ -97,6 +97,8 @@ class Room(object):
         self.up = ''
         self.down = ''
         self.type = self.TYPE_NORMAL
+        self.offset_x = False
+        self.offset_y = False
         for dir in DIR_OPP:
             self.conns.append(None)
 
@@ -130,6 +132,11 @@ class Room(object):
             connbits = connbits << 1
             if (self.conns[dir]):
                 connbits = connbits | 0x1
+        flagbits = 0
+        if (self.offset_x):
+            flagbits = flagbits | 0x2
+        if (self.offset_y):
+            flagbits = flagbits | 0x1
         df.writeshort(self.id)
         df.writeuchar(self.x)
         df.writeuchar(self.y)
@@ -138,6 +145,7 @@ class Room(object):
         df.writestr(self.up)
         df.writestr(self.down)
         df.writestr(self.notes)
+        df.writeuchar(flagbits)
         df.writeuchar(connbits)
         for dir in range(len(DIR_OPP)):
             if (self.conns[dir]):
@@ -157,6 +165,7 @@ class Room(object):
         room.up = df.readstr()
         room.down = df.readstr()
         room.notes = df.readstr()
+        flagbits = df.readuchar()
         connbits = df.readuchar()
         conns = []
         for dir in range(len(DIR_OPP)):
@@ -165,6 +174,10 @@ class Room(object):
                 conns.append(df.readshort())
             else:
                 conns.append(None)
+        if ((flagbits & 0x01) == 0x01):
+            room.offset_y = True
+        if ((flagbits & 0x02) == 0x02):
+            room.offset_x = True
         return (room, conns)
 
 class Map(object):

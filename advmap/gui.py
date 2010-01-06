@@ -63,6 +63,7 @@ class GUI(object):
         self.map_combo = self.wtree.get_widget('map_combo')
         self.nudge_lock = self.wtree.get_widget('nudge_lock')
         self.menu_revert = self.wtree.get_widget('menu_revert')
+        self.show_offset_check = self.wtree.get_widget('show_offset_check')
         self.statusbar = self.wtree.get_widget('statusbar')
         self.sbcontext = self.statusbar.get_context_id('Main Messages')
         self.aboutwindow = None
@@ -77,6 +78,8 @@ class GUI(object):
         self.room_up_entry = self.wtree.get_widget('room_up_entry')
         self.room_down_entry = self.wtree.get_widget('room_down_entry')
         self.roomnotes_view = self.wtree.get_widget('roomnotes_view')
+        self.room_offset_x = self.wtree.get_widget('room_offset_x')
+        self.room_offset_y = self.wtree.get_widget('room_offset_y')
         self.edit_room_ok = self.wtree.get_widget('edit_room_ok')
         self.edit_room_cancel = self.wtree.get_widget('edit_room_cancel')
 
@@ -124,7 +127,8 @@ class GUI(object):
                 'map_remove': self.map_remove,
                 'new_map_activate': self.new_map_activate,
                 'open_notes': self.open_notes,
-                'open_notes_all': self.open_notes_all
+                'open_notes_all': self.open_notes_all,
+                'draw_offset_toggle': self.draw_offset_toggle
             }
         self.wtree.signal_autoconnect(dic)
 
@@ -584,6 +588,11 @@ class GUI(object):
         """
         x = self.room_spc + (self.room_w+self.room_spc)*room.x
         y = self.room_spc + (self.room_h+self.room_spc)*room.y
+        if (self.show_offset_check.get_active()):
+            if room.offset_x:
+                x += ((self.room_w+self.room_spc)/2)
+            if room.offset_y:
+                y += ((self.room_h+self.room_spc)/2)
         return (x, y)
 
     def create_new_map(self, name):
@@ -971,6 +980,8 @@ class GUI(object):
                         self.roomnotes_view.grab_focus()
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
+                    self.room_offset_x.set_active(room.offset_x)
+                    self.room_offset_y.set_active(room.offset_y)
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
                     self.edit_room_dialog.hide()
@@ -997,6 +1008,12 @@ class GUI(object):
                         if (room.notes != buftxt):
                             need_gfx_update = True
                             room.notes = buftxt
+                        if (self.room_offset_x.get_active() != room.offset_x):
+                            need_gfx_update = True
+                            room.offset_x = self.room_offset_x.get_active()
+                        if (self.room_offset_y.get_active() != room.offset_y):
+                            need_gfx_update = True
+                            room.offset_y = self.room_offset_y.get_active()
                 elif (self.hover == self.HOVER_CONN):
                     # remove the connection
                     room = self.curhover[0]
@@ -1394,3 +1411,9 @@ class GUI(object):
         dir = TXT_2_DIR[dir_txt]
         if (self.map.resize(dir)):
             self.trigger_redraw()
+
+    def draw_offset_toggle(self, widget):
+        """
+        What to do when the user's toggled the drawing of offsets
+        """
+        self.trigger_redraw()
