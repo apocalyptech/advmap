@@ -17,7 +17,6 @@ Internal stuffs:
    pretty slow
 
 Possibly, sometime:
- * Arbitrary map sizing
  * redo internal storage mechanisms/mousemaps to allow > 256 rooms
  * Arbitrary room coloring / highlighting
  * non-immediately-adjacent linking (across gaps, etc)

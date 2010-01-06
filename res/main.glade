@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Tue Jan  5 11:35:41 2010 -->
+<!--Generated with glade3 3.4.5 on Wed Jan  6 12:01:50 2010 -->
 <glade-interface>
   <widget class="GtkWindow" id="mainwindow">
     <property name="width_request">1000</property>
@@ -359,6 +359,94 @@
                   </widget>
                   <packing>
                     <property name="position">8</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkVSeparator" id="vseparator1">
+                    <property name="visible">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">3</property>
+                    <property name="position">9</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="resize_n">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="tooltip_text">Trim bottom row</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="map_resize"/>
+                    <child>
+                      <widget class="GtkImage" id="image10">
+                        <property name="visible">True</property>
+                        <property name="pixbuf">dir_exp_up.png</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="position">10</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="resize_s">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="tooltip_text">Add row</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="map_resize"/>
+                    <child>
+                      <widget class="GtkImage" id="image13">
+                        <property name="visible">True</property>
+                        <property name="pixbuf">dir_exp_down.png</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="position">11</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="resize_w">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="tooltip_text">Trim leftmost column</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="map_resize"/>
+                    <child>
+                      <widget class="GtkImage" id="image14">
+                        <property name="visible">True</property>
+                        <property name="pixbuf">dir_exp_left.png</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="position">12</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkButton" id="resize_e">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="tooltip_text">Add new column</property>
+                    <property name="response_id">0</property>
+                    <signal name="clicked" handler="map_resize"/>
+                    <child>
+                      <widget class="GtkImage" id="image15">
+                        <property name="visible">True</property>
+                        <property name="pixbuf">dir_exp_right.png</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="position">13</property>
                   </packing>
                 </child>
               </widget>

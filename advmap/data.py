@@ -363,6 +363,43 @@ class Map(object):
                         self.move_room(self.roomxy[y][x], dir)
         return True
 
+    def resize(self, dir):
+        """
+        Resizes the map, if possible
+        """
+        if (dir == DIR_E):
+            self.w += 1
+            for row in self.roomxy:
+                row.append(None)
+            return True
+        elif (dir == DIR_S):
+            self.h += 1
+            self.roomxy.append([])
+            for x in range(self.w):
+                self.roomxy[-1].append(None)
+            return True
+        elif (dir == DIR_W):
+            if (self.w == 1):
+                return False
+            for row in self.roomxy:
+                if row[-1]:
+                    return False
+            self.w -= 1
+            for row in self.roomxy:
+                row.pop()
+            return True
+        elif (dir == DIR_N):
+            if (self.h == 1):
+                return False
+            for room in self.roomxy[-1]:
+                if room:
+                    return False
+            self.h -= 1
+            self.roomxy.pop()
+            return True
+        else:
+            return False
+
     def save(self, df):
         """
         Saves the map to the given filehandle

@@ -115,6 +115,7 @@ class GUI(object):
                 'key_handler': self.key_handler,
                 'nudge_map': self.nudge_map,
                 'nudge_lock_toggled': self.nudge_lock_toggled,
+                'map_resize': self.map_resize,
                 'edit_room_activate': self.edit_room_activate,
                 'map_combo_changed': self.map_combo_changed,
                 'edit_game': self.edit_game,
@@ -146,11 +147,6 @@ class GUI(object):
         self.room_h = 110
         self.room_spc = 30
         self.room_spc_h = self.room_spc/2
-        self.rooms_x = 9
-        self.rooms_y = 9
-        self.area_x = self.room_w*self.rooms_x + self.room_spc*(self.rooms_x+1)
-        self.area_y = self.room_h*self.rooms_y + self.room_spc*(self.rooms_y+1)
-        self.mainarea.set_size_request(self.area_x, self.area_y)
 
         # Connection offsets
         self.CONN_OFF = []
@@ -209,6 +205,11 @@ class GUI(object):
         # Set the game name and level dropdown
         self.updating_gameinfo = False
         self.update_gameinfo()
+
+        # Set our initial sizing information
+        # TODO: why can't we just do this inside draw()?  If we don't do it
+        # here, the scrollbars don't get centered properly, but why not?
+        self.set_area_size()
 
         # Set up some vars for the Edit Game treeview
         self.MAP_COL_TEXT = 0
@@ -749,6 +750,15 @@ class GUI(object):
                     # And carriage-return ourselves down for the possible next line
                     cur_y += self.ladder_up_surf.get_height() + 4
 
+    def set_area_size(self):
+        """
+        Sets the size of our drawing areas, etc.  We need to call this from more
+        than one place...
+        """
+        self.area_x = self.room_w*self.map.w + self.room_spc*(self.map.w+1)
+        self.area_y = self.room_h*self.map.h + self.room_spc*(self.map.h+1)
+        self.mainarea.set_size_request(self.area_x, self.area_y)
+
     def draw(self, widget=None):
         """
         Do the initial drawing of the map.
@@ -773,6 +783,9 @@ class GUI(object):
         self.c_highlight = (.5, 1, .5, .2)
         self.c_text = (0, 0, 0, 1)
         self.c_entrance = (0, .5, 0, 1)
+
+        # Set initial sizing information
+        self.set_area_size()
 
         # Other vars
         self.mainwin = self.mainarea.window
@@ -1075,7 +1088,10 @@ class GUI(object):
 
         # Figure out if we're hoving over anything
         pixel_offset = int((self.mmsurf.get_stride() * event.y) + (event.x*4))
-        hoverpixel = unpack('BBBB', self.mmdata[pixel_offset:pixel_offset+4])
+        if (event.y > self.area_y or event.x > self.area_x):
+            hoverpixel = (0, 0, 0, 0)
+        else:
+            hoverpixel = unpack('BBBB', self.mmdata[pixel_offset:pixel_offset+4])
         if (hoverpixel[2] != 0):
             # TODO: Visualization for mouseovers on these
             typeidx = hoverpixel[2]
@@ -1351,3 +1367,12 @@ class GUI(object):
         """
         self.notes_window.hide()
         return True
+
+    def map_resize(self, widget):
+        """
+        Resizes the map, if possible
+        """
+        (resize, dir_txt) = widget.name.split('_', 2)
+        dir = TXT_2_DIR[dir_txt]
+        if (self.map.resize(dir)):
+            self.trigger_redraw()
