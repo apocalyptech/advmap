@@ -230,11 +230,14 @@ class Map(object):
         Adds a new room at (x, y), with no connections.
         Make sure to keep this in sync with inject_room_obj
         """
+        # TODO: this limit is actually because of the way the GUI handles the mousemaps
+        if (len(self.rooms) == 256):
+            raise Exception('Can only have 256 rooms on a map currently; sorry...')
         if self.roomxy[y][x]:
-            return None
+            raise Exception('A room already exists at (%d, %d)' % (x+1, y+1))
         id = self.grab_id()
         if id in self.rooms:
-            return None
+            raise Exception('A room already exists with ID %d' % (id))
         self.rooms[id] = Room(id, x, y)
         self.rooms[id].name = name
         self.roomxy[y][x] = self.rooms[id]

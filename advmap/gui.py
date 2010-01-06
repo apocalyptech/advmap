@@ -381,6 +381,12 @@ class GUI(object):
         dialog.destroy()
         return result
 
+    def infodialog(self, markup, parent=None):
+        """
+        Throws up a dialog with some info in it.
+        """
+        return self.userdialog(gtk.MESSAGE_INFO, gtk.BUTTONS_OK, markup, parent)
+
     def errordialog(self, markup, parent=None):
         """
         Throws up a dialog with an error in it.
@@ -643,6 +649,12 @@ class GUI(object):
 
                 conn_hover = self.HOVER_CONN
             else:
+                if (len(self.map.rooms) == 256):
+                    coord = self.map.dir_coord(room, dir)
+                    if (not coord):
+                        continue
+                    if (not self.map.get_room_at(*coord)):
+                        continue
                 conn_hover = self.HOVER_CONN_NEW
 
             # Draw the mousemap too, though only if we Should
@@ -1017,7 +1029,11 @@ class GUI(object):
                             result = self.edit_room_dialog.run()
                             self.edit_room_dialog.hide()
                             if (result == gtk.RESPONSE_OK):
-                                newroom = self.map.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
+                                try:
+                                    newroom = self.map.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
+                                except Exception, e:
+                                    self.errordialog("Couldn't add room: %s" % (e))
+                                    return
                                 if (self.roomtype_radio_entrance.get_active()):
                                     newroom.type = Room.TYPE_ENTRANCE
                                 elif (self.roomtype_radio_label.get_active()):
@@ -1030,6 +1046,8 @@ class GUI(object):
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
                                 self.map.connect(dir, room, newroom)
                                 need_gfx_update = True
+                                if (len(self.map.rooms) == 256):
+                                    self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
                 elif (self.hover == self.HOVER_EDGE):
                     # move the room, if possible
                     room = self.curhover[0]
