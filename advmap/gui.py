@@ -797,7 +797,7 @@ class GUI(object):
         self.mmctx.paint()
 
         # Loop through and draw our rooms
-        for room in self.map.rooms:
+        for room in self.map.roomlist():
             if room:
                 self.draw_room(room, self.cleanctx, self.mmctx)
 
@@ -1126,7 +1126,7 @@ class GUI(object):
             # the actual menus, etc
             if (self.hover == self.HOVER_ROOM):
                 if (key == 'd'):
-                    if (self.map.roomcount < 2):
+                    if (len(self.map.rooms) < 2):
                         self.errordialog('You cannot remove the last room from a map', self.window)
                         return
                     self.map.del_room(self.curhover)
@@ -1190,7 +1190,7 @@ class GUI(object):
                     self.MAP_COL_TEXT, map.name,
                     self.MAP_COL_EDIT, True,
                     self.MAP_COL_CURIDX, idx,
-                    self.MAP_COL_ROOMS, map.roomcount,
+                    self.MAP_COL_ROOMS, len(map.rooms),
                     self.MAP_COL_ROOMEDIT, False)
 
         # ... and update GUI components as needed
@@ -1312,7 +1312,7 @@ class GUI(object):
         notes = {}
         for (idx, map) in enumerate(maplist):
             notes[idx] = {}
-            for room in map.rooms:
+            for room in map.roomlist():
                 if (room and room.notes and room.notes != ''):
                     notes[idx][room.id] = room.notes
 

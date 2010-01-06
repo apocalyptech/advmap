@@ -177,77 +177,83 @@ class Map(object):
         self.name = name
         self.set_map_size(9, 9)
 
-        # Populate rooms
-        self.roomcount = 0
-        self.rooms = []
-        for i in range(self.num_rooms):
-            self.rooms.append(None)
-
     def set_map_size(self, w, h):
+        """
+        Sets a new map size; note that this will completely wipe the map.
+        """
         self.w = w
         self.h = h
-        self.num_rooms = self.w*self.h
-        # TODO: this is a mousemap limitation currently
-        if (self.num_rooms > 256):
-            raise Exception("Can't have more than 256 rooms currently")
 
-    def _idx(self, x, y):
-        """
-        Returns the array index (and, incidentally, ID) of a room at
-        (x, y)
-        """
-        #idx = (x*self.w)+y
-        idx = (y*self.h)+x
-        if (idx < 0 or idx > (self.num_rooms-1)):
-            raise Exception('Invalid x, y given')
-        return idx
+        # Populate rooms
+        self.cur_id = 0
+        self.rooms = {}
+        self.roomxy = []
+        for y in range(self.h):
+            self.roomxy.append([])
+            for x in range(self.w):
+                self.roomxy[-1].append(None)
 
-    def _xy(self, id):
+    def roomlist(self):
         """
-        Returns the (x, y) coords for a room with a given ID
+        Returns a list of our rooms
         """
-        if (id < 0 or id > (self.num_rooms-1)):
-            raise Exception('Invalid room ID')
-        #x = (id / self.w)
-        #y = (id % self.w)
-        x = (id % self.h)
-        y = (id / self.h)
-        return (x, y)
+        return self.rooms.values()
+
+    def grab_id(self):
+        """
+        Returns the next available ID
+        """
+        looped = False
+        while (self.cur_id in self.rooms):
+            self.cur_id += 1
+            if (self.cur_id == 65536):
+                self.cur_id = 0
+                if looped:
+                    raise Exception('No free room IDs!')
+                looped = True
+        return self.cur_id
 
     def inject_room_obj(self, room):
         """
         Injects a room object.  Make sure to keep this in
         sync with add_room_at.
         """
-        if (self.rooms[room.id]):
-            raise Exception('Attempt to overwrite existing room')
+        if self.roomxy[room.y][room.x]:
+            raise Exception('Attempt to overwrite existing room at (%d, %d)' % (room.x+1, room.y+1))
+        if (room.id in self.rooms):
+            raise Exception('Room ID %d already exists' % (room.id))
         self.rooms[room.id] = room
-        self.roomcount += 1
+        self.roomxy[room.y][room.x] = room
 
     def add_room_at(self, x, y, name):
         """
         Adds a new room at (x, y), with no connections.
         Make sure to keep this in sync with inject_room_obj
         """
-        id = self._idx(x, y)
-        if self.rooms[id]:
+        if self.roomxy[y][x]:
+            return None
+        id = self.grab_id()
+        if id in self.rooms:
             return None
         self.rooms[id] = Room(id, x, y)
         self.rooms[id].name = name
-        self.roomcount += 1
+        self.roomxy[y][x] = self.rooms[id]
         return self.rooms[id]
 
     def get_room(self, id):
         """
         Gets the specified room
         """
-        return self.rooms[id]
+        if (id in self.rooms):
+            return self.rooms[id]
+        else:
+            return None
 
     def get_room_at(self, x, y):
         """
         Gets the specified room
         """
-        return self.rooms[self._idx(x, y)]
+        return self.roomxy[y][x]
 
     def connect(self, dir, room1, room2):
         """
@@ -287,11 +293,13 @@ class Map(object):
         that room
         """
         id = room.id
+        x = room.x
+        y = room.y
         for (dir, conn) in enumerate(room.conns):
             if conn:
                 conn.detach(DIR_OPP[dir])
-        self.rooms[id] = None
-        self.roomcount -= 1
+        del self.rooms[id]
+        self.roomxy[y][x] = None
 
     def dir_coord(self, room, dir):
         """
@@ -329,11 +337,10 @@ class Map(object):
         new_room = self.get_room_at(*new_coords)
         if new_room:
             return False
-        self.rooms[room.id] = None
+        self.roomxy[room.y][room.x] = None
         room.x = new_coords[0]
         room.y = new_coords[1]
-        room.id = self._idx(room.x, room.y)
-        self.rooms[room.id] = room
+        self.roomxy[room.y][room.x] = room
         return True
 
     def nudge(self, dir):
@@ -341,24 +348,19 @@ class Map(object):
         Attempts to "nudge" a map in the given direction.  Will return
         True/False depending on success
         """
-        for room in self.rooms:
+        for room in self.roomlist():
             if room and not self.dir_coord(room, dir):
                 return False
         if (dir in [DIR_W, DIR_NW, DIR_N, DIR_NE]):
-            for i in range(len(self.rooms)):
-                if self.rooms[i]:
-                    self.move_room(self.rooms[i], dir)
-            #for room in self.rooms:
-            #    if room:
-            #        self.move_room(room, dir)
+            for y in range(len(self.roomxy)):
+                for x in range(len(self.roomxy[y])):
+                    if self.roomxy[y][x]:
+                        self.move_room(self.roomxy[y][x], dir)
         else:
-            for i in range(len(self.rooms)-1, 0, -1):
-                if self.rooms[i]:
-                    self.move_room(self.rooms[i], dir)
-            #roomcopy = list(self.rooms)
-            #for room in roomcopy:
-            #    if room:
-            #        self.move_room(room, dir)
+            for y in range(len(self.roomxy)-1, -1, -1):
+                for x in range(len(self.roomxy[y])-1, -1, -1):
+                    if self.roomxy[y][x]:
+                        self.move_room(self.roomxy[y][x], dir)
         return True
 
     def save(self, df):
@@ -368,8 +370,8 @@ class Map(object):
         df.writestr(self.name)
         df.writeuchar(self.w)
         df.writeuchar(self.h)
-        df.writeshort(self.roomcount)
-        for room in self.rooms:
+        df.writeshort(len(self.rooms))
+        for room in self.roomlist():
             if room:
                 room.save(df)
 
@@ -389,7 +391,7 @@ class Map(object):
         # Now connect the rooms that need connecting
         for (roomid, conns) in connmap.items():
             for (dir, conn) in enumerate(conns):
-                if conn:
+                if conn is not None:
                     map.rooms[roomid].connect(dir, map.rooms[conn])
         return map
 
