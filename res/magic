@@ -2,5 +2,5 @@
 # Extension .adv
 # Created by: CJ Kucera <pez@apocalyptech.com>
 0       string  ADVMAP  Adventure Game Mapper file
->0x06   long    >0x0    \b (version %d)
->>0x0E  string  >\0     \b "%s"
+>0x06   short   >0x0    \b (version %d)
+>>0x0A  string  >\0     \b "%s"
