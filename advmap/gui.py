@@ -205,6 +205,7 @@ class GUI(object):
             try:
                 self.load_from_file(initfile)
             except Exception, e:
+                print e
                 self.errordialog('Unable to load file: %s - starting with a blank map' % e)
         if not self.curfile:
             self.create_new_game()
@@ -652,13 +653,15 @@ class GUI(object):
         mmctx.fill()
 
         # Now also draw connections off of the room
-        for (dir, conn) in enumerate(room.conns):
-            if conn:
-                (conn_x, conn_y) = self.room_xy(conn)
+        for dir in range(len(DIR_OPP)):
+            conn = room.get_conn(dir)
+            if (conn):
+                (room2, dir2) = conn.get_opposite(room)
+                (conn_x, conn_y) = self.room_xy(room2)
                 x1 = x+self.CONN_OFF[dir][0]
                 y1 = y+self.CONN_OFF[dir][1]
-                x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
-                y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+                x2 = conn_x+self.CONN_OFF[dir2][0]
+                y2 = conn_y+self.CONN_OFF[dir2][1]
 
                 ctx.set_source_rgba(*self.c_borders)
                 ctx.set_line_width(1)
@@ -1046,7 +1049,7 @@ class GUI(object):
                     # remove the connection
                     room = self.curhover[0]
                     dir = self.curhover[1]
-                    self.map.detach(dir, room.id)
+                    self.map.detach(room.id, dir)
                     need_gfx_update = True
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
@@ -1056,12 +1059,10 @@ class GUI(object):
                     if coords:
                         newroom = self.map.get_room_at(*coords)
                         if newroom:
-                            if (newroom.conns[DIR_OPP[dir]]):
+                            if (DIR_OPP[dir] in newroom.conns):
                                 # Remove previous connection on other room
-                                # (indicates that the room has moved since that connection
-                                # was made)
-                                self.map.detach(DIR_OPP[dir], newroom.id)
-                            self.map.connect(dir, room, newroom)
+                                self.map.detach(newroom.id, DIR_OPP[dir])
+                            self.map.connect(room, dir, newroom)
                             need_gfx_update = True
                         else:
                             self.edit_room_label.set_markup('<b>New Room</b>')
@@ -1095,7 +1096,7 @@ class GUI(object):
                                 newroom.down = self.room_down_entry.get_text()
                                 buf = self.roomnotes_view.get_buffer()
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-                                self.map.connect(dir, room, newroom)
+                                self.map.connect(room, dir, newroom)
                                 need_gfx_update = True
                                 if (len(self.map.rooms) == 256):
                                     self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')

@@ -20,17 +20,21 @@
 
 from advmap.file import *
 
-# TODO:
-#   * right now only two-way connections are possible, and
-#     connections from one way will always connect to the opposite way
-#     ... er, that makes sense to me.
 #
-#   * The internal storage is a bit dumb, should really fix that.  Having
-#     an ID and (x, y) pair which are basically redundant but need to be
-#     kept up-to-date with each other is pretty ridiculous.
-#  
+# So.
+#
+# "Game" is the main object, which is a collection of Maps.
+# A Map is a collection of Rooms and Connections.
+#
+# Each room keeps a dict of conns into itself, and the Map object
+# also keeps a list of all conns in the map.  This means we've got
+# to do data upkeep on two separate structures, which is subpar, but
+# it's got the advantage that we can easily work on conns on a per-
+# room basis (which is nice while editing) and on a whole-map basis
+# (which is nice while saving/loading).
+#
 
-__all__ = [ 'Room', 'Map', 'Game', 
+__all__ = [ 'Room', 'Connection', 'Map', 'Game', 
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
         'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 
@@ -96,14 +100,12 @@ class Room(object):
         self.y = y
         self.name = ''
         self.notes = ''
-        self.conns = []
+        self.conns = {}
         self.up = ''
         self.down = ''
         self.type = self.TYPE_NORMAL
         self.offset_x = False
         self.offset_y = False
-        for dir in DIR_OPP:
-            self.conns.append(None)
 
     def unexplored(self):
         """
@@ -111,30 +113,57 @@ class Room(object):
         """
         return (self.name == '(unexplored)')
 
-    def connect(self, dir, room):
+    def connect(self, dir, room, dir2=None):
         """
         Connects ourself to another room.  Note
         that we expect another Room object here, and
-        that any new connection will overwrite any old
-        connection
+        that any new connection will disconnect any
+        existing connection.  Will return the new Connection
+        object which was created
         """
-        self.conns[dir] = room
+        if not dir2:
+            dir2 = DIR_OPP[dir]
+        if dir in self.conns:
+            self.detach(dir)
+        if dir2 in room.conns:
+            room.detach(dir2)
+        conn = Connection(self, dir, room, dir2)
+        self.conns[dir] = conn
+        room.conns[dir2] = conn
+        return conn
 
     def detach(self, dir):
         """
-        Detaches ourself from a direction.
+        Detaches ourself from a direction.  Will
+        additionally detach the opposite end.
         """
-        self.conns[dir] = None
+        if dir not in self.conns:
+            raise Exception('No connection to detach')
+        conn = self.conns[dir]
+        (other, other_dir) = conn.get_opposite(self)
+        del self.conns[dir]
+        del other.conns[other_dir]
+
+    def get_conn(self, dir):
+        """
+        Returns the Connection object at our given direction, if
+        we can.  Returns None otherwise.
+        """
+        if dir in self.conns:
+            return self.conns[dir]
+        else:
+            return None
+
+    def get_conns(self):
+        """
+        Returns all connections for the room as a list
+        """
+        return self.conns.items()
 
     def save(self, df):
         """
         Writes ourself to the given filehandle
         """
-        connbits = 0
-        for dir in range(len(DIR_OPP)):
-            connbits = connbits << 1
-            if (self.conns[dir]):
-                connbits = connbits | 0x1
         flagbits = 0
         if (self.offset_x):
             flagbits = flagbits | 0x2
@@ -149,10 +178,6 @@ class Room(object):
         df.writestr(self.down)
         df.writestr(self.notes)
         df.writeuchar(flagbits)
-        df.writeuchar(connbits)
-        for dir in range(len(DIR_OPP)):
-            if (self.conns[dir]):
-                df.writeshort(self.conns[dir].id)
 
     @staticmethod
     def load(df, version):
@@ -174,14 +199,43 @@ class Room(object):
         for dir in range(len(DIR_OPP)):
             haveconn = (connbits >> (7-dir)) & 0x1
             if (haveconn == 1):
-                conns.append(df.readshort())
-            else:
-                conns.append(None)
+                conns.append((df.readshort(), dir))
         if ((flagbits & 0x01) == 0x01):
             room.offset_y = True
         if ((flagbits & 0x02) == 0x02):
             room.offset_x = True
         return (room, conns)
+
+class Connection(object):
+    """
+    A connection between two rooms.  Mostly just a data container,
+    the actual connection logic will be handled by the Room objects
+    """
+    def __init__(self, r1, dir1, r2, dir2):
+        self.r1 = r1
+        self.dir1 = dir1
+        self.r2 = r2
+        self.dir2 = dir2
+
+    def get_opposite(self, room):
+        """
+        Given a room, return a tuple of (room, dir) corresponding
+        to the "other" end of the room.
+        """
+        # TODO: Again note that this doesn't support self-looping conns
+        if (room.id == self.r1.id):
+            return (self.r2, self.dir2)
+        else:
+            return (self.r1, self.dir1)
+
+    def save(self, df):
+        """
+        Saves ourself to a filehandle
+        """
+        df.writeshort(self.r1.id)
+        df.writeuchar(self.dir1)
+        df.writeshort(self.r2.id)
+        df.writeuchar(self.dir2)
 
 class Map(object):
     """
@@ -208,6 +262,9 @@ class Map(object):
             self.roomxy.append([])
             for x in range(self.w):
                 self.roomxy[-1].append(None)
+
+        # ... and wipe our collection of conns
+        self.conns = []
 
     def roomlist(self):
         """
@@ -274,16 +331,28 @@ class Map(object):
         """
         return self.roomxy[y][x]
 
-    def connect(self, dir, room1, room2):
+    def connect(self, room1, dir1, room2, dir2=None):
         """
         Connects two rooms, given the room objects and
-        the direction.  Note that it's room1's "dir" which
-        will be hooked up to room2's "!dir", so to speak
+        the direction.  If a second direction is not provided,
+        the connection will be symmetrical.
         """
-        room1.connect(dir, room2)
-        room2.connect(DIR_OPP[dir], room1)
+        # TODO: Note that technically we're limited to 65535
+        # conns because we store the number of conns as a
+        # short in the file.  Given our current 256-room
+        # limit, there's not much point checking for it, but
+        # should we ever lift that, it's at least technically
+        # possible that some determined maniac could run up
+        # against the limit, so we should check for it if so.
+        if not dir2:
+            dir2 = DIR_OPP[dir1]
+        if dir1 in room1.conns:
+            self.detach(room1, dir1)
+        if dir2 in room2.conns:
+            self.detach(room2, dir2)
+        self.conns.append(room1.connect(dir1, room2, dir2))
 
-    def connect_id(self, dir, id1, id2):
+    def connect_id(self, id1, dir1, id2, dir2=None):
         """
         Connects two rooms, given the room IDs
         """
@@ -291,20 +360,28 @@ class Map(object):
         room2 = self.get_room(id2)
         if (not room1 or not room2):
             raise Exception('Must specify two valid rooms')
-        self.connect(dir, room1, room2)
+        self.connect(room1, dir1, room2, dir2)
 
-    def detach(self, dir, id1):
+    def _detach_conn(self, conn):
+        """
+        Processes the detach of the given Connection object
+        """
+        # TODO: if we ever support conns which loop back
+        # to the same room, we'll have to watch for that.
+        self.conns.remove(conn)
+        conn.r1.detach(conn.dir1)
+
+    def detach(self, id, dir):
         """
         Detaches two rooms
         """
-        room1 = self.get_room(id1)
-        if (not room1):
+        room = self.get_room(id)
+        if (not room):
             raise Exception('Must specify a valid room')
-        room2 = room1.conns[dir]
-        if (not room2):
-            return
-        room1.detach(dir)
-        room2.detach(DIR_OPP[dir])
+        conn = room.get_conn(dir)
+        if not conn:
+            raise Exception('No connection to detach')
+        self._detach_conn(conn)
 
     def del_room(self, room):
         """
@@ -314,9 +391,8 @@ class Map(object):
         id = room.id
         x = room.x
         y = room.y
-        for (dir, conn) in enumerate(room.conns):
-            if conn:
-                conn.detach(DIR_OPP[dir])
+        for conn in room.get_conns():
+            self._detach_conn(conn)
         del self.rooms[id]
         self.roomxy[y][x] = None
 
@@ -387,11 +463,18 @@ class Map(object):
         Resizes the map, if possible
         """
         if (dir == DIR_E):
+            # Limitations in W/H are due to storing these
+            # as chars in the savefile.  And also because
+            # seriously, what are you doing with a map that big?
+            if (self.w == 255):
+                return False
             self.w += 1
             for row in self.roomxy:
                 row.append(None)
             return True
         elif (dir == DIR_S):
+            if (self.h == 255):
+                return False
             self.h += 1
             self.roomxy.append([])
             for x in range(self.w):
@@ -427,9 +510,12 @@ class Map(object):
         df.writeuchar(self.w)
         df.writeuchar(self.h)
         df.writeshort(len(self.rooms))
+        df.writeshort(len(self.conns))
         for room in self.roomlist():
             if room:
                 room.save(df)
+        for conn in self.conns:
+            conn.save(df)
 
     @staticmethod
     def load(df, version):
@@ -439,16 +525,36 @@ class Map(object):
         map = Map(df.readstr())
         map.set_map_size(df.readuchar(), df.readuchar())
         num_rooms = df.readshort()
-        connmap = {}
+        conncache = []
+        dupcount = 0
         for i in range(num_rooms):
             (room, conns) = Room.load(df, version)
-            connmap[room.id] = conns
             map.inject_room_obj(room)
+            for (roomid2, dir1) in conns:
+                roomid1 = room.id
+                dir2 = DIR_OPP[dir1]
+                # check for dupes, abusing the Connection object here
+                newconn = Connection(roomid1, dir1, roomid2, dir2)
+                found = False
+                for conn in conncache:
+                    if ((newconn.r1 == conn.r1 and newconn.dir1 == conn.dir1) or
+                        (newconn.r1 == conn.r2 and newconn.dir1 == conn.dir2) or
+                        (newconn.r2 == conn.r1 and newconn.dir2 == conn.dir1) or
+                        (newconn.r2 == conn.r2 and newconn.dir2 == conn.dir2)):
+                        dupcount += 1
+                        found = True
+                        break
+                if not found:
+                    conncache.append(newconn)
+
+        # Sanity check
+        if (len(conncache) != dupcount):
+            raise Exception('%d connections about to load, %d duplicates' % (len(conncache), dupcount))
+
         # Now connect the rooms that need connecting
-        for (roomid, conns) in connmap.items():
-            for (dir, conn) in enumerate(conns):
-                if conn is not None:
-                    map.rooms[roomid].connect(dir, map.rooms[conn])
+        for conn in conncache:
+            map.connect_id(conn.r1, conn.dir1, conn.r2)
+
         return map
 
 class Game(object):

@@ -24,9 +24,10 @@ Then groups of Maps, for each map:
   & Width
   & Height
   % Number of active rooms
+  % Number of links between rooms
 
   Followed by groups of rooms, for each room:
-    % Map idx
+    % Room ID
     & x
     & y
     $ Room Name
@@ -43,6 +44,9 @@ Then groups of Maps, for each map:
     | flags:
         00000001 = y is offset
         00000010 = x is offset
-    | connections (MSB: N, LSB: NW, going clockwise)
-    Nx% connection ID, starting with N...  Could be no bytes for an
-        unconnected room
+
+  Followed by groups of Links, for each link:
+    % Room 1 ID
+    & Room 1 Direction
+    % Room 2 ID
+    & Room 2 Direction
