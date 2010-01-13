@@ -194,22 +194,19 @@ class Room(object):
         room.down = df.readstr()
         room.notes = df.readstr()
         flagbits = df.readuchar()
-        connbits = df.readuchar()
-        conns = []
-        for dir in range(len(DIR_OPP)):
-            haveconn = (connbits >> (7-dir)) & 0x1
-            if (haveconn == 1):
-                conns.append((df.readshort(), dir))
         if ((flagbits & 0x01) == 0x01):
             room.offset_y = True
         if ((flagbits & 0x02) == 0x02):
             room.offset_x = True
-        return (room, conns)
+        return room
 
 class Connection(object):
     """
     A connection between two rooms.  Mostly just a data container,
-    the actual connection logic will be handled by the Room objects
+    the actual connection logic will be handled by the Room objects.
+    Note that while we have a save() method here, like the other objects,
+    loading is actually done inside the Map object, since it makes more
+    sense in there.
     """
     def __init__(self, r1, dir1, r2, dir2):
         self.r1 = r1
@@ -525,36 +522,17 @@ class Map(object):
         map = Map(df.readstr())
         map.set_map_size(df.readuchar(), df.readuchar())
         num_rooms = df.readshort()
-        conncache = []
-        dupcount = 0
+        num_conns = df.readshort()
+
+        # Load rooms
         for i in range(num_rooms):
-            (room, conns) = Room.load(df, version)
-            map.inject_room_obj(room)
-            for (roomid2, dir1) in conns:
-                roomid1 = room.id
-                dir2 = DIR_OPP[dir1]
-                # check for dupes, abusing the Connection object here
-                newconn = Connection(roomid1, dir1, roomid2, dir2)
-                found = False
-                for conn in conncache:
-                    if ((newconn.r1 == conn.r1 and newconn.dir1 == conn.dir1) or
-                        (newconn.r1 == conn.r2 and newconn.dir1 == conn.dir2) or
-                        (newconn.r2 == conn.r1 and newconn.dir2 == conn.dir1) or
-                        (newconn.r2 == conn.r2 and newconn.dir2 == conn.dir2)):
-                        dupcount += 1
-                        found = True
-                        break
-                if not found:
-                    conncache.append(newconn)
+            map.inject_room_obj(Room.load(df, version))
 
-        # Sanity check
-        if (len(conncache) != dupcount):
-            raise Exception('%d connections about to load, %d duplicates' % (len(conncache), dupcount))
+        # Now load connections
+        for i in range(num_conns):
+            map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
 
-        # Now connect the rooms that need connecting
-        for conn in conncache:
-            map.connect_id(conn.r1, conn.dir1, conn.r2)
-
+        # ... and return our object.
         return map
 
 class Game(object):
