@@ -154,12 +154,6 @@ class Room(object):
         else:
             return None
 
-    def get_conns(self):
-        """
-        Returns all connections for the room as a list
-        """
-        return self.conns.items()
-
     def save(self, df):
         """
         Writes ourself to the given filehandle
@@ -213,6 +207,9 @@ class Connection(object):
         self.dir1 = dir1
         self.r2 = r2
         self.dir2 = dir2
+
+    def __repr__(self):
+        return '<Connection - %s (%s) to %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], self.r2.name, DIR_2_TXT[self.dir2])
 
     def get_opposite(self, room):
         """
@@ -388,7 +385,7 @@ class Map(object):
         id = room.id
         x = room.x
         y = room.y
-        for conn in room.get_conns():
+        for (dir, conn) in room.conns.items():
             self._detach_conn(conn)
         del self.rooms[id]
         self.roomxy[y][x] = None
