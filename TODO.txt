@@ -1,6 +1,7 @@
 RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
+ * "readonly" mode, or maybe at least disable room edits
 
 GUI stuffs:
  * set_sensitive(False) for global nudge buttons when not available
