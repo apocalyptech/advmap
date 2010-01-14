@@ -613,12 +613,21 @@ class GUI(object):
         self.map_combo.set_active(self.map_idx)
         self.updating_gameinfo = False
 
+    def room_xy_coord(self, room_x, room_y):
+        """
+        Returns a tuple with (x, y) starting coordinates for a room which would
+        be at its own (room_x, room_y)
+        """
+        x = self.room_spc + (self.room_w+self.room_spc)*room_x
+        y = self.room_spc + (self.room_h+self.room_spc)*room_y
+        return (x, y)
+
     def room_xy(self, room):
         """
-        Returns a tuple with (x, y) starting coordinates for the given room
+        Returns a tuple with (x, y) starting coordinates for the given room,
+        taking into consideration any offsets
         """
-        x = self.room_spc + (self.room_w+self.room_spc)*room.x
-        y = self.room_spc + (self.room_h+self.room_spc)*room.y
+        (x, y) = self.room_xy_coord(room.x, room.y)
         if (self.show_offset_check.get_active()):
             if room.offset_x:
                 x += ((self.room_w+self.room_spc)/2)
@@ -634,6 +643,31 @@ class GUI(object):
         room = map.add_room_at(4, 4, 'Starting Room')
         room.type = Room.TYPE_HI_GREEN
         return map
+
+    def draw_stub_conn(self, ctx, room, dir):
+        """
+        Draws a "stub" connection from the given room, in the given
+        direction.  Returns the "remote" endpoint
+        """
+        (room_x, room_y) = self.room_xy(room)
+        conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir))
+        if conn_coord:
+            conn_x = conn_coord[0]
+            conn_y = conn_coord[1]
+            x1 = room_x+self.CONN_OFF[dir][0]
+            y1 = room_y+self.CONN_OFF[dir][1]
+            x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
+            y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+
+            ctx.set_source_rgba(*self.c_borders)
+            ctx.set_line_width(1)
+            ctx.move_to(x1, y1)
+            ctx.line_to(x2, y2)
+            ctx.stroke()
+
+            return (x2, y2)
+        else:
+            return None
 
     def draw_room(self, room, ctx, mmctx):
         """
@@ -684,17 +718,28 @@ class GUI(object):
             conn = room.get_conn(dir)
             if (conn):
                 (room2, dir2) = conn.get_opposite(room)
-                (conn_x, conn_y) = self.room_xy(room2)
-                x1 = x+self.CONN_OFF[dir][0]
-                y1 = y+self.CONN_OFF[dir][1]
-                x2 = conn_x+self.CONN_OFF[dir2][0]
-                y2 = conn_y+self.CONN_OFF[dir2][1]
+                if (dir2 == DIR_OPP[dir]):
+                    (conn_x, conn_y) = self.room_xy(room2)
+                    x1 = x+self.CONN_OFF[dir][0]
+                    y1 = y+self.CONN_OFF[dir][1]
+                    x2 = conn_x+self.CONN_OFF[dir2][0]
+                    y2 = conn_y+self.CONN_OFF[dir2][1]
 
-                ctx.set_source_rgba(*self.c_borders)
-                ctx.set_line_width(1)
-                ctx.move_to(x1, y1)
-                ctx.line_to(x2, y2)
-                ctx.stroke()
+                    ctx.set_source_rgba(*self.c_borders)
+                    ctx.set_line_width(1)
+                    ctx.move_to(x1, y1)
+                    ctx.line_to(x2, y2)
+                    ctx.stroke()
+                else:
+                    end1 = self.draw_stub_conn(ctx, room, dir)
+                    end2 = self.draw_stub_conn(ctx, room2, dir2)
+                    if (end1 and end2):
+                        # "Direct" connection
+                        ctx.set_source_rgba(*self.c_borders)
+                        ctx.set_line_width(1)
+                        ctx.move_to(end1[0], end1[1])
+                        ctx.line_to(end2[0], end2[1])
+                        ctx.stroke()
 
                 conn_hover = self.HOVER_CONN
             else:
