@@ -19,6 +19,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import os.path
+import math
 import gtk
 import gtk.gdk
 import gtk.glade
@@ -644,7 +645,71 @@ class GUI(object):
         room.type = Room.TYPE_HI_GREEN
         return map
 
-    def draw_stub_conn(self, ctx, room, dir):
+    def ladder_coords(self, x1, y1, x2, y2, width, rung_spacing):
+        """
+        Given two points (x1, y1) and (x2, y2), this will provide
+        coordinates necessary to draw a ladder between the two.
+        It'll return a list of 2-element tuples, each of which is a 
+        2-element tuple with (x, y) coordinates.
+        """
+        width_h = width/2
+        dx_orig = x2-x1
+        dy_orig = y2-y1
+        dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        dx = dx_orig / dist
+        dy = dy_orig / dist
+        coord_list = []
+
+        # First, the two side members
+        coord_list.append(
+                ((x1+(width_h*dy), y1-(width_h*dx)),
+                 (x2+(width_h*dy), y2-(width_h*dx)))
+                )
+        coord_list.append(
+                ((x1-(width_h*dy), y1+(width_h*dx)),
+                 (x2-(width_h*dy), y2+(width_h*dx)))
+                )
+
+        # Now the rungs
+        rungcount = int(dist / rung_spacing) - 1
+        x_spacing = dx_orig/rungcount
+        y_spacing = dy_orig/rungcount
+        cur_x = x1 + (x_spacing/2)
+        cur_y = y1 + (y_spacing/2)
+        for i in range(rungcount):
+            coord_list.append(
+                    ((cur_x+(width_h*dy), cur_y-(width_h*dx)),
+                    (cur_x-(width_h*dy), cur_y+(width_h*dx)))
+                )
+            cur_x += x_spacing
+            cur_y += y_spacing
+
+        return coord_list
+
+    def draw_conn_segment(self, ctx, x1, y1, x2, y2, is_ladder=False):
+        """
+        Draws a connection segment from (x1, y1) to (x2, y2).  Ordinarily
+        this is just a single line, but if is_ladder is True, then it'll
+        build a Ladder graphic between the two, instead.
+        """
+        if is_ladder:
+            ladder_width=12
+            rung_spacing=7
+            coords = self.ladder_coords(x1, y1, x2, y2, ladder_width, rung_spacing)
+            ctx.set_source_rgba(*self.c_borders)
+            ctx.set_line_width(4)
+            for coord in coords:
+                ctx.move_to(coord[0][0], coord[0][1])
+                ctx.line_to(coord[1][0], coord[1][1])
+                ctx.stroke()
+        else:
+            ctx.set_source_rgba(*self.c_borders)
+            ctx.set_line_width(1)
+            ctx.move_to(x1, y1)
+            ctx.line_to(x2, y2)
+            ctx.stroke()
+
+    def draw_stub_conn(self, ctx, room, dir, is_ladder=False):
         """
         Draws a "stub" connection from the given room, in the given
         direction.  Returns the "remote" endpoint
@@ -658,20 +723,16 @@ class GUI(object):
             y1 = room_y+self.CONN_OFF[dir][1]
             x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
             y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
-
-            ctx.set_source_rgba(*self.c_borders)
-            ctx.set_line_width(1)
-            ctx.move_to(x1, y1)
-            ctx.line_to(x2, y2)
-            ctx.stroke()
-
+            self.draw_conn_segment(ctx, x1, y1, x2, y2, is_ladder)
             return (x2, y2)
         else:
             return None
 
-    def draw_room(self, room, ctx, mmctx):
+    def draw_room(self, room, ctx, mmctx, drawn_conns):
         """
-        Draws a room onto the given context (and mousemap ctx)
+        Draws a room onto the given context (and mousemap ctx).  Will
+        skip drawing any connections already seen inside drawn_conns,
+        and add to that list as need be
         """
         # Starting position of room
         (x, y) = self.room_xy(room)
@@ -717,29 +778,22 @@ class GUI(object):
         for dir in range(len(DIR_OPP)):
             conn = room.get_conn(dir)
             if (conn):
-                (room2, dir2) = conn.get_opposite(room)
-                if (dir2 == DIR_OPP[dir]):
-                    (conn_x, conn_y) = self.room_xy(room2)
-                    x1 = x+self.CONN_OFF[dir][0]
-                    y1 = y+self.CONN_OFF[dir][1]
-                    x2 = conn_x+self.CONN_OFF[dir2][0]
-                    y2 = conn_y+self.CONN_OFF[dir2][1]
-
-                    ctx.set_source_rgba(*self.c_borders)
-                    ctx.set_line_width(1)
-                    ctx.move_to(x1, y1)
-                    ctx.line_to(x2, y2)
-                    ctx.stroke()
-                else:
-                    end1 = self.draw_stub_conn(ctx, room, dir)
-                    end2 = self.draw_stub_conn(ctx, room2, dir2)
-                    if (end1 and end2):
-                        # "Direct" connection
-                        ctx.set_source_rgba(*self.c_borders)
-                        ctx.set_line_width(1)
-                        ctx.move_to(end1[0], end1[1])
-                        ctx.line_to(end2[0], end2[1])
-                        ctx.stroke()
+                if conn not in drawn_conns:
+                    drawn_conns.append(conn)
+                    (room2, dir2) = conn.get_opposite(room)
+                    if (dir2 == DIR_OPP[dir]):
+                        (conn_x, conn_y) = self.room_xy(room2)
+                        x1 = x+self.CONN_OFF[dir][0]
+                        y1 = y+self.CONN_OFF[dir][1]
+                        x2 = conn_x+self.CONN_OFF[dir2][0]
+                        y2 = conn_y+self.CONN_OFF[dir2][1]
+                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn.is_ladder)
+                    else:
+                        end1 = self.draw_stub_conn(ctx, room, dir, conn.is_ladder)
+                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn.is_ladder)
+                        if (end1 and end2):
+                            # "Direct" connection
+                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn.is_ladder)
 
                 conn_hover = self.HOVER_CONN
             else:
@@ -922,9 +976,10 @@ class GUI(object):
         self.mmctx.paint()
 
         # Loop through and draw our rooms
+        drawn_conns = []
         for room in self.map.roomlist():
             if room:
-                self.draw_room(room, self.cleanctx, self.mmctx)
+                self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
 
         # Now copy our clean image over to the appropriate surfaces
         self.mapctx.set_source_surface(self.cleansurf, 0, 0)
