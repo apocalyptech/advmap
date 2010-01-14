@@ -43,11 +43,12 @@ class GUI(object):
     HOVER_CONN = 3
     HOVER_CONN_NEW = 4
 
-    def __init__(self, initfile=None):
+    def __init__(self, initfile=None, readonly=False):
         """
         Initializes everything; this is where just about everything is set
         up.  We'll load an initial file if told too, as well - otherwise we'll
-        just start out with a minimal map.
+        just start out with a minimal map.  Finally (for now), we can request
+        to start out in readonly mode.
         """
 
         # Make sure to dampen signals if we need to
@@ -236,6 +237,10 @@ class GUI(object):
                 self.errordialog('Unable to load file: %s - starting with a blank map' % e)
         if not self.curfile:
             self.create_new_game()
+
+        # Lock ourselves to readonly if we're told to
+        if readonly:
+            self.readonly_lock.set_active(True)
 
         # Set the game name and level dropdown
         self.updating_gameinfo = False
@@ -1524,7 +1529,8 @@ class GUI(object):
         Lets us know to redraw the mousemaps because we've entered readonly mode
         (Note that this actually just triggers a full redraw)
         """
-        self.trigger_redraw()
+        if self.initgfx:
+            self.trigger_redraw()
 
     def nudge_map(self, widget):
         """

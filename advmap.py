@@ -20,11 +20,21 @@
 
 import sys
 from advmap.gui import GUI
+from optparse import OptionParser
 
-if (len(sys.argv) > 1):
-    file = sys.argv[1]
+# Parse Arguments
+parser = OptionParser()
+parser.add_option('-r', '--readonly',
+        action='store_true', dest='readonly', default=False,
+        help='start in readonly mode')
+(options, args) = parser.parse_args()
+
+# See if we have any files to load initially
+if (len(args) > 0):
+    file = args[0]
 else:
     file = None
 
-gui = GUI(file)
+# ... regardless, run the GUI
+gui = GUI(file, options.readonly)
 gui.run()
