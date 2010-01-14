@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Wed Jan 13 20:47:34 2010 -->
+<!--Generated with glade3 3.4.5 on Thu Jan 14 12:11:28 2010 -->
 <glade-interface>
   <widget class="GtkWindow" id="mainwindow">
     <property name="width_request">1000</property>
@@ -617,6 +617,7 @@
               <widget class="GtkNotebook" id="edit_room_notebook">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <signal name="switch_page" handler="on_edit_room_notebook_page"/>
                 <child>
                   <widget class="GtkTable" id="table1">
                     <property name="visible">True</property>

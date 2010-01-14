@@ -141,7 +141,8 @@ class GUI(object):
                 'new_map_activate': self.new_map_activate,
                 'open_notes': self.open_notes,
                 'open_notes_all': self.open_notes_all,
-                'draw_offset_toggle': self.draw_offset_toggle
+                'draw_offset_toggle': self.draw_offset_toggle,
+                'on_edit_room_notebook_page': self.on_edit_room_notebook_page
             }
         self.wtree.signal_autoconnect(dic)
 
@@ -155,6 +156,7 @@ class GUI(object):
         self.hover = self.HOVER_NONE
         self.curhover = None
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
+        self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
         # Sizing information
         # TODO: Should really figure out zooming sooner rather than later
@@ -252,6 +254,7 @@ class GUI(object):
         self.map_treeview.append_column(column)
 
         # Some similar vars for the room dropdowns in the Advanced tab in "Edit Room"
+        self.editroom_advanced_populated = False
         self.ROOM_COL_NAME = 0
         self.ROOM_COL_IDX = 1
         self.room_mapstore = gtk.ListStore( gobject.TYPE_STRING,
@@ -1043,44 +1046,11 @@ class GUI(object):
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
 
-                    # Now a mess of stuff on the Advanced tab
-                    self.room_offset_x.set_active(room.offset_x)
-                    self.room_offset_y.set_active(room.offset_y)
-
-                    # ... Populate the room dropdowns
-                    self.room_mapstore.clear()
-                    iter = self.room_mapstore.append()
-                    rowmap = {}
-                    self.room_mapstore.set(iter,
-                            self.ROOM_COL_NAME, '-',
-                            self.ROOM_COL_IDX, -1)
-                    currow = 0
-                    rooms = list(self.map.roomlist())
-                    rooms.sort(self.room_sort)
-                    for iterroom in rooms:
-                        if (room != iterroom):
-                            currow += 1
-                            rowmap[iterroom.id] = currow
-                            iter = self.room_mapstore.append()
-                            self.room_mapstore.set(iter,
-                                    self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (iterroom.name, iterroom.x+1, iterroom.y+1),
-                                    self.ROOM_COL_IDX, iterroom.id)
-                        else:
-                            rowmap[iterroom.id] = 0
-
-                    # ... and then set the currently-active dropdown values
-                    # (and ladders, incidentally)
-                    for dir in range(len(DIR_OPP)):
-                        conn = room.get_conn(dir)
-                        if conn:
-                            (other, other_dir) = conn.get_opposite(room)
-                            self.room_box[dir].set_active(rowmap[other.id])
-                            self.room_dir[dir].set_active(other_dir)
-                            self.room_ladder[dir].set_active(conn.is_ladder)
-                        else:
-                            self.room_box[dir].set_active(0)
-                            self.room_dir[dir].set_active(DIR_OPP[dir])
-                            self.room_ladder[dir].set_active(False)
+                    # The 'Advanced' tab can take a noticeably-long time to populate
+                    # if there's a lot of rooms; rather than loading it by default,
+                    # we'll only populate those areas if the user actually clicks on
+                    # it.
+                    self.editroom_advanced_populated = False
 
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
@@ -1116,43 +1086,45 @@ class GUI(object):
                             room.notes = buftxt
 
                         # Now handle the Advanced tab
-                        if (self.room_offset_x.get_active() != room.offset_x):
-                            need_gfx_update = True
-                            room.offset_x = self.room_offset_x.get_active()
-                        if (self.room_offset_y.get_active() != room.offset_y):
-                            need_gfx_update = True
-                            room.offset_y = self.room_offset_y.get_active()
+                        if (self.editroom_advanced_populated):
 
-                        # ... advanced links ...
-                        for dir in range(len(DIR_OPP)):
-                            widget_room = self.room_box[dir]
-                            widget_dir = self.room_dir[dir]
-                            widget_ladder = self.room_ladder[dir]
-                            existing = room.get_conn(dir)
-                            iter = widget_room.get_active_iter()
-                            new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
-                            new_dir = widget_dir.get_active()
-                            if existing:
-                                if (new_roomid == -1):
-                                    self.map.detach(room, dir)
-                                    existing = None
-                                    need_gfx_update = True
-                                else:
-                                    (cur_room, cur_dir) = existing.get_opposite(room)
-                                    if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
+                            if (self.room_offset_x.get_active() != room.offset_x):
+                                need_gfx_update = True
+                                room.offset_x = self.room_offset_x.get_active()
+                            if (self.room_offset_y.get_active() != room.offset_y):
+                                need_gfx_update = True
+                                room.offset_y = self.room_offset_y.get_active()
+
+                            # ... advanced links ...
+                            for dir in range(len(DIR_OPP)):
+                                widget_room = self.room_box[dir]
+                                widget_dir = self.room_dir[dir]
+                                widget_ladder = self.room_ladder[dir]
+                                existing = room.get_conn(dir)
+                                iter = widget_room.get_active_iter()
+                                new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+                                new_dir = widget_dir.get_active()
+                                if existing:
+                                    if (new_roomid == -1):
                                         self.map.detach(room, dir)
+                                        existing = None
+                                        need_gfx_update = True
+                                    else:
+                                        (cur_room, cur_dir) = existing.get_opposite(room)
+                                        if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
+                                            self.map.detach(room, dir)
+                                            existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                            need_gfx_update = True
+                                else:
+                                    if new_roomid != -1:
                                         existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
                                         need_gfx_update = True
-                            else:
-                                if new_roomid != -1:
-                                    existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
-                                    need_gfx_update = True
 
-                            # ... and the 'ladder' flag, if we still have a connection
-                            if existing:
-                                if (widget_ladder.get_active() != existing.is_ladder):
-                                    existing.is_ladder = widget_ladder.get_active()
-                                    need_gfx_update = True
+                                # ... and the 'ladder' flag, if we still have a connection
+                                if existing:
+                                    if (widget_ladder.get_active() != existing.is_ladder):
+                                        existing.is_ladder = widget_ladder.get_active()
+                                        need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN):
                     # remove the connection
@@ -1177,6 +1149,7 @@ class GUI(object):
                             self.edit_room_label.set_markup('<b>New Room</b>')
                             self.edit_room_notebook.set_current_page(0)
                             self.edit_room_notebook.get_nth_page(1).hide()
+                            self.editroom_advanced_populated = False
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
                             self.roomtype_radio_normal.set_active(True)
@@ -1223,6 +1196,68 @@ class GUI(object):
 
                 if (need_gfx_update):
                     self.trigger_redraw()
+
+    def on_edit_room_notebook_page(self, widget, page, page_num):
+        """
+        What to do when our Edit Room notebook page changes...  Used
+        to populate the Advanced tab if a user clicks on it, since that
+        process can take a few seconds if there are a lot of rooms.
+        """
+        if (page_num == 1):
+            if not self.editroom_advanced_populated:
+
+                # Feedback to the user that something's happening
+                self.edit_room_dialog.window.set_cursor(self.cursor_wait)
+                while (gtk.events_pending()):
+                    gtk.main_iteration()
+
+                # Grab our current room
+                room = self.curhover
+
+                # Width/Height Options
+                self.room_offset_x.set_active(room.offset_x)
+                self.room_offset_y.set_active(room.offset_y)
+
+                # Populate the room dropdowns
+                self.room_mapstore.clear()
+                iter = self.room_mapstore.append()
+                rowmap = {}
+                self.room_mapstore.set(iter,
+                        self.ROOM_COL_NAME, '-',
+                        self.ROOM_COL_IDX, -1)
+                currow = 0
+                rooms = list(self.map.roomlist())
+                rooms.sort(self.room_sort)
+                for iterroom in rooms:
+                    if (room != iterroom):
+                        currow += 1
+                        rowmap[iterroom.id] = currow
+                        iter = self.room_mapstore.append()
+                        self.room_mapstore.set(iter,
+                                self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (iterroom.name, iterroom.x+1, iterroom.y+1),
+                                self.ROOM_COL_IDX, iterroom.id)
+                    else:
+                        rowmap[iterroom.id] = 0
+
+                # ... and then set the currently-active dropdown values
+                # (and ladders, incidentally)
+                for dir in range(len(DIR_OPP)):
+                    conn = room.get_conn(dir)
+                    if conn:
+                        (other, other_dir) = conn.get_opposite(room)
+                        self.room_box[dir].set_active(rowmap[other.id])
+                        self.room_dir[dir].set_active(other_dir)
+                        self.room_ladder[dir].set_active(conn.is_ladder)
+                    else:
+                        self.room_box[dir].set_active(0)
+                        self.room_dir[dir].set_active(DIR_OPP[dir])
+                        self.room_ladder[dir].set_active(False)
+
+                # Now let the app know that we're populated
+                self.editroom_advanced_populated = True
+
+                # ... and clean out the mouse cursor
+                self.edit_room_dialog.window.set_cursor(None)
 
     def trigger_redraw(self):
         """
