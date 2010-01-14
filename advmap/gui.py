@@ -1424,6 +1424,8 @@ class GUI(object):
         """
         Track mouse changes
         """
+        if not self.initgfx:
+            return
         if self.dragging:
             diff_x = self.hold_x - event.x_root
             diff_y = self.hold_y - event.y_root
