@@ -1079,9 +1079,6 @@ class GUI(object):
                             self.room_box[dir].set_active(0)
                             self.room_dir[dir].set_active(DIR_OPP[dir])
 
-                    #iter = self.room_box[0].get_active_iter()
-                    #print self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
-
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
                     self.edit_room_dialog.hide()
@@ -1114,12 +1111,38 @@ class GUI(object):
                         if (room.notes != buftxt):
                             need_gfx_update = True
                             room.notes = buftxt
+
+                        # Now handle the Advanced tab
                         if (self.room_offset_x.get_active() != room.offset_x):
                             need_gfx_update = True
                             room.offset_x = self.room_offset_x.get_active()
                         if (self.room_offset_y.get_active() != room.offset_y):
                             need_gfx_update = True
                             room.offset_y = self.room_offset_y.get_active()
+
+                        # ... advanced links ...
+                        for dir in range(len(DIR_OPP)):
+                            widget_room = self.room_box[dir]
+                            widget_dir = self.room_dir[dir]
+                            existing = room.get_conn(dir)
+                            iter = widget_room.get_active_iter()
+                            new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+                            new_dir = widget_dir.get_active()
+                            if existing:
+                                if (new_roomid == -1):
+                                    self.map.detach(room.id, dir)
+                                    need_gfx_update = True
+                                else:
+                                    (cur_room, cur_dir) = existing.get_opposite(room)
+                                    if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
+                                        self.map.detach(room.id, dir)
+                                        self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                        need_gfx_update = True
+                            else:
+                                if new_roomid != -1:
+                                    self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                    need_gfx_update = True
+
                 elif (self.hover == self.HOVER_CONN):
                     # remove the connection
                     room = self.curhover[0]

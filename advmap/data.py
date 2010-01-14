@@ -121,7 +121,7 @@ class Room(object):
         existing connection.  Will return the new Connection
         object which was created
         """
-        if not dir2:
+        if dir2 is None:
             dir2 = DIR_OPP[dir]
         if dir in self.conns:
             self.detach(dir)
@@ -338,7 +338,7 @@ class Map(object):
         # should we ever lift that, it's at least technically
         # possible that some determined maniac could run up
         # against the limit, so we should check for it if so.
-        if not dir2:
+        if dir2 is None:
             dir2 = DIR_OPP[dir1]
         if dir1 in room1.conns:
             self.detach(room1, dir1)
