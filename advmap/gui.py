@@ -822,7 +822,7 @@ class GUI(object):
                 mmctx.fill()
 
         # Mousemap edges
-        if (not readonly and not self.nudge_lock.get_active()):
+        if (not readonly and self.nudge_lock.get_active()):
             for (dir, junk) in enumerate(DIR_OPP):
                 coords = self.map.dir_coord(room, dir)
                 if coords:
@@ -1475,7 +1475,8 @@ class GUI(object):
         Lets us know to redraw the mousemaps because nudging is locked/unlocked.
         (Note that this actually just triggers a full redraw)
         """
-        self.trigger_redraw()
+        if (not self.readonly_lock.get_active()):
+            self.trigger_redraw()
 
     def readonly_toggled(self, widget):
         """
