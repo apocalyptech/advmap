@@ -1,6 +1,7 @@
 RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
+ * Should we still be able to edit Notes in readonly mode?
 
 GUI stuffs:
  * Ladder graphics get out-of-whack when irregular or overly-extended.
