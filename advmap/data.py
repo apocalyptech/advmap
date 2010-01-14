@@ -379,17 +379,23 @@ class Map(object):
         self.conns.remove(conn)
         conn.r1.detach(conn.dir1)
 
-    def detach(self, id, dir):
+    def detach(self, room, dir):
         """
         Detaches two rooms
         """
-        room = self.get_room(id)
-        if (not room):
-            raise Exception('Must specify a valid room')
         conn = room.get_conn(dir)
         if not conn:
             raise Exception('No connection to detach')
         self._detach_conn(conn)
+
+    def detach_id(self, id, dir):
+        """
+        Detaches two rooms, based on the ID
+        """
+        room = self.get_room(id)
+        if (not room):
+            raise Exception('Must specify a valid room')
+        return self.detach(room, dir)
 
     def del_room(self, room):
         """

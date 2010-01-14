@@ -1134,13 +1134,13 @@ class GUI(object):
                             new_dir = widget_dir.get_active()
                             if existing:
                                 if (new_roomid == -1):
-                                    self.map.detach(room.id, dir)
+                                    self.map.detach(room, dir)
                                     existing = None
                                     need_gfx_update = True
                                 else:
                                     (cur_room, cur_dir) = existing.get_opposite(room)
                                     if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
-                                        self.map.detach(room.id, dir)
+                                        self.map.detach(room, dir)
                                         existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
                                         need_gfx_update = True
                             else:
@@ -1158,7 +1158,7 @@ class GUI(object):
                     # remove the connection
                     room = self.curhover[0]
                     dir = self.curhover[1]
-                    self.map.detach(room.id, dir)
+                    self.map.detach(room, dir)
                     need_gfx_update = True
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
@@ -1170,7 +1170,7 @@ class GUI(object):
                         if newroom:
                             if (DIR_OPP[dir] in newroom.conns):
                                 # Remove previous connection on other room
-                                self.map.detach(newroom.id, DIR_OPP[dir])
+                                self.map.detach(newroom, DIR_OPP[dir])
                             self.map.connect(room, dir, newroom)
                             need_gfx_update = True
                         else:
