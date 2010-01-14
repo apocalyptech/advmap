@@ -63,6 +63,7 @@ class GUI(object):
         self.hoverlabel = self.wtree.get_widget('hoverlabel')
         self.map_combo = self.wtree.get_widget('map_combo')
         self.nudge_lock = self.wtree.get_widget('nudge_lock')
+        self.readonly_lock = self.wtree.get_widget('readonly_lock')
         self.menu_revert = self.wtree.get_widget('menu_revert')
         self.show_offset_check = self.wtree.get_widget('show_offset_check')
         self.statusbar = self.wtree.get_widget('statusbar')
@@ -132,6 +133,7 @@ class GUI(object):
                 'key_handler': self.key_handler,
                 'nudge_map': self.nudge_map,
                 'nudge_lock_toggled': self.nudge_lock_toggled,
+                'readonly_toggled': self.readonly_toggled,
                 'map_resize': self.map_resize,
                 'edit_room_activate': self.edit_room_activate,
                 'map_combo_changed': self.map_combo_changed,
@@ -734,8 +736,11 @@ class GUI(object):
         skip drawing any connections already seen inside drawn_conns,
         and add to that list as need be
         """
+
         # Starting position of room
         (x, y) = self.room_xy(room)
+
+        readonly = self.readonly_lock.get_active()
 
         # Rooms with a name of "(unexplored)" become labels, effectively.
         # So that's what we're doing here.
@@ -806,17 +811,18 @@ class GUI(object):
                 conn_hover = self.HOVER_CONN_NEW
 
             # Draw the mousemap too, though only if we Should
-            if ((room.y == 0 and dir in [DIR_NW, DIR_N, DIR_NE]) or
-                (room.y == self.map.h-1 and dir in [DIR_SW, DIR_S, DIR_SE]) or
-                (room.x == 0 and dir in [DIR_NW, DIR_W, DIR_SW]) or
-                (room.x == self.map.w-1 and dir in [DIR_NE, DIR_E, DIR_SE])):
-                continue
-            mmctx.set_source_rgba(self.m_step*conn_hover, self.m_step*dir, self.m_step*room.id)
-            mmctx.rectangle(x+self.CONN_H_OFF[dir][0], y+self.CONN_H_OFF[dir][1], self.room_spc, self.room_spc)
-            mmctx.fill()
+            if not readonly:
+                if ((room.y == 0 and dir in [DIR_NW, DIR_N, DIR_NE]) or
+                    (room.y == self.map.h-1 and dir in [DIR_SW, DIR_S, DIR_SE]) or
+                    (room.x == 0 and dir in [DIR_NW, DIR_W, DIR_SW]) or
+                    (room.x == self.map.w-1 and dir in [DIR_NE, DIR_E, DIR_SE])):
+                    continue
+                mmctx.set_source_rgba(self.m_step*conn_hover, self.m_step*dir, self.m_step*room.id)
+                mmctx.rectangle(x+self.CONN_H_OFF[dir][0], y+self.CONN_H_OFF[dir][1], self.room_spc, self.room_spc)
+                mmctx.fill()
 
         # Mousemap edges
-        if (not self.nudge_lock.get_active()):
+        if (not readonly and not self.nudge_lock.get_active()):
             for (dir, junk) in enumerate(DIR_OPP):
                 coords = self.map.dir_coord(room, dir)
                 if coords:
@@ -1467,6 +1473,13 @@ class GUI(object):
     def nudge_lock_toggled(self, widget):
         """
         Lets us know to redraw the mousemaps because nudging is locked/unlocked.
+        (Note that this actually just triggers a full redraw)
+        """
+        self.trigger_redraw()
+
+    def readonly_toggled(self, widget):
+        """
+        Lets us know to redraw the mousemaps because we've entered readonly mode
         (Note that this actually just triggers a full redraw)
         """
         self.trigger_redraw()
