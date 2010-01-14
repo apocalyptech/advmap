@@ -20,8 +20,7 @@ Internal stuffs:
 Possibly, sometime:
  * redo internal storage mechanisms/mousemaps to allow > 256 rooms
  * Arbitrary room coloring / highlighting
- * non-immediately-adjacent linking (across gaps, etc)
- * non-symmetrical linking (including one-way)
+ * one-way linking
  * multiple links from the same direction
  * option double-sized rooms
  * easier/more intuitive handling of up/down (specifically would like to
