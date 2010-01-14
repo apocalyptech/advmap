@@ -1069,15 +1069,18 @@ class GUI(object):
                             rowmap[iterroom.id] = 0
 
                     # ... and then set the currently-active dropdown values
+                    # (and ladders, incidentally)
                     for dir in range(len(DIR_OPP)):
                         conn = room.get_conn(dir)
                         if conn:
                             (other, other_dir) = conn.get_opposite(room)
                             self.room_box[dir].set_active(rowmap[other.id])
                             self.room_dir[dir].set_active(other_dir)
+                            self.room_ladder[dir].set_active(conn.is_ladder)
                         else:
                             self.room_box[dir].set_active(0)
                             self.room_dir[dir].set_active(DIR_OPP[dir])
+                            self.room_ladder[dir].set_active(False)
 
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
@@ -1124,6 +1127,7 @@ class GUI(object):
                         for dir in range(len(DIR_OPP)):
                             widget_room = self.room_box[dir]
                             widget_dir = self.room_dir[dir]
+                            widget_ladder = self.room_ladder[dir]
                             existing = room.get_conn(dir)
                             iter = widget_room.get_active_iter()
                             new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
@@ -1131,16 +1135,23 @@ class GUI(object):
                             if existing:
                                 if (new_roomid == -1):
                                     self.map.detach(room.id, dir)
+                                    existing = None
                                     need_gfx_update = True
                                 else:
                                     (cur_room, cur_dir) = existing.get_opposite(room)
                                     if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
                                         self.map.detach(room.id, dir)
-                                        self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                        existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
                                         need_gfx_update = True
                             else:
                                 if new_roomid != -1:
-                                    self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                    existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                    need_gfx_update = True
+
+                            # ... and the 'ladder' flag, if we still have a connection
+                            if existing:
+                                if (widget_ladder.get_active() != existing.is_ladder):
+                                    existing.is_ladder = widget_ladder.get_active()
                                     need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN):

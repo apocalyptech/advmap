@@ -207,6 +207,7 @@ class Connection(object):
         self.dir1 = dir1
         self.r2 = r2
         self.dir2 = dir2
+        self.is_ladder = False
 
     def __repr__(self):
         return '<Connection - %s (%s) to %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], self.r2.name, DIR_2_TXT[self.dir2])
@@ -226,10 +227,21 @@ class Connection(object):
         """
         Saves ourself to a filehandle
         """
+        flags = 0
+        if (self.is_ladder):
+            flags = flags | 0x1
         df.writeshort(self.r1.id)
         df.writeuchar(self.dir1)
         df.writeshort(self.r2.id)
         df.writeuchar(self.dir2)
+        df.writeuchar(flags)
+
+    def parse_flags(self, flags):
+        """
+        Parses flags, from the saved file.  (See save())
+        """
+        if ((flags & 0x1) == 0x1):
+            self.is_ladder = True
 
 class Map(object):
     """
@@ -329,7 +341,8 @@ class Map(object):
         """
         Connects two rooms, given the room objects and
         the direction.  If a second direction is not provided,
-        the connection will be symmetrical.
+        the connection will be symmetrical.  Returns the new
+        connection.
         """
         # TODO: Note that technically we're limited to 65535
         # conns because we store the number of conns as a
@@ -345,16 +358,17 @@ class Map(object):
         if dir2 in room2.conns:
             self.detach(room2, dir2)
         self.conns.append(room1.connect(dir1, room2, dir2))
+        return self.conns[-1]
 
     def connect_id(self, id1, dir1, id2, dir2=None):
         """
-        Connects two rooms, given the room IDs
+        Connects two rooms, given the room IDs.  Returns the new connection.
         """
         room1 = self.get_room(id1)
         room2 = self.get_room(id2)
         if (not room1 or not room2):
             raise Exception('Must specify two valid rooms')
-        self.connect(room1, dir1, room2, dir2)
+        return self.connect(room1, dir1, room2, dir2)
 
     def _detach_conn(self, conn):
         """
@@ -527,7 +541,8 @@ class Map(object):
 
         # Now load connections
         for i in range(num_conns):
-            map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
+            conn = map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
+            conn.parse_flags(df.readuchar())
 
         # ... and return our object.
         return map

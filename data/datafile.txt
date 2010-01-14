@@ -50,3 +50,5 @@ Then groups of Maps, for each map:
     & Room 1 Direction
     % Room 2 ID
     & Room 2 Direction
+    | flags:
+        00000001 = Is a "ladder" direction
