@@ -71,6 +71,7 @@ class GUI(object):
         # New Room / Edit Room dialog
         self.edit_room_dialog = self.wtree.get_widget('edit_room_dialog')
         self.edit_room_label = self.wtree.get_widget('edit_room_label')
+        self.edit_room_notebook = self.wtree.get_widget('edit_room_notebook')
         self.roomtype_radio_normal = self.wtree.get_widget('roomtype_radio_normal')
         self.roomtype_radio_hi_green = self.wtree.get_widget('roomtype_radio_hi_green')
         self.roomtype_radio_hi_red = self.wtree.get_widget('roomtype_radio_hi_red')
@@ -81,10 +82,19 @@ class GUI(object):
         self.room_up_entry = self.wtree.get_widget('room_up_entry')
         self.room_down_entry = self.wtree.get_widget('room_down_entry')
         self.roomnotes_view = self.wtree.get_widget('roomnotes_view')
-        self.room_offset_x = self.wtree.get_widget('room_offset_x')
-        self.room_offset_y = self.wtree.get_widget('room_offset_y')
         self.edit_room_ok = self.wtree.get_widget('edit_room_ok')
         self.edit_room_cancel = self.wtree.get_widget('edit_room_cancel')
+
+        # New Room / Edit Room dialog, Advanced tab
+        self.room_offset_x = self.wtree.get_widget('room_offset_x')
+        self.room_offset_y = self.wtree.get_widget('room_offset_y')
+        self.room_box = {}
+        self.room_dir = {}
+        self.room_ladder = {}
+        for (text, dir) in TXT_2_DIR.items():
+            self.room_box[dir] = self.wtree.get_widget('room_box_%s' % text)
+            self.room_dir[dir] = self.wtree.get_widget('room_dir_%s' % text)
+            self.room_ladder[dir] = self.wtree.get_widget('room_ladder_%s' % text)
 
         # Edit Game dialog
         self.edit_game_dialog = self.wtree.get_widget('edit_game_dialog')
@@ -240,6 +250,20 @@ class GUI(object):
         column = gtk.TreeViewColumn("Rooms", renderer, text=self.MAP_COL_ROOMS, editable=self.MAP_COL_ROOMEDIT)
         column.set_cell_data_func(renderer, self.cellformat_rooms)
         self.map_treeview.append_column(column)
+
+        # Some similar vars for the room dropdowns in the Advanced tab in "Edit Room"
+        self.ROOM_COL_NAME = 0
+        self.ROOM_COL_IDX = 1
+        self.room_mapstore = gtk.ListStore( gobject.TYPE_STRING,
+                gobject.TYPE_INT)
+        renderer = gtk.CellRendererText()
+        renderer.set_data('column', self.ROOM_COL_NAME)
+        column = gtk.TreeViewColumn('Name', renderer, text=self.ROOM_COL_NAME)
+        for widget in self.room_box.values():
+            widget.set_model(self.room_mapstore)
+            widget.clear()
+            widget.pack_start(renderer, True)
+            widget.add_attribute(renderer, 'markup', self.ROOM_COL_NAME)
 
         # Pango object for drawing "notes"
         self.notes_layout = pango.Layout(self.pangoctx)
@@ -963,6 +987,17 @@ class GUI(object):
             self.hover = self.HOVER_NONE
             self.curhover = None
 
+    def room_sort(self, room1, room2):
+        """
+        Function for sorting rooms
+        """
+        res = cmp(room1.name.lower(), room2.name.lower())
+        if res == 0:
+            res = cmp(room1.y, room2.y)
+            if res == 0:
+                res = cmp(room1.x, room2.x)
+        return res
+
     def on_map_clicked(self, widget, event):
         """
         Handle clicks-n-such
@@ -981,6 +1016,8 @@ class GUI(object):
                     # edit/view room details
                     room = self.curhover
                     self.edit_room_label.set_markup('<b>Edit Room</b>')
+                    self.edit_room_notebook.set_current_page(0)
+                    self.edit_room_notebook.get_nth_page(1).show()
                     self.roomname_entry.set_text(room.name)
                     self.roomnotes_view.get_buffer().set_text(room.notes)
                     if (room.type == Room.TYPE_HI_GREEN):
@@ -1005,8 +1042,46 @@ class GUI(object):
                         self.roomnotes_view.grab_focus()
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
+
+                    # Now a mess of stuff on the Advanced tab
                     self.room_offset_x.set_active(room.offset_x)
                     self.room_offset_y.set_active(room.offset_y)
+
+                    # ... Populate the room dropdowns
+                    self.room_mapstore.clear()
+                    iter = self.room_mapstore.append()
+                    rowmap = {}
+                    self.room_mapstore.set(iter,
+                            self.ROOM_COL_NAME, '-',
+                            self.ROOM_COL_IDX, -1)
+                    currow = 0
+                    rooms = list(self.map.roomlist())
+                    rooms.sort(self.room_sort)
+                    for iterroom in rooms:
+                        if (room != iterroom):
+                            currow += 1
+                            rowmap[iterroom.id] = currow
+                            iter = self.room_mapstore.append()
+                            self.room_mapstore.set(iter,
+                                    self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (iterroom.name, iterroom.x+1, iterroom.y+1),
+                                    self.ROOM_COL_IDX, iterroom.id)
+                        else:
+                            rowmap[iterroom.id] = 0
+
+                    # ... and then set the currently-active dropdown values
+                    for dir in range(len(DIR_OPP)):
+                        conn = room.get_conn(dir)
+                        if conn:
+                            (other, other_dir) = conn.get_opposite(room)
+                            self.room_box[dir].set_active(rowmap[other.id])
+                            self.room_dir[dir].set_active(other_dir)
+                        else:
+                            self.room_box[dir].set_active(0)
+                            self.room_dir[dir].set_active(DIR_OPP[dir])
+
+                    #iter = self.room_box[0].get_active_iter()
+                    #print self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
                     self.edit_room_dialog.hide()
@@ -1066,6 +1141,8 @@ class GUI(object):
                             need_gfx_update = True
                         else:
                             self.edit_room_label.set_markup('<b>New Room</b>')
+                            self.edit_room_notebook.set_current_page(0)
+                            self.edit_room_notebook.get_nth_page(1).hide()
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
                             self.roomtype_radio_normal.set_active(True)
