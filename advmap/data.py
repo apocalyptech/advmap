@@ -94,6 +94,16 @@ class Room(object):
     TYPE_HI_RED = 4
     TYPE_FAINT = 5
 
+    # English equivalents
+    TYPE_TXT = {
+            TYPE_NORMAL: 'Normal Room',
+            TYPE_HI_GREEN: 'Green Highlight',
+            TYPE_LABEL: 'Label',
+            TYPE_HI_BLUE: 'Blue Highlight',
+            TYPE_HI_RED: 'Red Highlight',
+            TYPE_FAINT: 'Unimportant'
+        }
+
     def __init__(self, id, x, y):
         self.id = id
         self.x = x

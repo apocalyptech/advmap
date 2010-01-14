@@ -1,12 +1,13 @@
 RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
- * "readonly" mode, or maybe at least disable room edits
 
 GUI stuffs:
  * Ladder graphics get out-of-whack when irregular or overly-extended.
    This is expecially bad once the rooms aren't lined up and there's
    some shear.
+ * Different ways to draw nonsymmetric links (thinking "rounded" and
+   "midpoint" at the least)
  * set_sensitive(False) for global nudge buttons when not available
  * Show "(notes)" on map for Label rooms
  * Ampersands in text (room names, etc) fail because it's attempting to
@@ -27,6 +28,3 @@ Possibly, sometime:
  * multiple links from the same direction
  * option double-sized rooms
 
-See http://www.neogaf.com/forum/showthread.php?t=147082 for a few maps
-that are basically impossible with this tool...  Zork 1 basically just
-Doesn't Work, AMFV is way too big

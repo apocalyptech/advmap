@@ -70,6 +70,18 @@ class GUI(object):
         self.sbcontext = self.statusbar.get_context_id('Main Messages')
         self.aboutwindow = None
 
+        # View Room Readonly dialog
+        self.view_room_dialog = self.wtree.get_widget('view_room_dialog')
+        self.view_room_roomname_label = self.wtree.get_widget('view_room_roomname_label')
+        self.view_room_roomtype_label = self.wtree.get_widget('view_room_roomtype_label')
+        self.view_room_up_label = self.wtree.get_widget('view_room_up_label')
+        self.view_room_up_hdr = self.wtree.get_widget('view_room_up_hdr')
+        self.view_room_down_label = self.wtree.get_widget('view_room_down_label')
+        self.view_room_down_hdr = self.wtree.get_widget('view_room_down_hdr')
+        self.view_room_scroll = self.wtree.get_widget('view_room_scroll')
+        self.view_room_notes_hdr = self.wtree.get_widget('view_room_notes_hdr')
+        self.view_room_notes_view = self.wtree.get_widget('view_room_notes_view')
+
         # New Room / Edit Room dialog
         self.edit_room_dialog = self.wtree.get_widget('edit_room_dialog')
         self.edit_room_label = self.wtree.get_widget('edit_room_label')
@@ -1124,6 +1136,33 @@ class GUI(object):
                 if (self.hover == self.HOVER_ROOM):
                     # edit/view room details
                     room = self.curhover
+                    if (self.readonly_lock.get_active()):
+                        self.view_room_roomname_label.set_markup('<b>%s</b>' % room.name)
+                        self.view_room_roomtype_label.set_text(room.TYPE_TXT[room.type])
+                        if (room.up and room.up != ''):
+                            self.view_room_up_label.set_text(room.up)
+                            self.view_room_up_label.show()
+                            self.view_room_up_hdr.show()
+                        else:
+                            self.view_room_up_label.hide()
+                            self.view_room_up_hdr.hide()
+                        if (room.down and room.down != ''):
+                            self.view_room_down_label.set_text(room.down)
+                            self.view_room_down_label.show()
+                            self.view_room_down_hdr.show()
+                        else:
+                            self.view_room_down_label.hide()
+                            self.view_room_down_hdr.hide()
+                        if (room.notes and room.notes != ''):
+                            self.view_room_notes_view.get_buffer().set_text(room.notes)
+                            self.view_room_scroll.show()
+                            self.view_room_notes_hdr.show()
+                        else:
+                            self.view_room_scroll.hide()
+                            self.view_room_notes_hdr.hide()
+                        self.view_room_dialog.run()
+                        self.view_room_dialog.hide()
+                        return
                     self.edit_room_label.set_markup('<b>Edit Room</b>')
                     self.edit_room_notebook.set_current_page(0)
                     self.edit_room_notebook.get_nth_page(1).show()
