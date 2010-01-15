@@ -357,7 +357,7 @@ class GUI(object):
         Sets the text of our hover
         """
         if (text != ''):
-            text = '<i>%s</i>' % (text)
+            text = '<i>%s</i>' % (gobject.markup_escape_text(text))
         self.hoverlabel.set_markup(text)
 
     def set_status(self, text):
@@ -619,7 +619,7 @@ class GUI(object):
         """
         Updates our game/map name display
         """
-        self.titlelabel.set_markup('<b>%s</b> | %s' % (self.game.name, self.map.name))
+        self.titlelabel.set_markup('<b>%s</b> | %s' % (gobject.markup_escape_text(self.game.name), gobject.markup_escape_text(self.map.name)))
 
     def update_gameinfo(self):
         """
@@ -850,7 +850,7 @@ class GUI(object):
 
         if (is_label):
             label_layout = pango.Layout(self.pangoctx)
-            label_layout.set_markup('<i>%s</i>' % (room.name))
+            label_layout.set_markup('<i>%s</i>' % (gobject.markup_escape_text(room.name)))
             label_layout.set_width((self.room_w-self.room_spc)*pango.SCALE)
             label_layout.set_wrap(pango.WRAP_WORD)
             label_layout.set_alignment(pango.ALIGN_CENTER)
@@ -868,7 +868,7 @@ class GUI(object):
         else:
             # Draw the room title
             title_layout = pango.Layout(self.pangoctx)
-            title_layout.set_markup(room.name)
+            title_layout.set_markup(gobject.markup_escape_text(room.name))
             title_layout.set_width((self.room_w-self.room_spc)*pango.SCALE)
             title_layout.set_wrap(pango.WRAP_WORD)
             title_layout.set_alignment(pango.ALIGN_CENTER)
@@ -906,7 +906,7 @@ class GUI(object):
                     height = 999
                     chars = 15
                     while (width > max_w or height > max_h):
-                        layout.set_markup(text)
+                        layout.set_markup(gobject.markup_escpae_text(text))
                         for size in [8, 7, 6]:
                             layout.set_font_description(pango.FontDescription('sans regular %d' % (size)))
                             (width, height) = (x/pango.SCALE for x in layout.get_size())
@@ -1142,7 +1142,7 @@ class GUI(object):
                     # edit/view room details
                     room = self.curhover
                     if (self.readonly_lock.get_active()):
-                        self.view_room_roomname_label.set_markup('<b>%s</b>' % room.name)
+                        self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
                         self.view_room_roomtype_label.set_text(room.TYPE_TXT[room.type])
                         if (room.up and room.up != ''):
                             self.view_room_up_label.set_text(room.up)
@@ -1384,7 +1384,7 @@ class GUI(object):
                         rowmap[iterroom.id] = currow
                         iter = self.room_mapstore.append()
                         self.room_mapstore.set(iter,
-                                self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (iterroom.name, iterroom.x+1, iterroom.y+1),
+                                self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
                                 self.ROOM_COL_IDX, iterroom.id)
                     else:
                         rowmap[iterroom.id] = 0
