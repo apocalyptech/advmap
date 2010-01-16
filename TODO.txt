@@ -16,6 +16,9 @@ GUI stuffs:
  * Mouseover hover notes text, when available
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
+ * Can connect indirectly on the side of the map, which looks a bit
+   strange; should figure out how to make that look better, or just disallow
+   it.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap

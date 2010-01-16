@@ -734,6 +734,9 @@ class GUI(object):
         direction.  Returns the "remote" endpoint
         """
         (room_x, room_y) = self.room_xy(room)
+        dir_coord = self.map.dir_coord(room, dir)
+        if not dir_coord:
+            return None
         conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir))
         if conn_coord:
             conn_x = conn_coord[0]
