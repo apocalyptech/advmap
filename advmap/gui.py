@@ -691,8 +691,8 @@ class GUI(object):
 
         # Now the rungs
         rungcount = int(dist / rung_spacing) - 1
-        x_spacing = dx_orig/rungcount
-        y_spacing = dy_orig/rungcount
+        x_spacing = dx_orig/float(rungcount)
+        y_spacing = dy_orig/float(rungcount)
         cur_x = x1 + (x_spacing/2)
         cur_y = y1 + (y_spacing/2)
         for i in range(rungcount):

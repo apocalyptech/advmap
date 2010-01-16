@@ -4,9 +4,6 @@ RFEs:
  * Should we still be able to edit Notes in readonly mode?
 
 GUI stuffs:
- * Ladder graphics get out-of-whack when irregular or overly-extended.
-   This is expecially bad once the rooms aren't lined up and there's
-   some shear.
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
  * set_sensitive(False) for global nudge buttons when not available
