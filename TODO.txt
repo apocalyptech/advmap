@@ -4,6 +4,7 @@ RFEs:
  * Should we still be able to edit Notes in readonly mode?
 
 GUI stuffs:
+ * Three-line title will overlap "(notes)" on my Laptop display
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
  * set_sensitive(False) for global nudge buttons when not available
