@@ -9,8 +9,6 @@ GUI stuffs:
    "midpoint" at the least)
  * set_sensitive(False) for global nudge buttons when not available
  * Show "(notes)" on map for Label rooms
- * Ampersands in text (room names, etc) fail because it's attempting to
-   be markup, should fix that
  * Mouseover hover notes text, when available
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
