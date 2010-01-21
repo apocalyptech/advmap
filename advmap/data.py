@@ -81,6 +81,81 @@ DIR_2_TXT = {
 
 SAVEFILE_VER = 1
 
+class Group(object):
+    """
+    A group of rooms, used for drawing screens in graphical
+    adventure games which have multiple "levels" with their own
+    connections, which nevertheless all take up one screen.
+    (Could also be used for other purposes as well, of course)
+    """
+    def __init__(self, room1, room2):
+        self.rooms = []
+        self.add_room(room1)
+        self.add_room(room2)
+
+    def get_rooms(self):
+        """
+        Returns a list of all rooms in this group
+        """
+        return self.rooms
+
+    def has_room(self, room):
+        """
+        Returns True/False depending on if the given room is
+        in this group.
+        """
+        return (room in self.rooms)
+
+    def add_room(self, room):
+        """
+        Adds a room to the group.
+        """
+        if (room not in self.rooms):
+            self.rooms.append(room)
+            room.group = self
+
+    def del_room(self, room):
+        """
+        Removes a room from the group.  Will return True if
+        this group should be deleted afterwards or not.
+        """
+        try:
+            self.rooms.remove(room)
+            room.group = None
+        except ValueError:
+            pass
+        return (len(self.rooms) < 2)
+
+    def save(self, df):
+        """
+        Saves ourself to the given filehandle
+        """
+        if (len(self.get_rooms()) < 2):
+            raise Exception('Warning: a group cannot consist of only one room')
+        df.writeshort(len(self.get_rooms()))
+        for room in self.get_rooms():
+            df.writeshort(room.id)
+
+    @staticmethod
+    def load(df, map, version):
+        """
+        Loads ourself, given a map object (to do room lookups) and a filehandle
+        """
+        num_rooms = df.readshort()
+        if (num_rooms < 2):
+            raise LoadException('Group stated it had only %d rooms' % (num_rooms))
+        rooms = []
+        for i in range(num_rooms):
+            id = df.readshort()
+            room = map.get_room(id)
+            if (room is None):
+                raise LoadException('Room %d does not exist while loading group' % (id))
+            rooms.append(room)
+        group = Group(rooms[0], rooms[1])
+        for room in rooms[2:]:
+            group.add_room(room)
+        return group
+
 class Room(object):
     """
     A single room
@@ -116,6 +191,7 @@ class Room(object):
         self.type = self.TYPE_NORMAL
         self.offset_x = False
         self.offset_y = False
+        self.group = None
 
     def unexplored(self):
         """
@@ -163,6 +239,16 @@ class Room(object):
             return self.conns[dir]
         else:
             return None
+
+    def in_group_with(self, room):
+        """
+        Returns True/False depending on if we're in a group with the
+        specified room
+        """
+        if self.group:
+            return self.group.has_room(room)
+        else:
+            return False
 
     def save(self, df):
         """
@@ -294,6 +380,9 @@ class Map(object):
 
         # ... and wipe our collection of conns
         self.conns = []
+
+        # ... and our groups
+        self.groups = []
 
     def roomlist(self):
         """
@@ -539,6 +628,39 @@ class Map(object):
         else:
             return False
 
+    def remove_room_from_group(self, room):
+        """
+        Removes the given room from its group
+        """
+        group = room.group
+        to_delete = group.del_room(room)
+        if (to_delete):
+            for other_room in group.get_rooms():
+                group.del_room(other_room)
+            self.groups.remove(group)
+
+    def add_room_to_group(self, room_subj, room_to):
+        """
+        Adds the specified room (room_subj) to a group containing the
+        specified other room (room_to).  If room_to does not currently
+        belong to a group, a new group is created.  If room_subj is
+        already part of a group, it will leave that group first (which
+        may result in that group being removed).
+
+        Returns True if we changed anything, or False if room_subj and
+        room_to already belonged to the same group
+        """
+        if (not room_subj.in_group_with(room_to)):
+            if (room_subj.group):
+                self.remove_room_from_group(room_subj)
+            if (room_to.group):
+                room_to.group.add_room(room_subj)
+            else:
+                self.groups.append(Group(room_subj, room_to))
+            return True
+        else:
+            return False
+
     def save(self, df):
         """
         Saves the map to the given filehandle
@@ -548,11 +670,14 @@ class Map(object):
         df.writeuchar(self.h)
         df.writeshort(len(self.rooms))
         df.writeshort(len(self.conns))
+        df.writeshort(len(self.groups))
         for room in self.roomlist():
             if room:
                 room.save(df)
         for conn in self.conns:
             conn.save(df)
+        for group in self.groups:
+            group.save(df)
 
     @staticmethod
     def load(df, version):
@@ -563,6 +688,7 @@ class Map(object):
         map.set_map_size(df.readuchar(), df.readuchar())
         num_rooms = df.readshort()
         num_conns = df.readshort()
+        num_groups = df.readshort()
 
         # Load rooms
         for i in range(num_rooms):
@@ -572,6 +698,10 @@ class Map(object):
         for i in range(num_conns):
             conn = map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
             conn.type = df.readuchar()
+
+        # Now load groups
+        for i in range(num_groups):
+            map.groups.append(Group.load(df, map, version))
 
         # ... and return our object.
         return map

@@ -25,6 +25,7 @@ Then groups of Maps, for each map:
   & Height
   % Number of active rooms
   % Number of connections between rooms
+  % Number of room groups
 
   Followed by groups of rooms, for each room:
     % Room ID
@@ -54,3 +55,7 @@ Then groups of Maps, for each map:
         0 = Regular
         1 = Ladder
         2 = Dotted
+
+  Followed by however many room groups.  For each group:
+  % Number of rooms in group
+  one % for each room ID

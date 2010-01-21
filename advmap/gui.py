@@ -103,6 +103,7 @@ class GUI(object):
         # New Room / Edit Room dialog, Advanced tab
         self.room_offset_x = self.wtree.get_widget('room_offset_x')
         self.room_offset_y = self.wtree.get_widget('room_offset_y')
+        self.room_group_box = self.wtree.get_widget('room_group_box')
         self.edit_room_adv_table = self.wtree.get_widget('edit_room_adv_table')
         self.setup_advanced_links()
 
@@ -177,6 +178,7 @@ class GUI(object):
         self.room_h = 110
         self.room_spc = 30
         self.room_spc_h = self.room_spc/2
+        self.room_spc_grp = 10
 
         # Connection offsets
         self.CONN_OFF = []
@@ -277,7 +279,7 @@ class GUI(object):
         renderer = gtk.CellRendererText()
         renderer.set_data('column', self.ROOM_COL_NAME)
         column = gtk.TreeViewColumn('Name', renderer, text=self.ROOM_COL_NAME)
-        for widget in self.room_box.values():
+        for widget in self.room_box.values() + [self.room_group_box]:
             widget.set_model(self.room_mapstore)
             widget.clear()
             widget.pack_start(renderer, True)
@@ -348,7 +350,7 @@ class GUI(object):
         self.room_regular = {}
         self.room_ladder = {}
         self.room_dotted = {}
-        offset=2
+        offset=3
         for (text, dir) in TXT_2_DIR.items():
 
             # Containers
@@ -1012,6 +1014,7 @@ class GUI(object):
         self.c_borders = (0, 0, 0, 1)
         self.c_label = (.7, .7, .7, 1)
         self.c_highlight = (.5, 1, .5, .2)
+        self.c_group = (.4, .4, .4, 1)
 
         c_default_text = (0, 0, 0, 1)
         self.c_type_map = {
@@ -1052,6 +1055,34 @@ class GUI(object):
         for room in self.map.roomlist():
             if room:
                 self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
+
+        # Loop through any groups and draw them, too
+        for group in self.map.groups:
+            max_x = 0
+            max_y = 0
+            min_x = 9999
+            min_y = 9999
+            for room in group.get_rooms():
+                (x, y) = self.room_xy(room)
+                if (x < min_x):
+                    min_x = x
+                if (x > max_x):
+                    max_x = x
+                if (y < min_y):
+                    min_y = y
+                if (y > max_y):
+                    max_y = y
+            min_x -= self.room_spc_grp
+            min_y -= self.room_spc_grp
+            max_x += self.room_spc_grp + self.room_w
+            max_y += self.room_spc_grp + self.room_h
+            self.cleanctx.save()
+            self.cleanctx.set_source_rgba(*self.c_group)
+            self.cleanctx.rectangle(min_x, min_y, max_x-min_x, max_y-min_y)
+            self.cleanctx.set_line_width(1)
+            self.cleanctx.set_dash([4.0], 0)
+            self.cleanctx.stroke()
+            self.cleanctx.restore()
 
         # Now copy our clean image over to the appropriate surfaces
         self.mapctx.set_source_surface(self.cleansurf, 0, 0)
@@ -1294,6 +1325,27 @@ class GUI(object):
                                 need_gfx_update = True
                                 room.offset_y = self.room_offset_y.get_active()
 
+                            # Grouping
+                            iter = self.room_group_box.get_active_iter()
+                            group_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+                            if (group_roomid == -1):
+                                if room.group:
+                                    self.map.remove_room_from_group(room)
+                                    need_gfx_update = True
+                            else:
+                                if (self.map.add_room_to_group(room, self.map.get_room(group_roomid))):
+                                    need_gfx_update = True
+
+                            # Temp, report
+                            #print 'Existing Groups:'
+                            #print
+                            #for (idx, group) in enumerate(self.map.groups):
+                            #    print 'Group %d:' % (idx+1)
+                            #    for room_view in group.rooms:
+                            #        print ' * %s' % room_view.name
+                            #    print
+                            #print
+
                             # ... advanced links ...
                             for dir in range(len(DIR_OPP)):
                                 widget_room = self.room_box[dir]
@@ -1433,6 +1485,8 @@ class GUI(object):
                         self.ROOM_COL_NAME, '-',
                         self.ROOM_COL_IDX, -1)
                 currow = 0
+                self.room_group_box.set_active(0)
+                have_group = False
                 rooms = list(self.map.roomlist())
                 rooms.sort(self.room_sort)
                 for iterroom in rooms:
@@ -1443,6 +1497,9 @@ class GUI(object):
                         self.room_mapstore.set(iter,
                                 self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
                                 self.ROOM_COL_IDX, iterroom.id)
+                        if (not have_group and room.in_group_with(iterroom)):
+                            self.room_group_box.set_active(currow)
+                            have_group = True
                     else:
                         rowmap[iterroom.id] = 0
 
