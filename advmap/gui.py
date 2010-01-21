@@ -1014,7 +1014,7 @@ class GUI(object):
         self.c_borders = (0, 0, 0, 1)
         self.c_label = (.7, .7, .7, 1)
         self.c_highlight = (.5, 1, .5, .2)
-        self.c_group = (.4, .4, .4, 1)
+        self.c_group = (.95, .95, .95, 1)
 
         c_default_text = (0, 0, 0, 1)
         self.c_type_map = {
@@ -1050,12 +1050,6 @@ class GUI(object):
         self.mmctx.set_source_rgba(0, 0, 0, 1)
         self.mmctx.paint()
 
-        # Loop through and draw our rooms
-        drawn_conns = []
-        for room in self.map.roomlist():
-            if room:
-                self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
-
         # Loop through any groups and draw them, too
         for group in self.map.groups:
             max_x = 0
@@ -1076,13 +1070,15 @@ class GUI(object):
             min_y -= self.room_spc_grp
             max_x += self.room_spc_grp + self.room_w
             max_y += self.room_spc_grp + self.room_h
-            self.cleanctx.save()
             self.cleanctx.set_source_rgba(*self.c_group)
             self.cleanctx.rectangle(min_x, min_y, max_x-min_x, max_y-min_y)
-            self.cleanctx.set_line_width(1)
-            self.cleanctx.set_dash([4.0], 0)
-            self.cleanctx.stroke()
-            self.cleanctx.restore()
+            self.cleanctx.fill()
+
+        # Loop through and draw our rooms
+        drawn_conns = []
+        for room in self.map.roomlist():
+            if room:
+                self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
 
         # Now copy our clean image over to the appropriate surfaces
         self.mapctx.set_source_surface(self.cleansurf, 0, 0)
