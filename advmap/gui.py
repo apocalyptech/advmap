@@ -95,6 +95,7 @@ class GUI(object):
         self.roomtype_radio_hi_purple = self.wtree.get_widget('roomtype_radio_hi_purple')
         self.roomtype_radio_hi_cyan = self.wtree.get_widget('roomtype_radio_hi_cyan')
         self.roomtype_radio_faint = self.wtree.get_widget('roomtype_radio_faint')
+        self.roomtype_radio_dark = self.wtree.get_widget('roomtype_radio_dark')
         self.roomtype_radio_label = self.wtree.get_widget('roomtype_radio_label')
         self.roomname_entry = self.wtree.get_widget('roomname_entry')
         self.room_up_entry = self.wtree.get_widget('room_up_entry')
@@ -821,7 +822,7 @@ class GUI(object):
             is_label = False
 
         # Figure out our colors
-        if (room.type in self.c_type_map):
+        if (not is_label and room.type in self.c_type_map):
             border = self.c_type_map[room.type][0]
             background = self.c_type_map[room.type][1]
             textcolor = self.c_type_map[room.type][2]
@@ -1027,7 +1028,8 @@ class GUI(object):
                 Room.TYPE_HI_YELLOW: ((.5, .5, 0, 1), (1, 1, .98, 1), c_default_text),
                 Room.TYPE_HI_PURPLE: ((.5, 0, .5, 1), (1, .98, 1, 1), c_default_text),
                 Room.TYPE_HI_CYAN: ((0, .5, .5, 1), (.98, 1, 1, 1), c_default_text),
-                Room.TYPE_FAINT: ((.6, .6, .6, 1), (1, 1, 1, 1), (.4, .4, .4, 1))
+                Room.TYPE_FAINT: ((.6, .6, .6, 1), (1, 1, 1, 1), (.4, .4, .4, 1)),
+                Room.TYPE_DARK: ((0, 0, 0, 1), (.35, .35, .35, 1), (.9, .9, .9, 1))
             }
         self.c_type_default = (self.c_borders, (.98, .98, .98, 1), c_default_text)
 
@@ -1271,6 +1273,8 @@ class GUI(object):
                         self.roomtype_radio_label.set_active(True)
                     elif (room.type == Room.TYPE_FAINT):
                         self.roomtype_radio_faint.set_active(True)
+                    elif (room.type == Room.TYPE_DARK):
+                        self.roomtype_radio_dark.set_active(True)
                     else:
                         self.roomtype_radio_normal.set_active(True)
                     self.room_up_entry.set_text(room.up)
@@ -1313,6 +1317,8 @@ class GUI(object):
                             new_type = Room.TYPE_LABEL
                         elif (self.roomtype_radio_faint.get_active()):
                             new_type = Room.TYPE_FAINT
+                        elif (self.roomtype_radio_dark.get_active()):
+                            new_type = Room.TYPE_DARK
                         else:
                             new_type = Room.TYPE_NORMAL
                         if (room.type != new_type):
@@ -1453,6 +1459,8 @@ class GUI(object):
                                     newroom.type = Room.TYPE_LABEL
                                 elif (self.roomtype_radio_faint.get_active()):
                                     newroom.type = Room.TYPE_FAINT
+                                elif (self.roomtype_radio_dark.get_active()):
+                                    newroom.type = Room.TYPE_DARK
                                 else:
                                     newroom.type = Room.TYPE_NORMAL
                                 newroom.up = self.room_up_entry.get_text()

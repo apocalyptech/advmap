@@ -39,6 +39,10 @@ Then groups of Maps, for each map:
         3: Blue Highlight
         4: Red Highlight
         5: Faint
+        6: Yellow Highlight
+        7: Purple Highlight
+        8: Cyan Highlight
+        9: Dark
     $ up
     $ down
     $ Notes
