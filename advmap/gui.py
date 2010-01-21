@@ -91,6 +91,9 @@ class GUI(object):
         self.roomtype_radio_hi_green = self.wtree.get_widget('roomtype_radio_hi_green')
         self.roomtype_radio_hi_red = self.wtree.get_widget('roomtype_radio_hi_red')
         self.roomtype_radio_hi_blue = self.wtree.get_widget('roomtype_radio_hi_blue')
+        self.roomtype_radio_hi_yellow = self.wtree.get_widget('roomtype_radio_hi_yellow')
+        self.roomtype_radio_hi_purple = self.wtree.get_widget('roomtype_radio_hi_purple')
+        self.roomtype_radio_hi_cyan = self.wtree.get_widget('roomtype_radio_hi_cyan')
         self.roomtype_radio_faint = self.wtree.get_widget('roomtype_radio_faint')
         self.roomtype_radio_label = self.wtree.get_widget('roomtype_radio_label')
         self.roomname_entry = self.wtree.get_widget('roomname_entry')
@@ -1021,6 +1024,9 @@ class GUI(object):
                 Room.TYPE_HI_RED: ((.5, 0, 0, 1), (1, .98, .98, 1), c_default_text),
                 Room.TYPE_HI_GREEN: ((0, .5, 0, 1), (.98, 1, .98, 1), c_default_text),
                 Room.TYPE_HI_BLUE: ((0, 0, .5, 1), (.98, .98, 1, 1), c_default_text),
+                Room.TYPE_HI_YELLOW: ((.5, .5, 0, 1), (1, 1, .98, 1), c_default_text),
+                Room.TYPE_HI_PURPLE: ((.5, 0, .5, 1), (1, .98, 1, 1), c_default_text),
+                Room.TYPE_HI_CYAN: ((0, .5, .5, 1), (.98, 1, 1, 1), c_default_text),
                 Room.TYPE_FAINT: ((.6, .6, .6, 1), (1, 1, 1, 1), (.4, .4, .4, 1))
             }
         self.c_type_default = (self.c_borders, (.98, .98, .98, 1), c_default_text)
@@ -1255,6 +1261,12 @@ class GUI(object):
                         self.roomtype_radio_hi_blue.set_active(True)
                     elif (room.type == Room.TYPE_HI_RED):
                         self.roomtype_radio_hi_red.set_active(True)
+                    elif (room.type == Room.TYPE_HI_YELLOW):
+                        self.roomtype_radio_hi_yellow.set_active(True)
+                    elif (room.type == Room.TYPE_HI_PURPLE):
+                        self.roomtype_radio_hi_purple.set_active(True)
+                    elif (room.type == Room.TYPE_HI_CYAN):
+                        self.roomtype_radio_hi_cyan.set_active(True)
                     elif (room.type == Room.TYPE_LABEL):
                         self.roomtype_radio_label.set_active(True)
                     elif (room.type == Room.TYPE_FAINT):
@@ -1291,6 +1303,12 @@ class GUI(object):
                             new_type = Room.TYPE_HI_RED
                         elif (self.roomtype_radio_hi_blue.get_active()):
                             new_type = Room.TYPE_HI_BLUE
+                        elif (self.roomtype_radio_hi_yellow.get_active()):
+                            new_type = Room.TYPE_HI_YELLOW
+                        elif (self.roomtype_radio_hi_purple.get_active()):
+                            new_type = Room.TYPE_HI_PURPLE
+                        elif (self.roomtype_radio_hi_cyan.get_active()):
+                            new_type = Room.TYPE_HI_CYAN
                         elif (self.roomtype_radio_label.get_active()):
                             new_type = Room.TYPE_LABEL
                         elif (self.roomtype_radio_faint.get_active()):
@@ -1425,6 +1443,12 @@ class GUI(object):
                                     newroom.type = Room.TYPE_HI_RED
                                 elif (self.roomtype_radio_hi_blue.get_active()):
                                     newroom.type = Room.TYPE_HI_BLUE
+                                elif (self.roomtype_radio_hi_yellow.get_active()):
+                                    newroom.type = Room.TYPE_HI_YELLOW
+                                elif (self.roomtype_radio_hi_purple.get_active()):
+                                    newroom.type = Room.TYPE_HI_PURPLE
+                                elif (self.roomtype_radio_hi_cyan.get_active()):
+                                    newroom.type = Room.TYPE_HI_CYAN
                                 elif (self.roomtype_radio_label.get_active()):
                                     newroom.type = Room.TYPE_LABEL
                                 elif (self.roomtype_radio_faint.get_active()):

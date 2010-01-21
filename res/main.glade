@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Thu Jan 21 13:56:23 2010 -->
+<!--Generated with glade3 3.4.5 on Thu Jan 21 16:02:00 2010 -->
 <glade-interface>
   <widget class="GtkWindow" id="mainwindow">
     <property name="width_request">1000</property>
@@ -669,42 +669,73 @@
                         <property name="xalign">0</property>
                         <property name="xscale">0</property>
                         <child>
-                          <widget class="GtkVBox" id="vbox5">
+                          <widget class="GtkTable" id="table4">
                             <property name="visible">True</property>
+                            <property name="n_rows">5</property>
+                            <property name="n_columns">2</property>
                             <child>
-                              <widget class="GtkRadioButton" id="roomtype_radio_normal">
+                              <widget class="GtkRadioButton" id="roomtype_radio_hi_cyan">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="label" translatable="yes">Normal</property>
-                                <property name="response_id">0</property>
-                                <property name="active">True</property>
-                                <property name="draw_indicator">True</property>
-                              </widget>
-                            </child>
-                            <child>
-                              <widget class="GtkRadioButton" id="roomtype_radio_label">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="label" translatable="yes">Label</property>
+                                <property name="label" translatable="yes">Highlight (cyan)</property>
                                 <property name="response_id">0</property>
                                 <property name="draw_indicator">True</property>
                                 <property name="group">roomtype_radio_normal</property>
                               </widget>
                               <packing>
-                                <property name="position">1</property>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkRadioButton" id="roomtype_radio_hi_red">
+                              <widget class="GtkRadioButton" id="roomtype_radio_hi_purple">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="label" translatable="yes">Highlight (red)</property>
+                                <property name="label" translatable="yes">Highlight (purple)</property>
                                 <property name="response_id">0</property>
                                 <property name="draw_indicator">True</property>
                                 <property name="group">roomtype_radio_normal</property>
                               </widget>
                               <packing>
-                                <property name="position">2</property>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkRadioButton" id="roomtype_radio_hi_yellow">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="label" translatable="yes">Highlight (yellow)</property>
+                                <property name="response_id">0</property>
+                                <property name="draw_indicator">True</property>
+                                <property name="group">roomtype_radio_normal</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <placeholder/>
+                            </child>
+                            <child>
+                              <widget class="GtkRadioButton" id="roomtype_radio_hi_blue">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="label" translatable="yes">Highlight (blue)</property>
+                                <property name="response_id">0</property>
+                                <property name="draw_indicator">True</property>
+                                <property name="group">roomtype_radio_normal</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
                               </packing>
                             </child>
                             <child>
@@ -717,20 +748,22 @@
                                 <property name="group">roomtype_radio_normal</property>
                               </widget>
                               <packing>
-                                <property name="position">3</property>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkRadioButton" id="roomtype_radio_hi_blue">
+                              <widget class="GtkRadioButton" id="roomtype_radio_hi_red">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="label" translatable="yes">Highlight (blue)</property>
+                                <property name="label" translatable="yes">Highlight (red)</property>
                                 <property name="response_id">0</property>
                                 <property name="draw_indicator">True</property>
                                 <property name="group">roomtype_radio_normal</property>
                               </widget>
                               <packing>
-                                <property name="position">4</property>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
                               </packing>
                             </child>
                             <child>
@@ -745,8 +778,33 @@
                                 <property name="group">roomtype_radio_normal</property>
                               </widget>
                               <packing>
-                                <property name="position">5</property>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
                               </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkRadioButton" id="roomtype_radio_label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="label" translatable="yes">Label</property>
+                                <property name="response_id">0</property>
+                                <property name="draw_indicator">True</property>
+                                <property name="group">roomtype_radio_normal</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkRadioButton" id="roomtype_radio_normal">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="label" translatable="yes">Normal</property>
+                                <property name="response_id">0</property>
+                                <property name="active">True</property>
+                                <property name="draw_indicator">True</property>
+                              </widget>
                             </child>
                           </widget>
                         </child>
