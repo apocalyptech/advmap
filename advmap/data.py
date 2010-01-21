@@ -512,11 +512,14 @@ class Map(object):
     def del_room(self, room):
         """
         Deletes a room, and removes all former connections to
-        that room
+        that room, and also removes the room from its group,
+        if necessary.
         """
         id = room.id
         x = room.x
         y = room.y
+        if room.group:
+            self.remove_room_from_group(room)
         for (dir, conn) in room.conns.items():
             self._detach_conn(conn)
         del self.rooms[id]
