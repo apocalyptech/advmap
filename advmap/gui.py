@@ -955,7 +955,7 @@ class GUI(object):
                     height = 999
                     chars = 15
                     while (width > max_w or height > max_h):
-                        layout.set_markup(gobject.markup_escpae_text(text))
+                        layout.set_markup(gobject.markup_escape_text(text))
                         for size in [8, 7, 6]:
                             layout.set_font_description(pango.FontDescription('sans regular %d' % (size)))
                             (width, height) = (x/pango.SCALE for x in layout.get_size())
