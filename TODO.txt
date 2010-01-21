@@ -4,6 +4,8 @@ RFEs:
  * Should we still be able to edit Notes in readonly mode?
 
 GUI stuffs:
+ * Can trigger some unpack warnings by hovering around the lower-right-hand
+   corner of the map
  * Three-line title will overlap "(notes)" on my Laptop display
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
