@@ -103,13 +103,8 @@ class GUI(object):
         # New Room / Edit Room dialog, Advanced tab
         self.room_offset_x = self.wtree.get_widget('room_offset_x')
         self.room_offset_y = self.wtree.get_widget('room_offset_y')
-        self.room_box = {}
-        self.room_dir = {}
-        self.room_ladder = {}
-        for (text, dir) in TXT_2_DIR.items():
-            self.room_box[dir] = self.wtree.get_widget('room_box_%s' % text)
-            self.room_dir[dir] = self.wtree.get_widget('room_dir_%s' % text)
-            self.room_ladder[dir] = self.wtree.get_widget('room_ladder_%s' % text)
+        self.edit_room_adv_table = self.wtree.get_widget('edit_room_adv_table')
+        self.setup_advanced_links()
 
         # Edit Game dialog
         self.edit_game_dialog = self.wtree.get_widget('edit_game_dialog')
@@ -341,6 +336,53 @@ class GUI(object):
 
         # ... and prepare for our mainloop
         gobject.idle_add(self.draw)
+
+    def setup_advanced_links(self):
+        """
+        Sets up our form elements on the Advanced Room Edit screen.  We do
+        this here instead if in Glade because then we can make changes to all
+        blocks at once
+        """
+        self.room_box = {}
+        self.room_dir = {}
+        self.room_regular = {}
+        self.room_ladder = {}
+        self.room_dotted = {}
+        offset=2
+        for (text, dir) in TXT_2_DIR.items():
+
+            # Containers
+            vbox = gtk.VBox()
+            hbox = gtk.HBox()
+            hbox2 = gtk.HBox()
+
+            # Form elementents
+            self.room_box[dir] = gtk.ComboBox()
+            self.room_box[dir].set_name('room_box_%s' % (text))
+            self.room_dir[dir] = gtk.combo_box_new_text()
+            self.room_dir[dir].set_name('room_dir_%s' % (text))
+            for txtdir in range(len(DIR_OPP)):
+                self.room_dir[dir].append_text(DIR_2_TXT[txtdir].upper())
+            self.room_regular[dir] = gtk.RadioButton(None, 'Regular', False)
+            self.room_regular[dir].set_name('room_regular_%s' % (text))
+            self.room_ladder[dir] = gtk.RadioButton(self.room_regular[dir], 'Ladder', False)
+            self.room_ladder[dir].set_name('room_ladder_%s' % (text))
+            self.room_dotted[dir] = gtk.RadioButton(self.room_regular[dir], 'Dotted', False)
+            self.room_dotted[dir].set_name('room_totted_%s' % (text))
+
+            # Now pack everything together
+            hbox.pack_start(self.room_box[dir], False, True)
+            hbox.pack_start(gtk.Label('to dir:'), False, True, 6)
+            hbox.pack_start(self.room_dir[dir], False, True)
+            hbox2.pack_start(self.room_regular[dir], False, True)
+            hbox2.pack_start(self.room_ladder[dir], False, True)
+            hbox2.pack_start(self.room_dotted[dir], False, True)
+            vbox.pack_start(hbox, False, False)
+            vbox.pack_start(hbox2, False, False)
+            vbox.show_all()
+
+            # ... and pack it into the table
+            self.edit_room_adv_table.attach(vbox, 1, 2, dir+offset, dir+offset+1, gtk.EXPAND|gtk.FILL, gtk.FILL, 0, 4)
 
     def cellformat_rooms(self, column, renderer, model, iter, user_data=None):
         """
@@ -705,13 +747,14 @@ class GUI(object):
 
         return coord_list
 
-    def draw_conn_segment(self, ctx, x1, y1, x2, y2, is_ladder=False):
+    def draw_conn_segment(self, ctx, x1, y1, x2, y2, type=Connection.CONN_REGULAR):
         """
         Draws a connection segment from (x1, y1) to (x2, y2).  Ordinarily
         this is just a single line, but if is_ladder is True, then it'll
         build a Ladder graphic between the two, instead.
         """
-        if is_ladder:
+        ctx.save()
+        if type == Connection.CONN_LADDER:
             ladder_width=12
             rung_spacing=7
             coords = self.ladder_coords(x1, y1, x2, y2, ladder_width, rung_spacing)
@@ -724,11 +767,14 @@ class GUI(object):
         else:
             ctx.set_source_rgba(*self.c_borders)
             ctx.set_line_width(1)
+            if (type == Connection.CONN_DOTTED):
+                ctx.set_dash([3.0], 0)
             ctx.move_to(x1, y1)
             ctx.line_to(x2, y2)
             ctx.stroke()
+        ctx.restore()
 
-    def draw_stub_conn(self, ctx, room, dir, is_ladder=False):
+    def draw_stub_conn(self, ctx, room, dir, type=Connection.CONN_REGULAR):
         """
         Draws a "stub" connection from the given room, in the given
         direction.  Returns the "remote" endpoint
@@ -745,7 +791,7 @@ class GUI(object):
             y1 = room_y+self.CONN_OFF[dir][1]
             x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
             y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
-            self.draw_conn_segment(ctx, x1, y1, x2, y2, is_ladder)
+            self.draw_conn_segment(ctx, x1, y1, x2, y2, type)
             return (x2, y2)
         else:
             return None
@@ -812,13 +858,13 @@ class GUI(object):
                         y1 = y+self.CONN_OFF[dir][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
-                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn.is_ladder)
+                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn.type)
                     else:
-                        end1 = self.draw_stub_conn(ctx, room, dir, conn.is_ladder)
-                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn.is_ladder)
+                        end1 = self.draw_stub_conn(ctx, room, dir, conn.type)
+                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn.type)
                         if (end1 and end2):
                             # "Direct" connection
-                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn.is_ladder)
+                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn.type)
 
                 conn_hover = self.HOVER_CONN
             else:
@@ -1252,7 +1298,9 @@ class GUI(object):
                             for dir in range(len(DIR_OPP)):
                                 widget_room = self.room_box[dir]
                                 widget_dir = self.room_dir[dir]
+                                widget_regular = self.room_regular[dir]
                                 widget_ladder = self.room_ladder[dir]
+                                widget_dotted = self.room_dotted[dir]
                                 existing = room.get_conn(dir)
                                 iter = widget_room.get_active_iter()
                                 new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
@@ -1273,10 +1321,16 @@ class GUI(object):
                                         existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
                                         need_gfx_update = True
 
-                                # ... and the 'ladder' flag, if we still have a connection
+                                # ... and the type flag, if we still have a connection
                                 if existing:
-                                    if (widget_ladder.get_active() != existing.is_ladder):
-                                        existing.is_ladder = widget_ladder.get_active()
+                                    if (widget_ladder.get_active() and not existing.is_ladder()):
+                                        existing.set_ladder()
+                                        need_gfx_update = True
+                                    elif (widget_dotted.get_active() and not existing.is_dotted()):
+                                        existing.set_dotted()
+                                        need_gfx_update = True
+                                    elif (widget_regular.get_active() and not existing.is_regular()):
+                                        existing.set_regular()
                                         need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN):
@@ -1400,11 +1454,16 @@ class GUI(object):
                         (other, other_dir) = conn.get_opposite(room)
                         self.room_box[dir].set_active(rowmap[other.id])
                         self.room_dir[dir].set_active(other_dir)
-                        self.room_ladder[dir].set_active(conn.is_ladder)
+                        if (conn.is_ladder()):
+                            self.room_ladder[dir].set_active(True)
+                        elif (conn.is_dotted()):
+                            self.room_dotted[dir].set_active(True)
+                        else:
+                            self.room_regular[dir].set_active(True)
                     else:
                         self.room_box[dir].set_active(0)
                         self.room_dir[dir].set_active(DIR_OPP[dir])
-                        self.room_ladder[dir].set_active(False)
+                        self.room_regular[dir].set_active(True)
 
                 # Now let the app know that we're populated
                 self.editroom_advanced_populated = True

@@ -212,12 +212,35 @@ class Connection(object):
     loading is actually done inside the Map object, since it makes more
     sense in there.
     """
-    def __init__(self, r1, dir1, r2, dir2):
+
+    CONN_REGULAR = 0
+    CONN_LADDER = 1
+    CONN_DOTTED = 2
+
+    def __init__(self, r1, dir1, r2, dir2, type=0):
         self.r1 = r1
         self.dir1 = dir1
         self.r2 = r2
         self.dir2 = dir2
-        self.is_ladder = False
+        self.type = type
+
+    def set_regular(self):
+        self.type = self.CONN_REGULAR
+
+    def set_ladder(self):
+        self.type = self.CONN_LADDER
+
+    def set_dotted(self):
+        self.type = self.CONN_DOTTED
+
+    def is_regular(self):
+        return (self.type == self.CONN_REGULAR)
+
+    def is_ladder(self):
+        return (self.type == self.CONN_LADDER)
+
+    def is_dotted(self):
+        return (self.type == self.CONN_DOTTED)
 
     def __repr__(self):
         return '<Connection - %s (%s) to %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], self.r2.name, DIR_2_TXT[self.dir2])
@@ -237,21 +260,11 @@ class Connection(object):
         """
         Saves ourself to a filehandle
         """
-        flags = 0
-        if (self.is_ladder):
-            flags = flags | 0x1
         df.writeshort(self.r1.id)
         df.writeuchar(self.dir1)
         df.writeshort(self.r2.id)
         df.writeuchar(self.dir2)
-        df.writeuchar(flags)
-
-    def parse_flags(self, flags):
-        """
-        Parses flags, from the saved file.  (See save())
-        """
-        if ((flags & 0x1) == 0x1):
-            self.is_ladder = True
+        df.writeuchar(self.type)
 
 class Map(object):
     """
@@ -558,7 +571,7 @@ class Map(object):
         # Now load connections
         for i in range(num_conns):
             conn = map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
-            conn.parse_flags(df.readuchar())
+            conn.type = df.readuchar()
 
         # ... and return our object.
         return map
