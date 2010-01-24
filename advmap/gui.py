@@ -690,18 +690,24 @@ class GUI(object):
         y = self.room_spc + (self.room_h+self.room_spc)*room_y
         return (x, y)
 
-    def room_xy(self, room):
+    def apply_xy_offset(self, x, y, room):
         """
-        Returns a tuple with (x, y) starting coordinates for the given room,
-        taking into consideration any offsets
+        Applies any offsets active in 'room' to the x, y coordinate pair
         """
-        (x, y) = self.room_xy_coord(room.x, room.y)
         if (self.show_offset_check.get_active()):
             if room.offset_x:
                 x += ((self.room_w+self.room_spc)/2)
             if room.offset_y:
                 y += ((self.room_h+self.room_spc)/2)
         return (x, y)
+
+    def room_xy(self, room):
+        """
+        Returns a tuple with (x, y) starting coordinates for the given room,
+        taking into consideration any offsets
+        """
+        (x, y) = self.room_xy_coord(room.x, room.y)
+        return self.apply_xy_offset(x, y, room)
 
     def create_new_map(self, name):
         """
@@ -791,8 +797,7 @@ class GUI(object):
             return None
         conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir))
         if conn_coord:
-            conn_x = conn_coord[0]
-            conn_y = conn_coord[1]
+            (conn_x, conn_y) = self.apply_xy_offset(conn_coord[0], conn_coord[1], room)
             x1 = room_x+self.CONN_OFF[dir][0]
             y1 = room_y+self.CONN_OFF[dir][1]
             x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
