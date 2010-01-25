@@ -1475,6 +1475,8 @@ class GUI(object):
                             self.roomtype_radio_normal.set_active(True)
                             self.room_up_entry.set_text('')
                             self.room_down_entry.set_text('')
+                            self.room_in_entry.set_text('')
+                            self.room_out_entry.set_text('')
                             self.roomname_entry.grab_focus()
                             result = self.edit_room_dialog.run()
                             self.edit_room_dialog.hide()
