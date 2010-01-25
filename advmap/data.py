@@ -196,6 +196,8 @@ class Room(object):
         self.conns = {}
         self.up = ''
         self.down = ''
+        self.door_in = ''
+        self.door_out = ''
         self.type = self.TYPE_NORMAL
         self.offset_x = False
         self.offset_y = False
@@ -274,6 +276,8 @@ class Room(object):
         df.writeuchar(self.type)
         df.writestr(self.up)
         df.writestr(self.down)
+        df.writestr(self.door_in)
+        df.writestr(self.door_out)
         df.writestr(self.notes)
         df.writeuchar(flagbits)
 
@@ -290,6 +294,8 @@ class Room(object):
         room.type = df.readuchar()
         room.up = df.readstr()
         room.down = df.readstr()
+        room.door_in = df.readstr()
+        room.door_out = df.readstr()
         room.notes = df.readstr()
         flagbits = df.readuchar()
         if ((flagbits & 0x01) == 0x01):

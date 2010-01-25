@@ -79,6 +79,10 @@ class GUI(object):
         self.view_room_up_hdr = self.wtree.get_widget('view_room_up_hdr')
         self.view_room_down_label = self.wtree.get_widget('view_room_down_label')
         self.view_room_down_hdr = self.wtree.get_widget('view_room_down_hdr')
+        self.view_room_in_label = self.wtree.get_widget('view_room_in_label')
+        self.view_room_in_hdr = self.wtree.get_widget('view_room_in_hdr')
+        self.view_room_out_label = self.wtree.get_widget('view_room_out_label')
+        self.view_room_out_hdr = self.wtree.get_widget('view_room_out_hdr')
         self.view_room_scroll = self.wtree.get_widget('view_room_scroll')
         self.view_room_notes_hdr = self.wtree.get_widget('view_room_notes_hdr')
         self.view_room_notes_view = self.wtree.get_widget('view_room_notes_view')
@@ -100,6 +104,8 @@ class GUI(object):
         self.roomname_entry = self.wtree.get_widget('roomname_entry')
         self.room_up_entry = self.wtree.get_widget('room_up_entry')
         self.room_down_entry = self.wtree.get_widget('room_down_entry')
+        self.room_in_entry = self.wtree.get_widget('room_in_entry')
+        self.room_out_entry = self.wtree.get_widget('room_out_entry')
         self.roomnotes_view = self.wtree.get_widget('roomnotes_view')
         self.edit_room_ok = self.wtree.get_widget('edit_room_ok')
         self.edit_room_cancel = self.wtree.get_widget('edit_room_cancel')
@@ -301,6 +307,8 @@ class GUI(object):
         # Grab a couple of images for up/down
         self.ladder_up_surf = cairo.ImageSurface.create_from_png(self.resfile('ladder_up.png'))
         self.ladder_down_surf = cairo.ImageSurface.create_from_png(self.resfile('ladder_down.png'))
+        self.door_in_surf = cairo.ImageSurface.create_from_png(self.resfile('door_in.png'))
+        self.door_out_surf = cairo.ImageSurface.create_from_png(self.resfile('door_out.png'))
 
         # Keyboard mask for processing keys
         self.keymask = gtk.gdk.CONTROL_MASK|gtk.gdk.MOD1_MASK|gtk.gdk.MOD3_MASK
@@ -950,7 +958,7 @@ class GUI(object):
                 ctx.set_source_rgba(*textcolor)
                 pangoctx.show_layout(self.notes_layout)
 
-            # ... and any up/down arrows
+            # ... and any up/down/in/out arrows
             # TODO: some magic numbers in here
             icon_txt_spc = 3
             icon_dim = self.ladder_up_surf.get_width()
@@ -958,7 +966,11 @@ class GUI(object):
             cur_x = x+(self.room_w-icon_dim)/2
             max_w = self.room_w - self.room_spc - icon_dim - icon_txt_spc
             max_h = icon_dim + 4
-            for (label, graphic) in [(room.up, self.ladder_up_surf), (room.down, self.ladder_down_surf)]:
+            for (label, graphic) in [
+                    (room.up, self.ladder_up_surf),
+                    (room.down, self.ladder_down_surf),
+                    (room.door_in, self.door_in_surf),
+                    (room.door_out, self.door_out_surf)]:
                 if (label and label != ''):
                     layout = pango.Layout(self.pangoctx)
                     text = label
@@ -1247,6 +1259,20 @@ class GUI(object):
                         else:
                             self.view_room_down_label.hide()
                             self.view_room_down_hdr.hide()
+                        if (room.door_in and room.door_in != ''):
+                            self.view_room_in_label.set_text(room.door_in)
+                            self.view_room_in_label.show()
+                            self.view_room_in_hdr.show()
+                        else:
+                            self.view_room_in_label.hide()
+                            self.view_room_in_hdr.hide()
+                        if (room.door_out and room.door_out != ''):
+                            self.view_room_out_label.set_text(room.door_out)
+                            self.view_room_out_label.show()
+                            self.view_room_out_hdr.show()
+                        else:
+                            self.view_room_out_label.hide()
+                            self.view_room_out_hdr.hide()
                         if (room.notes and room.notes != ''):
                             self.view_room_notes_view.get_buffer().set_text(room.notes)
                             self.view_room_scroll.show()
@@ -1286,6 +1312,10 @@ class GUI(object):
                     self.room_up_entry.set_position(0)
                     self.room_down_entry.set_text(room.down)
                     self.room_down_entry.set_position(0)
+                    self.room_in_entry.set_text(room.door_in)
+                    self.room_in_entry.set_position(0)
+                    self.room_out_entry.set_text(room.door_out)
+                    self.room_out_entry.set_position(0)
                     if (room.unexplored()):
                         self.roomname_entry.grab_focus()
                     else:
@@ -1335,6 +1365,12 @@ class GUI(object):
                         if (room.down != self.room_down_entry.get_text()):
                             need_gfx_update = True
                             room.down = self.room_down_entry.get_text()
+                        if (room.door_in != self.room_in_entry.get_text()):
+                            need_gfx_update = True
+                            room.door_in = self.room_in_entry.get_text()
+                        if (room.door_out != self.room_out_entry.get_text()):
+                            need_gfx_update = True
+                            room.door_out = self.room_out_entry.get_text()
                         buftxt = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
                         if (room.notes != buftxt):
                             need_gfx_update = True

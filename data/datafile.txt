@@ -45,6 +45,8 @@ Then groups of Maps, for each map:
         9: Dark
     $ up
     $ down
+    $ in
+    $ out
     $ Notes
     | flags:
         00000001 = y is offset
