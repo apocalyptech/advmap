@@ -128,6 +128,7 @@ class GUI(object):
 
         # New Map dialog
         self.new_map_dialog = self.wtree.get_widget('new_map_dialog')
+        self.new_map_dialog_title = self.wtree.get_widget('new_map_dialog_title')
         self.new_map_entry = self.wtree.get_widget('new_map_entry')
         self.new_map_ok = self.wtree.get_widget('new_map_ok')
 
@@ -164,7 +165,8 @@ class GUI(object):
                 'open_notes': self.open_notes,
                 'open_notes_all': self.open_notes_all,
                 'draw_offset_toggle': self.draw_offset_toggle,
-                'on_edit_room_notebook_page': self.on_edit_room_notebook_page
+                'on_edit_room_notebook_page': self.on_edit_room_notebook_page,
+                'duplicate_map': self.duplicate_map
             }
         self.wtree.signal_autoconnect(dic)
 
@@ -1949,3 +1951,24 @@ class GUI(object):
         What to do when the user's toggled the drawing of offsets
         """
         self.trigger_redraw()
+
+    def duplicate_map(self, widget):
+        """
+        Duplicates the current map
+        """
+        self.new_map_dialog_title.set_markup('<b>Duplicate Map</b>')
+        transbak = self.new_map_dialog.get_transient_for()
+        self.new_map_dialog.set_transient_for(self.window)
+        self.new_map_entry.set_text('%s (copy)' % self.map.name)
+        self.new_map_entry.grab_focus()
+        result = self.new_map_dialog.run()
+        self.new_map_dialog.hide()
+        self.new_map_dialog_title.set_markup('<b>New Map</b>')
+        self.new_map_dialog.set_transient_for(transbak)
+        if (result == gtk.RESPONSE_OK):
+            if (self.new_map_entry.get_text() == ''):
+                self.errordialog('You must specify a name for the new map', self.window)
+                return
+            newmap = self.map.duplicate(self.new_map_entry.get_text())
+            self.game.add_map_obj(newmap)
+            self.update_gameinfo()

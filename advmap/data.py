@@ -203,6 +203,24 @@ class Room(object):
         self.offset_y = False
         self.group = None
 
+    def duplicate(self):
+        """
+        Returns a copy of ourself.  Note that this doesn't
+        copy connections or groups; that has to be handled by
+        the Map object
+        """
+        newroom = Room(self.id, self.x, self.y)
+        newroom.name = self.name
+        newroom.notes = self.notes
+        newroom.up = self.up
+        newroom.down = self.down
+        newroom.door_in = self.door_in
+        newroom.door_out = self.door_out
+        newroom.type = self.type
+        newroom.offset_x = self.offset_x
+        newroom.offset_y = self.offset_y
+        return newroom
+
     def unexplored(self):
         """
         Special-case magic string here.  Yay!
@@ -397,6 +415,29 @@ class Map(object):
 
         # ... and our groups
         self.groups = []
+
+    def duplicate(self, newname=None):
+        """
+        Returns a duplicate of ourself.
+        """
+        if newname:
+            newmap = Map(newname)
+        else:
+            newmap = Map(self.name)
+        newmap.set_map_size(self.w, self.h)
+        for room in self.roomlist():
+            newroom = room.duplicate()
+            newmap.inject_room_obj(newroom)
+        for conn in self.conns:
+            newconn = newmap.connect_id(conn.r1.id, conn.dir1, conn.r2.id, conn.dir2)
+            newconn.type = conn.type
+        for group in self.groups:
+            r1 = newmap.get_room(group.rooms[0].id)
+            r2 = newmap.get_room(group.rooms[1].id)
+            newmap.add_room_to_group(r1, r2)
+            for room in group.rooms[2:]:
+                newmap.add_room_to_group(newmap.get_room(room.id), r1)
+        return newmap
 
     def roomlist(self):
         """
