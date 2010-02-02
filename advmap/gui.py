@@ -1510,6 +1510,8 @@ class GUI(object):
                                     newroom.type = Room.TYPE_NORMAL
                                 newroom.up = self.room_up_entry.get_text()
                                 newroom.down = self.room_down_entry.get_text()
+                                newroom.door_in = self.room_in_entry.get_text()
+                                newroom.door_out = self.room_out_entry.get_text()
                                 buf = self.roomnotes_view.get_buffer()
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
                                 self.map.connect(room, dir, newroom)
