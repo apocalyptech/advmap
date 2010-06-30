@@ -176,7 +176,8 @@ class GUI(object):
                 'open_notes_all': self.open_notes_all,
                 'draw_offset_toggle': self.draw_offset_toggle,
                 'on_edit_room_notebook_page': self.on_edit_room_notebook_page,
-                'duplicate_map': self.duplicate_map
+                'duplicate_map': self.duplicate_map,
+                'export_image': self.export_image
             }
         self.builder.connect_signals(dic)
 
@@ -1997,3 +1998,45 @@ class GUI(object):
             newmap = self.map.duplicate(self.new_map_entry.get_text())
             self.game.add_map_obj(newmap)
             self.update_gameinfo()
+
+    def export_image(self, widget):
+        """
+        Exports the current image to a PNG
+        """
+    def export_image(self, widget=None):
+        """ Used to export a PNG of the current map image to disk. """
+
+        # Create the dialog
+        dialog = gtk.FileChooserDialog('Export Image...', None,
+                                       gtk.FILE_CHOOSER_ACTION_SAVE,
+                                       (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                        gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        dialog.set_default_response(gtk.RESPONSE_OK)
+        dialog.set_transient_for(self.window)
+        dialog.set_position(gtk.WIN_POS_CENTER_ON_PARENT)
+        dialog.set_do_overwrite_confirmation(True)
+        infolabel = gtk.Label()
+        infolabel.set_markup('<b>Note:</b> Only PNG images are supported.  If you name your export something other than .png, it will still be a PNG image.')
+        infolabel.set_line_wrap(True)
+        dialog.set_extra_widget(infolabel)
+        if (self.curfile != None):
+            path = os.path.dirname(os.path.realpath(self.curfile))
+            if (path != ''):
+                dialog.set_current_folder(path)
+
+        filter = gtk.FileFilter()
+        filter.set_name("PNG Files")
+        filter.add_pattern("*.png")
+        dialog.add_filter(filter)
+
+        # Run the dialog and process its return values
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            filename = dialog.get_filename()
+            self.cleansurf.write_to_png(filename)
+            self.set_status('Image exported to %s' % (filename))
+            self.set_delayed_edit()
+
+        # Clean up
+        dialog.destroy()
+
