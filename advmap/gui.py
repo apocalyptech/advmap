@@ -400,6 +400,17 @@ class GUI(object):
             # ... and pack it into the table
             self.edit_room_adv_table.attach(vbox, 1, 2, dir+offset, dir+offset+1, gtk.EXPAND|gtk.FILL, gtk.FILL, 0, 4)
 
+    def update_notes(self, note):
+        # TODO: should have this happen in __init__, etc...
+        if len(note) > 15:
+            note = '%s...' % (note[:12])
+        self.notes_layout.set_markup('<i>%s</i>' % (note))
+        (notes_layout_w, notes_layout_h) = (x/pango.SCALE for x in self.notes_layout.get_size())
+        self.notes_layout_x_off = ((self.room_w-notes_layout_w)/2)
+        #self.notes_layout_y_off = ((self.room_h-notes_layout_h)/2)
+        self.notes_layout_y_off = ((self.room_h/2)-notes_layout_h)
+        self.notes_layout_y_bottom = self.notes_layout_y_off + notes_layout_h
+
     def cellformat_rooms(self, column, renderer, model, iter, user_data=None):
         """
         Format our "rooms" column.  (basically just adds "room" or "rooms" to the end)
@@ -937,6 +948,8 @@ class GUI(object):
             pangoctx.show_layout(label_layout)
         else:
             # Draw the room title
+            if (room.notes and room.notes != ''):
+                self.update_notes(room.notes)
             title_layout = pango.Layout(self.pangoctx)
             title_layout.set_markup(gobject.markup_escape_text(room.name))
             title_layout.set_width((self.room_w-self.room_spc)*pango.SCALE)
