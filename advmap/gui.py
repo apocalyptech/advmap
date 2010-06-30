@@ -22,7 +22,6 @@ import os.path
 import math
 import gtk
 import gtk.gdk
-import gtk.glade
 import gobject
 import cairo
 import pango
@@ -55,86 +54,97 @@ class GUI(object):
         self.initgfx = False
 
         # Initial Glade setup
-        self.gladefile = self.resfile('main.glade')
-        self.wtree = gtk.glade.XML(self.gladefile)
-        self.window = self.wtree.get_widget('mainwindow')
-        self.mainscroll = self.wtree.get_widget('mainscroll')
-        self.mainarea = self.wtree.get_widget('mainarea')
-        self.titlelabel = self.wtree.get_widget('titlelabel')
-        self.hoverlabel = self.wtree.get_widget('hoverlabel')
-        self.map_combo = self.wtree.get_widget('map_combo')
-        self.nudge_lock = self.wtree.get_widget('nudge_lock')
-        self.readonly_lock = self.wtree.get_widget('readonly_lock')
-        self.menu_revert = self.wtree.get_widget('menu_revert')
-        self.show_offset_check = self.wtree.get_widget('show_offset_check')
-        self.statusbar = self.wtree.get_widget('statusbar')
+        self.builder = gtk.Builder()
+        self.builder.add_from_file(self.resfile('main.ui'))
+        self.window = self.builder.get_object('mainwindow')
+        self.mainscroll = self.builder.get_object('mainscroll')
+        self.mainarea = self.builder.get_object('mainarea')
+        self.titlelabel = self.builder.get_object('titlelabel')
+        self.hoverlabel = self.builder.get_object('hoverlabel')
+        self.map_combo = self.builder.get_object('map_combo')
+        self.nudge_lock = self.builder.get_object('nudge_lock')
+        self.readonly_lock = self.builder.get_object('readonly_lock')
+        self.menu_revert = self.builder.get_object('menu_revert')
+        self.show_offset_check = self.builder.get_object('show_offset_check')
+        self.statusbar = self.builder.get_object('statusbar')
         self.sbcontext = self.statusbar.get_context_id('Main Messages')
         self.aboutwindow = None
 
         # View Room Readonly dialog
-        self.view_room_dialog = self.wtree.get_widget('view_room_dialog')
-        self.view_room_roomname_label = self.wtree.get_widget('view_room_roomname_label')
-        self.view_room_roomtype_label = self.wtree.get_widget('view_room_roomtype_label')
-        self.view_room_up_label = self.wtree.get_widget('view_room_up_label')
-        self.view_room_up_hdr = self.wtree.get_widget('view_room_up_hdr')
-        self.view_room_down_label = self.wtree.get_widget('view_room_down_label')
-        self.view_room_down_hdr = self.wtree.get_widget('view_room_down_hdr')
-        self.view_room_in_label = self.wtree.get_widget('view_room_in_label')
-        self.view_room_in_hdr = self.wtree.get_widget('view_room_in_hdr')
-        self.view_room_out_label = self.wtree.get_widget('view_room_out_label')
-        self.view_room_out_hdr = self.wtree.get_widget('view_room_out_hdr')
-        self.view_room_scroll = self.wtree.get_widget('view_room_scroll')
-        self.view_room_notes_hdr = self.wtree.get_widget('view_room_notes_hdr')
-        self.view_room_notes_view = self.wtree.get_widget('view_room_notes_view')
+        self.view_room_dialog = self.builder.get_object('view_room_dialog')
+        self.view_room_roomname_label = self.builder.get_object('view_room_roomname_label')
+        self.view_room_roomtype_label = self.builder.get_object('view_room_roomtype_label')
+        self.view_room_up_label = self.builder.get_object('view_room_up_label')
+        self.view_room_up_hdr = self.builder.get_object('view_room_up_hdr')
+        self.view_room_down_label = self.builder.get_object('view_room_down_label')
+        self.view_room_down_hdr = self.builder.get_object('view_room_down_hdr')
+        self.view_room_in_label = self.builder.get_object('view_room_in_label')
+        self.view_room_in_hdr = self.builder.get_object('view_room_in_hdr')
+        self.view_room_out_label = self.builder.get_object('view_room_out_label')
+        self.view_room_out_hdr = self.builder.get_object('view_room_out_hdr')
+        self.view_room_scroll = self.builder.get_object('view_room_scroll')
+        self.view_room_notes_hdr = self.builder.get_object('view_room_notes_hdr')
+        self.view_room_notes_view = self.builder.get_object('view_room_notes_view')
 
         # New Room / Edit Room dialog
-        self.edit_room_dialog = self.wtree.get_widget('edit_room_dialog')
-        self.edit_room_label = self.wtree.get_widget('edit_room_label')
-        self.edit_room_notebook = self.wtree.get_widget('edit_room_notebook')
-        self.roomtype_radio_normal = self.wtree.get_widget('roomtype_radio_normal')
-        self.roomtype_radio_hi_green = self.wtree.get_widget('roomtype_radio_hi_green')
-        self.roomtype_radio_hi_red = self.wtree.get_widget('roomtype_radio_hi_red')
-        self.roomtype_radio_hi_blue = self.wtree.get_widget('roomtype_radio_hi_blue')
-        self.roomtype_radio_hi_yellow = self.wtree.get_widget('roomtype_radio_hi_yellow')
-        self.roomtype_radio_hi_purple = self.wtree.get_widget('roomtype_radio_hi_purple')
-        self.roomtype_radio_hi_cyan = self.wtree.get_widget('roomtype_radio_hi_cyan')
-        self.roomtype_radio_faint = self.wtree.get_widget('roomtype_radio_faint')
-        self.roomtype_radio_dark = self.wtree.get_widget('roomtype_radio_dark')
-        self.roomtype_radio_label = self.wtree.get_widget('roomtype_radio_label')
-        self.roomname_entry = self.wtree.get_widget('roomname_entry')
-        self.room_up_entry = self.wtree.get_widget('room_up_entry')
-        self.room_down_entry = self.wtree.get_widget('room_down_entry')
-        self.room_in_entry = self.wtree.get_widget('room_in_entry')
-        self.room_out_entry = self.wtree.get_widget('room_out_entry')
-        self.roomnotes_view = self.wtree.get_widget('roomnotes_view')
-        self.edit_room_ok = self.wtree.get_widget('edit_room_ok')
-        self.edit_room_cancel = self.wtree.get_widget('edit_room_cancel')
+        self.edit_room_dialog = self.builder.get_object('edit_room_dialog')
+        self.edit_room_label = self.builder.get_object('edit_room_label')
+        self.edit_room_notebook = self.builder.get_object('edit_room_notebook')
+        self.roomtype_radio_normal = self.builder.get_object('roomtype_radio_normal')
+        self.roomtype_radio_hi_green = self.builder.get_object('roomtype_radio_hi_green')
+        self.roomtype_radio_hi_red = self.builder.get_object('roomtype_radio_hi_red')
+        self.roomtype_radio_hi_blue = self.builder.get_object('roomtype_radio_hi_blue')
+        self.roomtype_radio_hi_yellow = self.builder.get_object('roomtype_radio_hi_yellow')
+        self.roomtype_radio_hi_purple = self.builder.get_object('roomtype_radio_hi_purple')
+        self.roomtype_radio_hi_cyan = self.builder.get_object('roomtype_radio_hi_cyan')
+        self.roomtype_radio_faint = self.builder.get_object('roomtype_radio_faint')
+        self.roomtype_radio_dark = self.builder.get_object('roomtype_radio_dark')
+        self.roomtype_radio_label = self.builder.get_object('roomtype_radio_label')
+        self.roomname_entry = self.builder.get_object('roomname_entry')
+        self.room_up_entry = self.builder.get_object('room_up_entry')
+        self.room_down_entry = self.builder.get_object('room_down_entry')
+        self.room_in_entry = self.builder.get_object('room_in_entry')
+        self.room_out_entry = self.builder.get_object('room_out_entry')
+        self.roomnotes_view = self.builder.get_object('roomnotes_view')
+        self.edit_room_ok = self.builder.get_object('edit_room_ok')
+        self.edit_room_cancel = self.builder.get_object('edit_room_cancel')
 
         # New Room / Edit Room dialog, Advanced tab
-        self.room_offset_x = self.wtree.get_widget('room_offset_x')
-        self.room_offset_y = self.wtree.get_widget('room_offset_y')
-        self.room_group_box = self.wtree.get_widget('room_group_box')
-        self.edit_room_adv_table = self.wtree.get_widget('edit_room_adv_table')
+        self.room_offset_x = self.builder.get_object('room_offset_x')
+        self.room_offset_y = self.builder.get_object('room_offset_y')
+        self.room_group_box = self.builder.get_object('room_group_box')
+        self.edit_room_adv_table = self.builder.get_object('edit_room_adv_table')
         self.setup_advanced_links()
 
         # Edit Game dialog
-        self.edit_game_dialog = self.wtree.get_widget('edit_game_dialog')
-        self.gamename_entry = self.wtree.get_widget('gamename_entry')
-        self.map_treeview = self.wtree.get_widget('map_treeview')
-        self.edit_game_ok = self.wtree.get_widget('edit_game_ok')
-        self.edit_game_cancel = self.wtree.get_widget('edit_game_cancel')
-        self.edit_game_map_add_button = self.wtree.get_widget('edit_game_map_add_button')
-        self.edit_game_map_remove_button = self.wtree.get_widget('edit_game_map_remove_button')
+        self.edit_game_dialog = self.builder.get_object('edit_game_dialog')
+        self.gamename_entry = self.builder.get_object('gamename_entry')
+        self.map_treeview = self.builder.get_object('map_treeview')
+        self.edit_game_ok = self.builder.get_object('edit_game_ok')
+        self.edit_game_cancel = self.builder.get_object('edit_game_cancel')
+        self.edit_game_map_add_button = self.builder.get_object('edit_game_map_add_button')
+        self.edit_game_map_remove_button = self.builder.get_object('edit_game_map_remove_button')
 
         # New Map dialog
-        self.new_map_dialog = self.wtree.get_widget('new_map_dialog')
-        self.new_map_dialog_title = self.wtree.get_widget('new_map_dialog_title')
-        self.new_map_entry = self.wtree.get_widget('new_map_entry')
-        self.new_map_ok = self.wtree.get_widget('new_map_ok')
+        self.new_map_dialog = self.builder.get_object('new_map_dialog')
+        self.new_map_dialog_title = self.builder.get_object('new_map_dialog_title')
+        self.new_map_entry = self.builder.get_object('new_map_entry')
+        self.new_map_ok = self.builder.get_object('new_map_ok')
 
         # Notes view window
-        self.notes_window = self.wtree.get_widget('notes_window')
-        self.global_notes_view = self.wtree.get_widget('global_notes_view')
+        self.notes_window = self.builder.get_object('notes_window')
+        self.global_notes_view = self.builder.get_object('global_notes_view')
+
+
+        # Explicitly set our widget names (needed for gtk+ 2.20 compatibility)
+        # See https://bugzilla.gnome.org/show_bug.cgi?id=591085
+        for object in self.builder.get_objects():
+            try:
+                builder_name = gtk.Buildable.get_name(object)
+                if builder_name:
+                    object.set_name(builder_name)
+            except TypeError:
+                pass
 
         # Signals
         dic = {
@@ -168,7 +178,7 @@ class GUI(object):
                 'on_edit_room_notebook_page': self.on_edit_room_notebook_page,
                 'duplicate_map': self.duplicate_map
             }
-        self.wtree.signal_autoconnect(dic)
+        self.builder.connect_signals(dic)
 
         # Pango contexts for rendering text
         self.pangoctx = self.window.get_pango_context()
