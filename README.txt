@@ -10,7 +10,7 @@ the knowledge that really I should be using some kind of gzipped XML format
 rather than binary, but I have something of a grudge against XML and tend to
 avoid it whenever possible.
 
-Anyawy, inside "res" there's a bunch of sample ones that I had created and
+Anyawy, inside "data" there's a bunch of sample ones that I had created and
 played around with.  Perhaps this'll be of use to someone.  It's written in
 Python; should work on anything you can get PyGTK/PyCairo to work on.
 
