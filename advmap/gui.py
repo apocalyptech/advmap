@@ -809,14 +809,14 @@ class GUI(object):
 
         return coord_list
 
-    def draw_conn_segment(self, ctx, x1, y1, x2, y2, type=Connection.CONN_REGULAR):
+    def draw_conn_segment(self, ctx, x1, y1, x2, y2, conn):
         """
         Draws a connection segment from (x1, y1) to (x2, y2).  Ordinarily
         this is just a single line, but if is_ladder is True, then it'll
         build a Ladder graphic between the two, instead.
         """
         ctx.save()
-        if type == Connection.CONN_LADDER:
+        if conn.is_ladder():
             ladder_width=12
             rung_spacing=7
             coords = self.ladder_coords(x1, y1, x2, y2, ladder_width, rung_spacing)
@@ -829,14 +829,14 @@ class GUI(object):
         else:
             ctx.set_source_rgba(*self.c_borders)
             ctx.set_line_width(1)
-            if (type == Connection.CONN_DOTTED):
+            if (conn.is_dotted()):
                 ctx.set_dash([3.0], 0)
             ctx.move_to(x1, y1)
             ctx.line_to(x2, y2)
             ctx.stroke()
         ctx.restore()
 
-    def draw_stub_conn(self, ctx, room, dir, type=Connection.CONN_REGULAR):
+    def draw_stub_conn(self, ctx, room, dir, conn):
         """
         Draws a "stub" connection from the given room, in the given
         direction.  Returns the "remote" endpoint
@@ -852,7 +852,7 @@ class GUI(object):
             y1 = room_y+self.CONN_OFF[dir][1]
             x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
             y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
-            self.draw_conn_segment(ctx, x1, y1, x2, y2, type)
+            self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
             return (x2, y2)
         else:
             return None
@@ -919,13 +919,13 @@ class GUI(object):
                         y1 = y+self.CONN_OFF[dir][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
-                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn.type)
+                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
                     else:
-                        end1 = self.draw_stub_conn(ctx, room, dir, conn.type)
-                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn.type)
+                        end1 = self.draw_stub_conn(ctx, room, dir, conn)
+                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
                         if (end1 and end2):
                             # "Direct" connection
-                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn.type)
+                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn)
 
                 conn_hover = self.HOVER_CONN
             else:
