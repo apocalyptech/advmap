@@ -15,7 +15,7 @@ $ string, int2 size followed by the actual string (null terminated, size does no
 The file:
 
 ADVMAP (first six bytes, identifier)
-% Savefile version number (1)
+% Savefile version number (2)
 $ Game Name
 % Number of Maps
 
@@ -61,7 +61,18 @@ Then groups of Maps, for each map:
         0 = Regular
         1 = Ladder
         2 = Dotted
+    & Passage: (v2)
+        0 = Two-way (v2)
+        1 = One-way (to Room 1) (v2)
+        2 = One-way (to Room 2) (v2)
 
   Followed by however many room groups.  For each group:
   % Number of rooms in group
   one % for each room ID
+
+----
+
+Version history:
+
+v1 - Various rolling changes
+v2 - Added Connection "passage" field

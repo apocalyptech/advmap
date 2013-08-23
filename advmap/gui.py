@@ -375,6 +375,9 @@ class GUI(object):
         self.room_regular = {}
         self.room_ladder = {}
         self.room_dotted = {}
+        self.room_pass_twoway = {}
+        self.room_pass_oneway_a = {}
+        self.room_pass_oneway_b = {}
         offset=3
         for (text, dir) in TXT_2_DIR.items():
 
@@ -382,20 +385,31 @@ class GUI(object):
             vbox = gtk.VBox()
             hbox = gtk.HBox()
             hbox2 = gtk.HBox()
+            hbox_pass = gtk.HBox()
 
-            # Form elementents
+            # Form elements
             self.room_box[dir] = gtk.ComboBox()
             self.room_box[dir].set_name('room_box_%s' % (text))
             self.room_dir[dir] = gtk.combo_box_new_text()
             self.room_dir[dir].set_name('room_dir_%s' % (text))
             for txtdir in range(len(DIR_OPP)):
                 self.room_dir[dir].append_text(DIR_2_TXT[txtdir].upper())
+
+            # Connection Types
             self.room_regular[dir] = gtk.RadioButton(None, 'Regular', False)
             self.room_regular[dir].set_name('room_regular_%s' % (text))
             self.room_ladder[dir] = gtk.RadioButton(self.room_regular[dir], 'Ladder', False)
             self.room_ladder[dir].set_name('room_ladder_%s' % (text))
             self.room_dotted[dir] = gtk.RadioButton(self.room_regular[dir], 'Dotted', False)
             self.room_dotted[dir].set_name('room_totted_%s' % (text))
+
+            # Connection Passages
+            self.room_pass_twoway[dir] = gtk.RadioButton(None, 'Two-Way', False)
+            self.room_pass_twoway[dir].set_name('room_pass_twoway_%s' % (text))
+            self.room_pass_oneway_a[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way <-', False)
+            self.room_pass_oneway_a[dir].set_name('room_pass_oneway_a_%s' % (text))
+            self.room_pass_oneway_b[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way ->', False)
+            self.room_pass_oneway_b[dir].set_name('room_pass_oneway_b_%s' % (text))
 
             # Now pack everything together
             hbox.pack_start(self.room_box[dir], False, True)
@@ -404,8 +418,12 @@ class GUI(object):
             hbox2.pack_start(self.room_regular[dir], False, True)
             hbox2.pack_start(self.room_ladder[dir], False, True)
             hbox2.pack_start(self.room_dotted[dir], False, True)
+            hbox_pass.pack_start(self.room_pass_twoway[dir], False, True)
+            hbox_pass.pack_start(self.room_pass_oneway_a[dir], False, True)
+            hbox_pass.pack_start(self.room_pass_oneway_b[dir], False, True)
             vbox.pack_start(hbox, False, False)
             vbox.pack_start(hbox2, False, False)
+            vbox.pack_start(hbox_pass, False, False)
             vbox.show_all()
 
             # ... and pack it into the table
@@ -1440,6 +1458,9 @@ class GUI(object):
                                 widget_regular = self.room_regular[dir]
                                 widget_ladder = self.room_ladder[dir]
                                 widget_dotted = self.room_dotted[dir]
+                                widget_pass_twoway = self.room_pass_twoway[dir]
+                                widget_pass_oneway_a = self.room_pass_oneway_a[dir]
+                                widget_pass_oneway_b = self.room_pass_oneway_b[dir]
                                 existing = room.get_conn(dir)
                                 iter = widget_room.get_active_iter()
                                 new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
@@ -1470,6 +1491,16 @@ class GUI(object):
                                         need_gfx_update = True
                                     elif (widget_regular.get_active() and not existing.is_regular()):
                                         existing.set_regular()
+                                        need_gfx_update = True
+
+                                    if (widget_pass_oneway_a.get_active() and not existing.is_oneway_a()):
+                                        existing.set_oneway_a()
+                                        need_gfx_update = True
+                                    elif (widget_pass_oneway_b.get_active() and not existing.is_oneway_b()):
+                                        existing.set_oneway_b()
+                                        need_gfx_update = True
+                                    elif (widget_pass_twoway.get_active() and not existing.is_twoway()):
+                                        existing.set_twoway()
                                         need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN):
@@ -1616,10 +1647,17 @@ class GUI(object):
                             self.room_dotted[dir].set_active(True)
                         else:
                             self.room_regular[dir].set_active(True)
+                        if (conn.is_oneway_a()):
+                            self.room_pass_oneway_a[dir].set_active(True)
+                        elif (conn.is_oneway_b()):
+                            self.room_pass_oneway_b[dir].set_active(True)
+                        else:
+                            self.room_pass_twoway[dir].set_active(True)
                     else:
                         self.room_box[dir].set_active(0)
                         self.room_dir[dir].set_active(DIR_OPP[dir])
                         self.room_regular[dir].set_active(True)
+                        self.room_pass_twoway[dir].set_active(True)
 
                 # Now let the app know that we're populated
                 self.editroom_advanced_populated = True

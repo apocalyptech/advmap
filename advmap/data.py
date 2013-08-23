@@ -79,7 +79,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 1
+SAVEFILE_VER = 2
 
 class Group(object):
     """
@@ -335,12 +335,17 @@ class Connection(object):
     CONN_LADDER = 1
     CONN_DOTTED = 2
 
-    def __init__(self, r1, dir1, r2, dir2, type=0):
+    PASS_TWOWAY = 0
+    PASS_ONEWAY_A = 1
+    PASS_ONEWAY_B = 2
+
+    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0):
         self.r1 = r1
         self.dir1 = dir1
         self.r2 = r2
         self.dir2 = dir2
         self.type = type
+        self.passage = passage
 
     def set_regular(self):
         self.type = self.CONN_REGULAR
@@ -359,6 +364,27 @@ class Connection(object):
 
     def is_dotted(self):
         return (self.type == self.CONN_DOTTED)
+
+    def set_twoway(self):
+        self.passage = self.PASS_TWOWAY
+
+    def set_oneway_a(self):
+        self.passage = self.PASS_ONEWAY_A
+
+    def set_oneway_b(self):
+        self.passage = self.PASS_ONEWAY_B
+
+    def is_twoway(self):
+        return (self.passage == self.PASS_TWOWAY)
+
+    def is_oneway_a(self):
+        return (self.passage == self.PASS_ONEWAY_A)
+
+    def is_oneway_b(self):
+        return (self.passage == self.PASS_ONEWAY_B)
+
+    def is_oneway(self):
+        return (self.is_oneway_a() or self.is_oneway_b())
 
     def __repr__(self):
         return '<Connection - %s (%s) to %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], self.r2.name, DIR_2_TXT[self.dir2])
@@ -383,6 +409,7 @@ class Connection(object):
         df.writeshort(self.r2.id)
         df.writeuchar(self.dir2)
         df.writeuchar(self.type)
+        df.writeuchar(self.passage)
 
 class Map(object):
     """
@@ -756,6 +783,8 @@ class Map(object):
         for i in range(num_conns):
             conn = map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
             conn.type = df.readuchar()
+            if version >= 2:
+                conn.passage = df.readuchar()
 
         # Now load groups
         for i in range(num_groups):
