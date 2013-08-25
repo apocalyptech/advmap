@@ -433,7 +433,7 @@ class GUI(object):
         # TODO: should have this happen in __init__, etc...
         if len(note) > 15:
             note = '%s...' % (note[:12])
-        self.notes_layout.set_markup('<i>%s</i>' % (note))
+        self.notes_layout.set_markup('<i>%s</i>' % (note.replace("\n", ' ')))
         (notes_layout_w, notes_layout_h) = (x/pango.SCALE for x in self.notes_layout.get_size())
         self.notes_layout_x_off = ((self.room_w-notes_layout_w)/2)
         #self.notes_layout_y_off = ((self.room_h-notes_layout_h)/2)
