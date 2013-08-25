@@ -768,6 +768,32 @@ class GUI(object):
         room.type = Room.TYPE_HI_GREEN
         return map
 
+    def arrow_coords(self, x1, y1, x2, y2):
+        """
+        Given two points (x1, y1) and (x2, y2), this will provide
+        coordinates necessary to draw an arrowhead centered on (x1, y1)
+        It'll return a list with two 2-element tuples, representing
+        the (x, y) coordinates.
+        """
+
+        width_h = 8
+        dx_orig = x2-x1
+        dy_orig = y2-y1
+        dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        dx = dx_orig / dist
+        dy = dy_orig / dist
+        coord_list = []
+
+        x_spacing = dx_orig * .5
+        y_spacing = dy_orig * .5
+        cur_x = x1 + (x_spacing/2)
+        cur_y = y1 + (y_spacing/2)
+
+        coord_list.append( (cur_x+(width_h*dy), cur_y-(width_h*dx)) )
+        coord_list.append( (cur_x-(width_h*dy), cur_y+(width_h*dx)) )
+
+        return coord_list
+
     def ladder_coords(self, x1, y1, x2, y2, width, rung_spacing):
         """
         Given two points (x1, y1) and (x2, y2), this will provide
@@ -795,6 +821,8 @@ class GUI(object):
 
         # Now the rungs
         rungcount = int(dist / rung_spacing) - 1
+        if rungcount == 0:
+            rungcount = 1
         x_spacing = dx_orig/float(rungcount)
         y_spacing = dy_orig/float(rungcount)
         cur_x = x1 + (x_spacing/2)
@@ -808,6 +836,46 @@ class GUI(object):
             cur_y += y_spacing
 
         return coord_list
+
+    def get_conn_xy(self, room, direction):
+        """
+        Returns the GUI x/y coordinates of the connection from the
+        given room, in the given direction.  This will factor in
+        offsets properly, as well.
+        """
+        coords_base = self.apply_xy_offset(*self.room_xy_coord(room.x, room.y), room=room)
+        return (coords_base[0] + self.CONN_OFF[direction][0], coords_base[1] + self.CONN_OFF[direction][1])
+
+    def are_rooms_adjacent(self, conn):
+        """
+        Returns True if the two rooms are exactly adjacent to each
+        other (and implied that the connection "lines up" evenly as well).
+        False if not.
+
+        This becomes problematic when factoring in the "offset" values
+        for rooms - maps like my AMFV attempt end up with very wrong-looking
+        connections if you're strict about each room's x+y coordinates
+        being "proper," and it feels very wrong to put in gigantic if/elif
+        blocks to try and deal with all possible permutations.  Instead,
+        we're just going to compute the DISTANCE of the connection which
+        would have to be drawn.  Anything more than a room's width away
+        and we'll consider them to be nonadjacent.  Since this is sort of
+        a GUI concern, that's why it's here instead of in the Connection
+        class, which is where it would otherwise make more sense.
+        """
+
+        # First off, if we're not connecting on opposite directions, we're
+        # not considered adjacent
+        if conn.dir1 != DIR_OPP[conn.dir2]:
+            return False
+
+        # Now figure out how far apart we are.
+        coords_r1 = self.get_conn_xy(conn.r1, conn.dir1)
+        coords_r2 = self.get_conn_xy(conn.r2, conn.dir2)
+        distance = math.sqrt((coords_r1[0]-coords_r2[0])**2 + (coords_r1[1]-coords_r2[1])**2)
+
+        # ... aaaand there we go.
+        return (distance <= self.room_w and distance <= self.room_h)
 
     def draw_conn_segment(self, ctx, x1, y1, x2, y2, conn):
         """
@@ -839,7 +907,8 @@ class GUI(object):
     def draw_stub_conn(self, ctx, room, dir, conn):
         """
         Draws a "stub" connection from the given room, in the given
-        direction.  Returns the "remote" endpoint
+        direction.  Returns the "remote" endpoint.  The stubs are used
+        nonadjacent rooms.
         """
         (room_x, room_y) = self.room_xy(room)
         dir_coord = self.map.dir_coord(room, dir)
@@ -852,6 +921,13 @@ class GUI(object):
             y1 = room_y+self.CONN_OFF[dir][1]
             x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
             y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+
+            # We're actually going to pick a point halfway between the two,
+            # to prevent stubs that appear to connect to rooms they don't
+            # actually connect to
+            x2 = int((x1+x2)/2)
+            y2 = int((y1+y2)/2)
+
             self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
             return (x2, y2)
         else:
@@ -913,13 +989,21 @@ class GUI(object):
                 if conn not in drawn_conns:
                     drawn_conns.append(conn)
                     (room2, dir2) = conn.get_opposite(room)
-                    if (dir2 == DIR_OPP[dir]):
+                    #if (dir2 == DIR_OPP[dir]):
+                    if self.are_rooms_adjacent(conn):
                         (conn_x, conn_y) = self.room_xy(room2)
                         x1 = x+self.CONN_OFF[dir][0]
                         y1 = y+self.CONN_OFF[dir][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
                         self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
+                        if conn.is_oneway_a():
+                            for coord in self.arrow_coords(x1, y1, x2, y2):
+                                self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                        elif conn.is_oneway_b():
+                            for coord in self.arrow_coords(x2, y2, x1, y1):
+                                self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
+
                     else:
                         end1 = self.draw_stub_conn(ctx, room, dir, conn)
                         end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
