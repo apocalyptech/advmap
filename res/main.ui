@@ -613,7 +613,7 @@
     </child>
   </object>
   <object class="GtkDialog" id="edit_room_dialog">
-    <property name="width_request">450</property>
+    <property name="width_request">600</property>
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Edit Room</property>
     <property name="modal">True</property>
