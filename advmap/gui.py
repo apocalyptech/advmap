@@ -1006,11 +1006,19 @@ class GUI(object):
                         y2 = conn_y+self.CONN_OFF[dir2][1]
                         self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
                         if conn.is_oneway_a():
-                            for coord in self.arrow_coords(x1, y1, x2, y2):
-                                self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                            if conn.r1 == room:
+                                for coord in self.arrow_coords(x1, y1, x2, y2):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                            else:
+                                for coord in self.arrow_coords(x2, y2, x1, y1):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
                         elif conn.is_oneway_b():
-                            for coord in self.arrow_coords(x2, y2, x1, y1):
-                                self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
+                            if conn.r2 == room:
+                                for coord in self.arrow_coords(x1, y1, x2, y2):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                            else:
+                                for coord in self.arrow_coords(x2, y2, x1, y1):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
 
                     else:
                         end1 = self.draw_stub_conn(ctx, room, dir, conn)

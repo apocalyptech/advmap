@@ -387,7 +387,13 @@ class Connection(object):
         return (self.is_oneway_a() or self.is_oneway_b())
 
     def __repr__(self):
-        return '<Connection - %s (%s) to %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], self.r2.name, DIR_2_TXT[self.dir2])
+        if (self.is_oneway_a()):
+            conntext = '<-'
+        elif (self.is_oneway_b()):
+            conntext = '->'
+        else:
+            conntext = '<->'
+        return '<Connection - %s (%s) %s %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], conntext, self.r2.name, DIR_2_TXT[self.dir2])
 
     def get_opposite(self, room):
         """
