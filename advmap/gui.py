@@ -376,8 +376,8 @@ class GUI(object):
         self.room_ladder = {}
         self.room_dotted = {}
         self.room_pass_twoway = {}
-        self.room_pass_oneway_a = {}
-        self.room_pass_oneway_b = {}
+        self.room_pass_oneway_in = {}
+        self.room_pass_oneway_out = {}
         offset=3
         for (text, dir) in TXT_2_DIR.items():
 
@@ -406,10 +406,10 @@ class GUI(object):
             # Connection Passages
             self.room_pass_twoway[dir] = gtk.RadioButton(None, 'Two-Way', False)
             self.room_pass_twoway[dir].set_name('room_pass_twoway_%s' % (text))
-            self.room_pass_oneway_a[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way <-', False)
-            self.room_pass_oneway_a[dir].set_name('room_pass_oneway_a_%s' % (text))
-            self.room_pass_oneway_b[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way ->', False)
-            self.room_pass_oneway_b[dir].set_name('room_pass_oneway_b_%s' % (text))
+            self.room_pass_oneway_in[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way In', False)
+            self.room_pass_oneway_in[dir].set_name('room_pass_oneway_in_%s' % (text))
+            self.room_pass_oneway_out[dir] = gtk.RadioButton(self.room_pass_twoway[dir], 'One-Way Out', False)
+            self.room_pass_oneway_out[dir].set_name('room_pass_oneway_out_%s' % (text))
 
             # Now pack everything together
             hbox.pack_start(self.room_box[dir], False, True)
@@ -419,8 +419,8 @@ class GUI(object):
             hbox2.pack_start(self.room_ladder[dir], False, True)
             hbox2.pack_start(self.room_dotted[dir], False, True)
             hbox_pass.pack_start(self.room_pass_twoway[dir], False, True)
-            hbox_pass.pack_start(self.room_pass_oneway_a[dir], False, True)
-            hbox_pass.pack_start(self.room_pass_oneway_b[dir], False, True)
+            hbox_pass.pack_start(self.room_pass_oneway_in[dir], False, True)
+            hbox_pass.pack_start(self.room_pass_oneway_out[dir], False, True)
             vbox.pack_start(hbox, False, False)
             vbox.pack_start(hbox2, False, False)
             vbox.pack_start(hbox_pass, False, False)
@@ -1551,8 +1551,8 @@ class GUI(object):
                                 widget_ladder = self.room_ladder[dir]
                                 widget_dotted = self.room_dotted[dir]
                                 widget_pass_twoway = self.room_pass_twoway[dir]
-                                widget_pass_oneway_a = self.room_pass_oneway_a[dir]
-                                widget_pass_oneway_b = self.room_pass_oneway_b[dir]
+                                widget_pass_oneway_in = self.room_pass_oneway_in[dir]
+                                widget_pass_oneway_out = self.room_pass_oneway_out[dir]
                                 existing = room.get_conn(dir)
                                 iter = widget_room.get_active_iter()
                                 new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
@@ -1585,12 +1585,24 @@ class GUI(object):
                                         existing.set_regular()
                                         need_gfx_update = True
 
-                                    if (widget_pass_oneway_a.get_active() and not existing.is_oneway_a()):
-                                        existing.set_oneway_a()
-                                        need_gfx_update = True
-                                    elif (widget_pass_oneway_b.get_active() and not existing.is_oneway_b()):
-                                        existing.set_oneway_b()
-                                        need_gfx_update = True
+                                    if (widget_pass_oneway_in.get_active()):
+                                        if (existing.r1 == room):
+                                            if not existing.is_oneway_a():
+                                                existing.set_oneway_a()
+                                                need_gfx_update = True
+                                        else:
+                                            if not existing.is_oneway_b():
+                                                existing.set_oneway_b()
+                                                need_gfx_update = True
+                                    elif (widget_pass_oneway_out.get_active()):
+                                        if (existing.r1 == room):
+                                            if not existing.is_oneway_b():
+                                                existing.set_oneway_b()
+                                                need_gfx_update = True
+                                        else:
+                                            if not existing.is_oneway_a():
+                                                existing.set_oneway_a()
+                                                need_gfx_update = True
                                     elif (widget_pass_twoway.get_active() and not existing.is_twoway()):
                                         existing.set_twoway()
                                         need_gfx_update = True
@@ -1683,6 +1695,7 @@ class GUI(object):
         What to do when our Edit Room notebook page changes...  Used
         to populate the Advanced tab if a user clicks on it, since that
         process can take a few seconds if there are a lot of rooms.
+        TODO: um, does it?  Seems to be pretty instantaneous to me, now...
         """
         if (page_num == 1):
             if not self.editroom_advanced_populated:
@@ -1740,9 +1753,15 @@ class GUI(object):
                         else:
                             self.room_regular[dir].set_active(True)
                         if (conn.is_oneway_a()):
-                            self.room_pass_oneway_a[dir].set_active(True)
+                            if conn.r1 == room:
+                                self.room_pass_oneway_in[dir].set_active(True)
+                            else:
+                                self.room_pass_oneway_out[dir].set_active(True)
                         elif (conn.is_oneway_b()):
-                            self.room_pass_oneway_b[dir].set_active(True)
+                            if conn.r2 == room:
+                                self.room_pass_oneway_in[dir].set_active(True)
+                            else:
+                                self.room_pass_oneway_out[dir].set_active(True)
                         else:
                             self.room_pass_twoway[dir].set_active(True)
                     else:
