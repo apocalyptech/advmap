@@ -1179,6 +1179,9 @@ class GUI(object):
         self.c_borders = (0, 0, 0, 1)
         self.c_label = (.7, .7, .7, 1)
         self.c_highlight = (.5, 1, .5, .2)
+        self.c_highlight_nudge = (.7, .7, .7, .2)
+        self.c_highlight_del = (1, .5, .5, .2)
+        self.c_highlight_new = (.5, .5, 1, .2)
         self.c_group = (.95, .95, .95, 1)
 
         c_default_text = (0, 0, 0, 1)
@@ -1287,15 +1290,17 @@ class GUI(object):
         if self.initgfx:
             self.mainwin.draw_drawable(self.gc_state, self.mapmap, 0, 0, 0, 0, self.area_x, self.area_y)
 
-    def hover_simple(self, x, y, w, h):
+    def hover_simple(self, x, y, w, h, color=None):
         """
         Hover some stuff, right now this is a simple composite
         """
+        if not color:
+            color = self.c_highlight
         # Do the composite
         ctx = self.mapctx
         ctx.save()
         ctx.set_operator(cairo.OPERATOR_ATOP)
-        ctx.set_source_rgba(*self.c_highlight)
+        ctx.set_source_rgba(*color)
         ctx.rectangle(x, y, w, h)
         ctx.fill()
         ctx.restore()
@@ -1314,15 +1319,17 @@ class GUI(object):
         (x, y) = self.room_xy(room)
         self.hover_simple(x, y, self.room_w, self.room_h)
 
-    def hover_conn(self):
+    def hover_conn(self, color=None):
         """
         Draw a hovered connection
         """
+        if not color:
+            color = self.c_highlight_new
         (room, dir) = self.curhover
         (x, y) = self.room_xy(room)
         x += self.CONN_H_OFF[dir][0]
         y += self.CONN_H_OFF[dir][1]
-        self.hover_simple(x, y, self.room_spc, self.room_spc)
+        self.hover_simple(x, y, self.room_spc, self.room_spc, color)
 
     def hover_edge(self):
         """
@@ -1332,7 +1339,7 @@ class GUI(object):
         (x, y) = self.room_xy(room)
         x += self.EDGE_OFF[dir][0]
         y += self.EDGE_OFF[dir][1]
-        self.hover_simple(x, y, self.room_spc, self.room_spc)
+        self.hover_simple(x, y, self.room_spc, self.room_spc, self.c_highlight_nudge)
 
     def hover_bound(self):
         """
@@ -1853,7 +1860,10 @@ class GUI(object):
                     self.clean_hover()
                     self.hover = typeidx
                     self.curhover = conn
-                    self.hover_conn()
+                    if (self.hover == self.HOVER_CONN_NEW):
+                        self.hover_conn()
+                    else:
+                        self.hover_conn(self.c_highlight_del)
                     self.mainarea.queue_draw()
                     if (self.hover == self.HOVER_CONN):
                         self.set_hover('(%d, %d) - Remove %s connection' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
