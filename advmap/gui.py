@@ -135,6 +135,22 @@ class GUI(object):
         self.notes_window = self.builder.get_object('notes_window')
         self.global_notes_view = self.builder.get_object('global_notes_view')
 
+        # Tooltips
+        self.builder.get_object('nudge_n').set_tooltip_text('Nudge map to the north')
+        self.builder.get_object('nudge_ne').set_tooltip_text('Nudge map to the northeast')
+        self.builder.get_object('nudge_e').set_tooltip_text('Nudge map to the east')
+        self.builder.get_object('nudge_se').set_tooltip_text('Nudge map to the southeast')
+        self.builder.get_object('nudge_s').set_tooltip_text('Nudge map to the south')
+        self.builder.get_object('nudge_sw').set_tooltip_text('Nudge map to the southwest')
+        self.builder.get_object('nudge_w').set_tooltip_text('Nudge map to the west')
+        self.builder.get_object('nudge_nw').set_tooltip_text('Nudge map to the northwest')
+        self.builder.get_object('nudge_lock').set_tooltip_text('Toggle map nudging')
+        self.builder.get_object('readonly_lock').set_tooltip_text('Toggle readonly')
+        self.builder.get_object('resize_n').set_tooltip_text('Cut off bottom row of map')
+        self.builder.get_object('resize_s').set_tooltip_text('Add row to bottom of map')
+        self.builder.get_object('resize_w').set_tooltip_text('Cut off rightmost row of map')
+        self.builder.get_object('resize_e').set_tooltip_text('Add column to right of map')
+        self.builder.get_object('edit_game_button').set_tooltip_text('Edit map properties')
 
         # Explicitly set our widget names (needed for gtk+ 2.20 compatibility)
         # See https://bugzilla.gnome.org/show_bug.cgi?id=591085
