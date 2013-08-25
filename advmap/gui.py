@@ -919,14 +919,22 @@ class GUI(object):
             (conn_x, conn_y) = self.apply_xy_offset(conn_coord[0], conn_coord[1], room)
             x1 = room_x+self.CONN_OFF[dir][0]
             y1 = room_y+self.CONN_OFF[dir][1]
-            x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
-            y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+            orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
+            orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
 
             # We're actually going to pick a point halfway between the two,
             # to prevent stubs that appear to connect to rooms they don't
             # actually connect to
-            x2 = int((x1+x2)/2)
-            y2 = int((y1+y2)/2)
+            x2 = int((x1+orig_x2)/2)
+            y2 = int((y1+orig_y2)/2)
+
+            if conn.is_oneway_a() and room == conn.r1:
+                for coord in self.arrow_coords(x1, y1, orig_x2, orig_y2):
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+            elif conn.is_oneway_b() and room == conn.r2:
+                for coord in self.arrow_coords(x1, y1, orig_x2, orig_y2):
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+
 
             self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
             return (x2, y2)
