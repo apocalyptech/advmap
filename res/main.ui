@@ -361,7 +361,7 @@
                           <object class="GtkTable" id="table1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_rows">7</property>
+                            <property name="n_rows">10</property>
                             <property name="n_columns">2</property>
                             <child>
                               <object class="GtkAlignment" id="alignment4">
@@ -392,8 +392,8 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">6</property>
-                                <property name="bottom_attach">7</property>
+                                <property name="top_attach">9</property>
+                                <property name="bottom_attach">10</property>
                               </packing>
                             </child>
                             <child>
@@ -418,8 +418,8 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">3</property>
-                                <property name="bottom_attach">4</property>
+                                <property name="top_attach">6</property>
+                                <property name="bottom_attach">7</property>
                                 <property name="y_options">GTK_FILL</property>
                                 <property name="y_padding">6</property>
                               </packing>
@@ -446,8 +446,8 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
+                                <property name="top_attach">5</property>
+                                <property name="bottom_attach">6</property>
                                 <property name="y_options">GTK_FILL</property>
                                 <property name="y_padding">6</property>
                               </packing>
@@ -486,8 +486,8 @@
                                 <property name="label" translatable="yes">"Down" Direction:</property>
                               </object>
                               <packing>
-                                <property name="top_attach">3</property>
-                                <property name="bottom_attach">4</property>
+                                <property name="top_attach">6</property>
+                                <property name="bottom_attach">7</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options"/>
                                 <property name="x_padding">2</property>
@@ -501,8 +501,8 @@
                                 <property name="label" translatable="yes">"Up" Direction:</property>
                               </object>
                               <packing>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
+                                <property name="top_attach">5</property>
+                                <property name="bottom_attach">6</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options"/>
                                 <property name="x_padding">2</property>
@@ -517,8 +517,8 @@
                                 <property name="label" translatable="yes">Notes:</property>
                               </object>
                               <packing>
-                                <property name="top_attach">6</property>
-                                <property name="bottom_attach">7</property>
+                                <property name="top_attach">9</property>
+                                <property name="bottom_attach">10</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options">GTK_FILL</property>
                                 <property name="x_padding">2</property>
@@ -738,8 +738,8 @@
                                 <property name="label" translatable="yes">"In" Direction:</property>
                               </object>
                               <packing>
-                                <property name="top_attach">4</property>
-                                <property name="bottom_attach">5</property>
+                                <property name="top_attach">7</property>
+                                <property name="bottom_attach">8</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options"/>
                                 <property name="x_padding">2</property>
@@ -753,8 +753,8 @@
                                 <property name="label" translatable="yes">"Out" Direction:</property>
                               </object>
                               <packing>
-                                <property name="top_attach">5</property>
-                                <property name="bottom_attach">6</property>
+                                <property name="top_attach">8</property>
+                                <property name="bottom_attach">9</property>
                                 <property name="x_options">GTK_FILL</property>
                                 <property name="y_options"/>
                                 <property name="x_padding">2</property>
@@ -782,8 +782,8 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">4</property>
-                                <property name="bottom_attach">5</property>
+                                <property name="top_attach">7</property>
+                                <property name="bottom_attach">8</property>
                                 <property name="y_options">GTK_FILL</property>
                                 <property name="y_padding">6</property>
                               </packing>
@@ -810,10 +810,109 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">5</property>
-                                <property name="bottom_attach">6</property>
+                                <property name="top_attach">8</property>
+                                <property name="bottom_attach">9</property>
                                 <property name="y_options">GTK_FILL</property>
                                 <property name="y_padding">6</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="new_to_dir_label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">1</property>
+                                <property name="label" translatable="yes">Connect to Direction:</property>
+                              </object>
+                              <packing>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"/>
+                                <property name="x_padding">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="new_conn_type_label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">1</property>
+                                <property name="label" translatable="yes">Direction:</property>
+                              </object>
+                              <packing>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"/>
+                                <property name="x_padding">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkAlignment" id="new_to_dir_align">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="xscale">0</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                                <property name="y_options">GTK_EXPAND</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkAlignment" id="new_conn_type_align">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="xscale">0</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
+                                <property name="y_options">GTK_EXPAND</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="new_conn_style_label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">1</property>
+                                <property name="label" translatable="yes">Connection Type:</property>
+                              </object>
+                              <packing>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"/>
+                                <property name="x_padding">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkAlignment" id="new_conn_style_align">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="xscale">0</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
+                                <property name="y_options">GTK_EXPAND</property>
                               </packing>
                             </child>
                           </object>

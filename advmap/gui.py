@@ -109,6 +109,44 @@ class GUI(object):
         self.edit_room_ok = self.builder.get_object('edit_room_ok')
         self.edit_room_cancel = self.builder.get_object('edit_room_cancel')
 
+        # Form elements unique to creating a new connection
+        self.new_to_dir_label = self.builder.get_object('new_to_dir_label')
+        self.new_to_dir_align = self.builder.get_object('new_to_dir_align')
+        self.new_conn_style_label = self.builder.get_object('new_conn_style_label')
+        self.new_conn_style_align = self.builder.get_object('new_conn_style_align')
+        self.new_conn_type_label = self.builder.get_object('new_conn_type_label')
+        self.new_conn_type_align = self.builder.get_object('new_conn_type_align')
+
+        self.new_to_dir_box = gtk.combo_box_new_text()
+        self.new_to_dir_box.set_name('new_to_dir_box')
+        for txtdir in DIR_LIST:
+            self.new_to_dir_box.append_text(DIR_2_TXT[txtdir].upper())
+        self.new_to_dir_align.add(self.new_to_dir_box)
+
+        self.new_conn_style_regular = gtk.RadioButton(None, 'Regular', False)
+        self.new_conn_style_regular.set_name('new_conn_style_regular')
+        self.new_conn_style_ladder = gtk.RadioButton(self.new_conn_style_regular, 'Ladder', False)
+        self.new_conn_style_ladder.set_name('new_conn_style_ladder')
+        self.new_conn_style_dotted = gtk.RadioButton(self.new_conn_style_regular, 'Dotted', False)
+        self.new_conn_style_dotted.set_name('new_conn_style_dotted')
+        self.new_conn_style_box = gtk.HBox()
+        self.new_conn_style_box.pack_start(self.new_conn_style_regular, False, True)
+        self.new_conn_style_box.pack_start(self.new_conn_style_ladder, False, True)
+        self.new_conn_style_box.pack_start(self.new_conn_style_dotted, False, True)
+        self.new_conn_style_align.add(self.new_conn_style_box)
+
+        self.new_conn_type_pass_twoway = gtk.RadioButton(None, 'Two-Way', False)
+        self.new_conn_type_pass_twoway.set_name('new_conn_type_pass_twoway')
+        self.new_conn_type_pass_oneway_in = gtk.RadioButton(self.new_conn_type_pass_twoway, 'One-Way Into New Room', False)
+        self.new_conn_type_pass_oneway_in.set_name('new_conn_type_pass_oneway_in')
+        self.new_conn_type_pass_oneway_out = gtk.RadioButton(self.new_conn_type_pass_twoway, 'One-Way Out', False)
+        self.new_conn_type_pass_oneway_out.set_name('new_conn_type_pass_oneway_out')
+        self.new_conn_type_box = gtk.HBox()
+        self.new_conn_type_box.pack_start(self.new_conn_type_pass_twoway, False, True)
+        self.new_conn_type_box.pack_start(self.new_conn_type_pass_oneway_in, False, True)
+        self.new_conn_type_box.pack_start(self.new_conn_type_pass_oneway_out, False, True)
+        self.new_conn_type_align.add(self.new_conn_type_box)
+
         # New Room / Edit Room dialog, Advanced tab
         self.room_offset_x = self.builder.get_object('room_offset_x')
         self.room_offset_y = self.builder.get_object('room_offset_y')
@@ -417,7 +455,7 @@ class GUI(object):
             self.room_ladder[dir] = gtk.RadioButton(self.room_regular[dir], 'Ladder', False)
             self.room_ladder[dir].set_name('room_ladder_%s' % (text))
             self.room_dotted[dir] = gtk.RadioButton(self.room_regular[dir], 'Dotted', False)
-            self.room_dotted[dir].set_name('room_totted_%s' % (text))
+            self.room_dotted[dir].set_name('room_dotted_%s' % (text))
 
             # Connection Passages
             self.room_pass_twoway[dir] = gtk.RadioButton(None, 'Two-Way', False)
@@ -1444,6 +1482,12 @@ class GUI(object):
                 need_gfx_update = False
                 if (self.hover == self.HOVER_ROOM):
                     # edit/view room details
+                    self.new_to_dir_label.hide()
+                    self.new_to_dir_align.hide()
+                    self.new_conn_style_label.hide()
+                    self.new_conn_style_align.hide()
+                    self.new_conn_type_label.hide()
+                    self.new_conn_type_align.hide()
                     room = self.curhover
                     if (self.readonly_lock.get_active()):
                         self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
@@ -1694,6 +1738,15 @@ class GUI(object):
                             self.map.connect(room, dir, newroom)
                             need_gfx_update = True
                         else:
+                            self.new_to_dir_label.show_all()
+                            self.new_to_dir_align.show_all()
+                            self.new_conn_style_label.show_all()
+                            self.new_conn_style_align.show_all()
+                            self.new_conn_type_label.show_all()
+                            self.new_conn_type_align.show_all()
+                            self.new_to_dir_box.set_active(DIR_OPP[dir])
+                            self.new_conn_type_pass_twoway.set_active(True)
+                            self.new_conn_style_regular.set_active(True)
                             self.edit_room_label.set_markup('<b>New Room</b>')
                             self.edit_room_notebook.set_current_page(0)
                             self.edit_room_notebook.get_nth_page(1).hide()
@@ -1740,7 +1793,15 @@ class GUI(object):
                                 newroom.door_out = self.room_out_entry.get_text()
                                 buf = self.roomnotes_view.get_buffer()
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-                                self.map.connect(room, dir, newroom)
+                                newconn = self.map.connect(room, dir, newroom, self.new_to_dir_box.get_active())
+                                if self.new_conn_type_pass_oneway_in.get_active():
+                                    newconn.set_oneway_b()
+                                elif self.new_conn_type_pass_oneway_out.get_active():
+                                    newconn.set_oneway_a()
+                                if self.new_conn_style_ladder.get_active():
+                                    newconn.set_ladder()
+                                elif self.new_conn_style_dotted.get_active():
+                                    newconn.set_dotted()
                                 need_gfx_update = True
                                 if (len(self.map.rooms) == 256):
                                     self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
