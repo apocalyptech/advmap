@@ -36,7 +36,7 @@ from advmap.file import *
 
 __all__ = [ 'Room', 'Connection', 'Map', 'Game', 
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
-        'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
+        'DIR_LIST', 'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 
 DIR_N = 0
 DIR_NE = 1
@@ -46,6 +46,8 @@ DIR_S = 4
 DIR_SW = 5
 DIR_W = 6
 DIR_NW = 7
+
+DIR_LIST = [DIR_N, DIR_NE, DIR_E, DIR_SE, DIR_S, DIR_SW, DIR_W, DIR_NW]
 
 DIR_OPP = []
 DIR_OPP.append(DIR_S)
@@ -79,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 2
+SAVEFILE_VER = 3
 
 class Group(object):
     """
@@ -194,6 +196,7 @@ class Room(object):
         self.name = ''
         self.notes = ''
         self.conns = {}
+        self.loopbacks = {}
         self.up = ''
         self.down = ''
         self.door_in = ''
@@ -219,6 +222,8 @@ class Room(object):
         newroom.type = self.type
         newroom.offset_x = self.offset_x
         newroom.offset_y = self.offset_y
+        for direction, value in self.loopbacks.items():
+            newroom.loopbacks[direction] = value
         return newroom
 
     def unexplored(self):
@@ -226,6 +231,14 @@ class Room(object):
         Special-case magic string here.  Yay!
         """
         return (self.name == '(unexplored)')
+
+    def set_loopback(self, dir):
+        """
+        Sets a loopback at the given direction
+        """
+        if dir in self.conns:
+            self.detach(dir)
+        self.loopbacks[dir] = True
 
     def connect(self, dir, room, dir2=None):
         """
@@ -237,7 +250,7 @@ class Room(object):
         """
         if dir2 is None:
             dir2 = DIR_OPP[dir]
-        if dir in self.conns:
+        if dir in self.conns or dir in self.loopbacks:
             self.detach(dir)
         if dir2 in room.conns:
             room.detach(dir2)
@@ -251,12 +264,22 @@ class Room(object):
         Detaches ourself from a direction.  Will
         additionally detach the opposite end.
         """
-        if dir not in self.conns:
-            raise Exception('No connection to detach')
-        conn = self.conns[dir]
-        (other, other_dir) = conn.get_opposite(self)
-        del self.conns[dir]
-        del other.conns[other_dir]
+        if dir not in self.conns and dir not in self.loopbacks:
+            raise Exception('No connections or loopbacks to detach')
+        if dir in self.conns:
+            conn = self.conns[dir]
+            (other, other_dir) = conn.get_opposite(self)
+            del self.conns[dir]
+            del other.conns[other_dir]
+        if dir in self.loopbacks:
+            del self.loopbacks[dir]
+
+    def get_loopback(self, dir):
+        """
+        Returns True if there's a loopback at the given direction,
+        False otherwise.
+        """
+        return (dir in self.loopbacks)
 
     def get_conn(self, dir):
         """
@@ -298,6 +321,12 @@ class Room(object):
         df.writestr(self.door_out)
         df.writestr(self.notes)
         df.writeuchar(flagbits)
+        loopbackbits = 0
+        for direction in DIR_LIST:
+            if direction in self.loopbacks:
+                compvar = 1 << direction
+                loopbackbits |= compvar
+        df.writeuchar(loopbackbits)
 
     @staticmethod
     def load(df, version):
@@ -320,6 +349,12 @@ class Room(object):
             room.offset_y = True
         if ((flagbits & 0x02) == 0x02):
             room.offset_x = True
+        if version >= 3:
+            loopbackbits = df.readuchar()
+            for direction in DIR_LIST:
+                compvar = 1 << direction
+                if ((loopbackbits & compvar) == compvar):
+                    room.loopbacks[direction] = True
         return room
 
 class Connection(object):
@@ -583,10 +618,13 @@ class Map(object):
         """
         Detaches two rooms
         """
+        # TODO: interaction with _detach_conn is bizarre now that
+        # we're doing this loopback thing.
         conn = room.get_conn(dir)
-        if not conn:
-            raise Exception('No connection to detach')
-        self._detach_conn(conn)
+        if conn:
+            self._detach_conn(conn)
+        if room.get_loopback(dir):
+            room.detach(dir)
 
     def detach_id(self, id, dir):
         """

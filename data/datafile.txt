@@ -15,7 +15,7 @@ $ string, int2 size followed by the actual string (null terminated, size does no
 The file:
 
 ADVMAP (first six bytes, identifier)
-% Savefile version number (2)
+% Savefile version number (3)
 $ Game Name
 % Number of Maps
 
@@ -51,6 +51,15 @@ Then groups of Maps, for each map:
     | flags:
         00000001 = y is offset
         00000010 = x is offset
+    | loopbacks: (v3)
+        00000001 = N (v3)
+        00000010 = NE (v3)
+        00000100 = E (v3)
+        00001000 = SE (v3)
+        00010000 = S (v3)
+        00100000 = SW (v3)
+        01000000 = W (v3)
+        10000000 = NW (v3)
 
   Followed by groups of Connections, for each conn:
     % Room 1 ID
@@ -76,3 +85,4 @@ Version history:
 
 v1 - Various rolling changes
 v2 - Added Connection "passage" field
+v3 - Added loopback information for rooms

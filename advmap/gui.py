@@ -1007,7 +1007,7 @@ class GUI(object):
         mmctx.fill()
 
         # Now also draw connections off of the room
-        for dir in range(len(DIR_OPP)):
+        for dir in DIR_LIST:
             conn = room.get_conn(dir)
             if (conn):
                 if conn not in drawn_conns:
@@ -1044,6 +1044,41 @@ class GUI(object):
                             self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn)
 
                 conn_hover = self.HOVER_CONN
+            elif room.get_loopback(dir):
+                conn_hover = self.HOVER_CONN
+                coord = self.get_conn_xy(room, dir)
+                # TODO: resizing the map so this gets to the edge will cause a TypeError
+                coord_far = self.room_xy_coord(*self.map.dir_coord(room, dir))
+                if coord_far:
+                    fakeconn = Connection(None, None, None, None)
+
+                    (conn_x, conn_y) = self.apply_xy_offset(coord_far[0], coord_far[1], room)
+                    orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
+                    orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+                    if dir == DIR_NW or dir == DIR_NE or dir == DIR_SE or dir == DIR_SW:
+                        x2 = int((coord[0]*2+orig_x2)/3)
+                        y2 = int((coord[1]*2+orig_y2)/3)
+                    else:
+                        x2 = int((coord[0]*3+orig_x2*2)/5)
+                        y2 = int((coord[1]*3+orig_y2*2)/5)
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, fakeconn)
+
+                    dx_orig = x2-coord[0]
+                    dy_orig = y2-coord[1]
+                    dist = math.sqrt(dx_orig**2 + dy_orig**2)
+                    dx = dx_orig / dist
+                    dy = dy_orig / dist
+
+                    x3 = x2 + (dist*dy)
+                    y3 = y2 - (dist*dx)
+                    self.draw_conn_segment(ctx, x2, y2, x3, y3, fakeconn)
+
+                    x4 = coord[0] + (dist*dy)
+                    y4 = coord[1] - (dist*dx)
+                    self.draw_conn_segment(ctx, x4, y4, x3, y3, fakeconn)
+                    for coord_arrow in self.arrow_coords(x3, y3, x4, y4):
+                        self.draw_conn_segment(ctx, coord_arrow[0], coord_arrow[1], x4, y4, fakeconn)
+
             else:
                 if (len(self.map.rooms) == 256):
                     coord = self.map.dir_coord(room, dir)
@@ -1717,6 +1752,18 @@ class GUI(object):
                 else:
                     # Nothing...
                     pass
+
+                if (need_gfx_update):
+                    self.trigger_redraw()
+
+        elif (event.button == 3):
+            if (event.type == gtk.gdk.BUTTON_PRESS):
+                need_gfx_update = False
+                if (self.hover == self.HOVER_CONN_NEW):
+                    room = self.curhover[0]
+                    dir = self.curhover[1]
+                    room.set_loopback(dir)
+                    need_gfx_update = True
 
                 if (need_gfx_update):
                     self.trigger_redraw()
