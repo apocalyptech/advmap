@@ -1929,9 +1929,12 @@ class GUI(object):
                         self.hover_conn(self.c_highlight_del)
                     self.mainarea.queue_draw()
                     if (self.hover == self.HOVER_CONN):
-                        self.set_hover('(%d, %d) - Remove %s connection' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        if room.get_loopback(self.curhover[1]):
+                            self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        else:
+                            self.set_hover('(%d, %d) - Remove %s connection' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
-                        self.set_hover('(%d, %d) - New connection to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        self.set_hover('(%d, %d) - New connection (right-click: loopback) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
                 edge = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
