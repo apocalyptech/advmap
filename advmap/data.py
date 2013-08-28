@@ -651,27 +651,32 @@ class Map(object):
         del self.rooms[id]
         self.roomxy[y][x] = None
 
-    def dir_coord(self, room, dir):
+    def dir_coord(self, room, dir, allow_invalid=False):
         """
         Returns (x, y) coordinates of the space to the "dir" of the
-        given room.  Will return None if that's impossible.
+        given room.
+
+        If allow_invalid is true, this will return coordinates even outside
+        the actual map range (less than zero, or greater than the maximums.
+
+        Will return None if allow_invalid is False (the default).
         """
         x = room.x
         y = room.y
         if (dir in [DIR_NW, DIR_W, DIR_SW]):
-            if (x == 0):
+            if (x == 0 and not allow_invalid):
                 return None
             x -= 1
         if (dir in [DIR_NE, DIR_E, DIR_SE]):
-            if (x == self.w-1):
+            if (x == self.w-1 and not allow_invalid):
                 return None
             x += 1
         if (dir in [DIR_NW, DIR_N, DIR_NE]):
-            if (y == 0):
+            if (y == 0 and not allow_invalid):
                 return None
             y -= 1
         if (dir in [DIR_SW, DIR_S, DIR_SE]):
-            if (y == self.h-1):
+            if (y == self.h-1 and not allow_invalid):
                 return None
             y += 1
         return (x, y)

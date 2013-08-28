@@ -927,10 +927,10 @@ class GUI(object):
         nonadjacent rooms.
         """
         (room_x, room_y) = self.room_xy(room)
-        dir_coord = self.map.dir_coord(room, dir)
+        dir_coord = self.map.dir_coord(room, dir, True)
         if not dir_coord:
             return None
-        conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir))
+        conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir, True))
         if conn_coord:
             (conn_x, conn_y) = self.apply_xy_offset(conn_coord[0], conn_coord[1], room)
             x1 = room_x+self.CONN_OFF[dir][0]
@@ -1048,7 +1048,7 @@ class GUI(object):
                 conn_hover = self.HOVER_CONN
                 coord = self.get_conn_xy(room, dir)
                 # TODO: resizing the map so this gets to the edge will cause a TypeError
-                coord_far = self.room_xy_coord(*self.map.dir_coord(room, dir))
+                coord_far = self.room_xy_coord(*self.map.dir_coord(room, dir, True))
                 if coord_far:
                     fakeconn = Connection(None, None, None, None)
 
