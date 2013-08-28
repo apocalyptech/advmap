@@ -1090,10 +1090,11 @@ class GUI(object):
 
             # Draw the mousemap too, though only if we Should
             if not readonly:
-                if ((room.y == 0 and dir in [DIR_NW, DIR_N, DIR_NE]) or
+                if (not room.get_conn(dir) and not room.get_loopback(dir) and (
+                    (room.y == 0 and dir in [DIR_NW, DIR_N, DIR_NE]) or
                     (room.y == self.map.h-1 and dir in [DIR_SW, DIR_S, DIR_SE]) or
                     (room.x == 0 and dir in [DIR_NW, DIR_W, DIR_SW]) or
-                    (room.x == self.map.w-1 and dir in [DIR_NE, DIR_E, DIR_SE])):
+                    (room.x == self.map.w-1 and dir in [DIR_NE, DIR_E, DIR_SE]))):
                     continue
                 mmctx.set_source_rgba(self.m_step*conn_hover, self.m_step*dir, self.m_step*room.id)
                 mmctx.rectangle(x+self.CONN_H_OFF[dir][0], y+self.CONN_H_OFF[dir][1], self.room_spc, self.room_spc)
