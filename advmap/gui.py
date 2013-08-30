@@ -68,6 +68,7 @@ class GUI(object):
         self.show_offset_check = self.builder.get_object('show_offset_check')
         self.statusbar = self.builder.get_object('statusbar')
         self.sbcontext = self.statusbar.get_context_id('Main Messages')
+        self.secondary_status = self.builder.get_object('secondary_status')
         self.aboutwindow = None
 
         # View Room Readonly dialog
@@ -519,6 +520,12 @@ class GUI(object):
         Pushes some text out to our status bar
         """
         self.statusbar.push(self.sbcontext, text)
+
+    def set_secondary_status(self, text):
+        """
+        Sets our secondary statusbar text
+        """
+        self.secondary_status.set_markup('<i>%s</i>' % text)
 
     def set_status_delayed(self, text, timeout=5):
         """
@@ -1829,7 +1836,9 @@ class GUI(object):
                         self.move_room = self.curhover[0]
                         self.move_dir = self.curhover[1]
                         saved_move_vars = True
-                        # TODO: Any kind of GUI notification here
+                        self.set_secondary_status('Middle-click to move connection')
+                        # TODO: it would probably be nice to have some different GUI highlighting
+                        # when this is active, as well.
                 else:
                     if (self.hover == self.HOVER_CONN or self.hover == self.HOVER_CONN_NEW):
                         new_room = self.curhover[0]
@@ -1873,6 +1882,7 @@ class GUI(object):
         if not saved_move_vars:
             self.move_room = None
             self.move_dir = None
+            self.set_secondary_status('')
 
     def on_edit_room_notebook_page(self, widget, page, page_num):
         """
