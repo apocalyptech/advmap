@@ -247,6 +247,8 @@ class GUI(object):
         self.curhover = None
         self.move_room = None
         self.move_dir = None
+        self.link_conn_room = None
+        self.link_conn_dir = None
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
         self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
@@ -1480,6 +1482,7 @@ class GUI(object):
         Handle clicks-n-such
         """
         saved_move_vars = False
+        saved_link_conn_vars = False
         if (event.button == 1):
             if (self.hover == self.HOVER_NONE):
                 self.dragging = True
@@ -1831,15 +1834,8 @@ class GUI(object):
         elif (event.button == 2):
             if (event.type == gtk.gdk.BUTTON_PRESS):
                 need_gfx_update = False
-                if self.move_room is None or self.move_dir is None:
-                    if (self.hover == self.HOVER_CONN):
-                        self.move_room = self.curhover[0]
-                        self.move_dir = self.curhover[1]
-                        saved_move_vars = True
-                        self.set_secondary_status('Middle-click to move connection')
-                        # TODO: it would probably be nice to have some different GUI highlighting
-                        # when this is active, as well.
-                else:
+
+                if self.move_room is not None and self.move_dir is not None:
                     if (self.hover == self.HOVER_CONN or self.hover == self.HOVER_CONN_NEW):
                         new_room = self.curhover[0]
                         new_dir = self.curhover[1]
@@ -1864,6 +1860,31 @@ class GUI(object):
 
                             need_gfx_update = True
 
+                elif self.link_conn_room is not None and self.link_conn_dir is not None:
+                    if (self.hover == self.HOVER_CONN_NEW):
+                        new_room = self.curhover[0]
+                        new_dir = self.curhover[1]
+
+                        if new_room != self.link_conn_room:
+                            self.map.connect(self.link_conn_room, self.link_conn_dir, new_room, new_dir)
+                            need_gfx_update = True
+
+                else:
+                    if (self.hover == self.HOVER_CONN):
+                        self.move_room = self.curhover[0]
+                        self.move_dir = self.curhover[1]
+                        saved_move_vars = True
+                        self.set_secondary_status('Middle-click to move connection')
+                        # TODO: it would probably be nice to have some different GUI highlighting
+                        # when this is active, as well.
+                    elif (self.hover == self.HOVER_CONN_NEW):
+                        self.link_conn_room = self.curhover[0]
+                        self.link_conn_dir = self.curhover[1]
+                        saved_link_conn_vars = True
+                        self.set_secondary_status('Middle-click to link to existing room')
+                        # TODO: it would probably be nice to have some different GUI highlighting
+                        # when this is active, as well.
+
                 if (need_gfx_update):
                     self.trigger_redraw()
 
@@ -1879,9 +1900,22 @@ class GUI(object):
                 if (need_gfx_update):
                     self.trigger_redraw()
 
+        self.reset_transient_operations(saved_move_vars, saved_link_conn_vars)
+
+    def reset_transient_operations(self, saved_move_vars=False, saved_link_conn_vars=False):
+        """
+        We have two "transient" operations: moving existing connections, and linking
+        two previously-unlinked directions between rooms.  This will reset all the
+        necessary vars.
+        """
+
         if not saved_move_vars:
             self.move_room = None
             self.move_dir = None
+        if not saved_link_conn_vars:
+            self.link_conn_room = None
+            self.link_conn_dir = None
+        if not saved_move_vars and not saved_link_conn_vars:
             self.set_secondary_status('')
 
     def on_edit_room_notebook_page(self, widget, page, page_num):
@@ -2050,7 +2084,7 @@ class GUI(object):
                         else:
                             self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection)' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
-                        self.set_hover('(%d, %d) - New connection (right-click: loopback) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        self.set_hover('(%d, %d) - New connection (right-click: loopback, middle-click: link to existing) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
                 edge = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
@@ -2082,8 +2116,7 @@ class GUI(object):
                         return
                     self.map.del_room(self.curhover)
                     self.trigger_redraw()
-                    self.move_room = None
-                    self.move_dir = None
+                    self.reset_transient_operations()
 
     def nudge_lock_toggled(self, widget):
         """
