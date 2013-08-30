@@ -1089,8 +1089,14 @@ class GUI(object):
                         end1 = self.draw_stub_conn(ctx, room, dir, conn)
                         end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
                         if (end1 and end2):
-                            # "Direct" connection
-                            self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn)
+                            if conn.is_render_midpoint_a():
+                                self.draw_conn_segment(ctx, end1[0], end2[1], end1[0], end1[1], conn)
+                                self.draw_conn_segment(ctx, end1[0], end2[1], end2[0], end2[1], conn)
+                            elif conn.is_render_midpoint_b():
+                                self.draw_conn_segment(ctx, end2[0], end1[1], end1[0], end1[1], conn)
+                                self.draw_conn_segment(ctx, end2[0], end1[1], end2[0], end2[1], conn)
+                            else:
+                                self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn)
 
                 conn_hover = self.HOVER_CONN
             elif room.get_loopback(dir):
@@ -2009,11 +2015,12 @@ class GUI(object):
                 # they do for every subsequent redraw.  Odd.)
                 widget.get_nth_page(page_num).queue_resize()
 
-    def trigger_redraw(self):
+    def trigger_redraw(self, clean_hover=True):
         """
         Things that need to be done when the map is redrawn
         """
-        self.clean_hover()
+        if clean_hover:
+            self.clean_hover()
         self.draw()
         self.mainarea.queue_draw()
 
@@ -2087,7 +2094,7 @@ class GUI(object):
                         if room.get_loopback(self.curhover[1]):
                             self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection)' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - R: change render type' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
                         self.set_hover('(%d, %d) - New connection (right-click: loopback, middle-click: link to existing) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
@@ -2122,6 +2129,20 @@ class GUI(object):
                     self.map.del_room(self.curhover)
                     self.trigger_redraw()
                     self.reset_transient_operations()
+            if (self.hover == self.HOVER_CONN):
+                if (key == 'r'):
+                    room = self.curhover[0]
+                    conn_dir = self.curhover[1]
+                    conn = room.get_conn(conn_dir)
+                    if conn:
+                        if conn.is_render_regular():
+                            conn.set_render_midpoint_a()
+                        elif conn.is_render_midpoint_a():
+                            conn.set_render_midpoint_b()
+                        else:
+                            conn.set_render_regular()
+                        self.trigger_redraw(False)
+                        self.reset_transient_operations()
 
     def nudge_lock_toggled(self, widget):
         """

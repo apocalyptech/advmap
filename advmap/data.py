@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 3
+SAVEFILE_VER = 4
 
 class Group(object):
     """
@@ -402,13 +402,18 @@ class Connection(object):
     PASS_ONEWAY_A = 1
     PASS_ONEWAY_B = 2
 
-    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0):
+    RENDER_REGULAR = 0
+    RENDER_MIDPOINT_A = 1
+    RENDER_MIDPOINT_B = 2
+
+    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0, render=0):
         self.r1 = r1
         self.dir1 = dir1
         self.r2 = r2
         self.dir2 = dir2
         self.type = type
         self.passage = passage
+        self.render = render
 
     def set_regular(self):
         self.type = self.CONN_REGULAR
@@ -449,6 +454,24 @@ class Connection(object):
     def is_oneway(self):
         return (self.is_oneway_a() or self.is_oneway_b())
 
+    def set_render_regular(self):
+        self.render = self.RENDER_REGULAR
+
+    def set_render_midpoint_a(self):
+        self.render = self.RENDER_MIDPOINT_A
+
+    def set_render_midpoint_b(self):
+        self.render = self.RENDER_MIDPOINT_B
+
+    def is_render_regular(self):
+        return (self.render == self.RENDER_REGULAR)
+
+    def is_render_midpoint_a(self):
+        return (self.render == self.RENDER_MIDPOINT_A)
+
+    def is_render_midpoint_b(self):
+        return (self.render == self.RENDER_MIDPOINT_B)
+
     def __repr__(self):
         if (self.is_oneway_a()):
             conntext = '<-'
@@ -479,6 +502,7 @@ class Connection(object):
         df.writeuchar(self.dir2)
         df.writeuchar(self.type)
         df.writeuchar(self.passage)
+        df.writeuchar(self.render)
 
 class Map(object):
     """
@@ -862,6 +886,8 @@ class Map(object):
             conn.type = df.readuchar()
             if version >= 2:
                 conn.passage = df.readuchar()
+            if version >= 4:
+                conn.render = df.readuchar()
 
         # Now load groups
         for i in range(num_groups):

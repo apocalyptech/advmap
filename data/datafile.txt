@@ -74,6 +74,10 @@ Then groups of Maps, for each map:
         0 = Two-way (v2)
         1 = One-way (to Room 1) (v2)
         2 = One-way (to Room 2) (v2)
+    & Render Type: (v4)
+        0 = Regular (v4)
+        1 = Midpoint A (v4)
+        2 = Midpoint B (v4)
 
   Followed by however many room groups.  For each group:
   % Number of rooms in group
@@ -86,3 +90,4 @@ Version history:
 v1 - Various rolling changes
 v2 - Added Connection "passage" field
 v3 - Added loopback information for rooms
+v4 - Added Connection "render type" field
