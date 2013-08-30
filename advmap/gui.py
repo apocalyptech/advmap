@@ -2004,6 +2004,11 @@ class GUI(object):
                 # ... and clean out the mouse cursor
                 self.edit_room_dialog.window.set_cursor(None)
 
+                # Queue a resize of the pane, because otherwise our room dropdowns
+                # don't seem to resize themselves properly the first time (though
+                # they do for every subsequent redraw.  Odd.)
+                widget.get_nth_page(page_num).queue_resize()
+
     def trigger_redraw(self):
         """
         Things that need to be done when the map is redrawn
