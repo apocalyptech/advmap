@@ -240,6 +240,24 @@ class Room(object):
             self.detach(dir)
         self.loopbacks[dir] = True
 
+    def attach_conn(self, conn):
+        """
+        Attaches the given connection to our room, without
+        modifying the connection at all.  Useful when the GUI
+        is modifying connection parameters and we don't want
+        to build up a totally new Connection object.
+        """
+        if conn.r1 == self:
+            if conn.dir1 in self.conns or conn.dir1 in self.loopbacks:
+                self.detach(conn.dir1)
+            self.conns[conn.dir1] = conn
+        elif conn.r2 == self:
+            if conn.dir2 in self.conns or conn.dir2 in self.loopbacks:
+                self.detach(conn.dir2)
+            self.conns[conn.dir2] = conn
+        else:
+            raise Exception('Given connection does not involve this room')
+
     def connect(self, dir, room, dir2=None):
         """
         Connects ourself to another room.  Note
@@ -271,6 +289,16 @@ class Room(object):
             (other, other_dir) = conn.get_opposite(self)
             del self.conns[dir]
             del other.conns[other_dir]
+        if dir in self.loopbacks:
+            del self.loopbacks[dir]
+
+    def detach_single(self, dir):
+        """
+        Detaches ourselves from the given direction.  Will not
+        touch the opposite end.
+        """
+        if dir in self.conns:
+            del self.conns[dir]
         if dir in self.loopbacks:
             del self.loopbacks[dir]
 

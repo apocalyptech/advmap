@@ -244,6 +244,8 @@ class GUI(object):
         self.dragging = False
         self.hover = self.HOVER_NONE
         self.curhover = None
+        self.move_room = None
+        self.move_dir = None
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
         self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
@@ -1470,6 +1472,7 @@ class GUI(object):
         """
         Handle clicks-n-such
         """
+        saved_move_vars = False
         if (event.button == 1):
             if (self.hover == self.HOVER_NONE):
                 self.dragging = True
@@ -1818,6 +1821,43 @@ class GUI(object):
                 if (need_gfx_update):
                     self.trigger_redraw()
 
+        elif (event.button == 2):
+            if (event.type == gtk.gdk.BUTTON_PRESS):
+                need_gfx_update = False
+                if self.move_room is None or self.move_dir is None:
+                    if (self.hover == self.HOVER_CONN):
+                        self.move_room = self.curhover[0]
+                        self.move_dir = self.curhover[1]
+                        saved_move_vars = True
+                        # TODO: Any kind of GUI notification here
+                else:
+                    if (self.hover == self.HOVER_CONN or self.hover == self.HOVER_CONN_NEW):
+                        new_room = self.curhover[0]
+                        new_dir = self.curhover[1]
+
+                        cur_conn = self.move_room.get_conn(self.move_dir)
+                        (orig_room, orig_dir) = cur_conn.get_opposite(self.move_room)
+                        if orig_room != new_room:
+
+                            if self.hover == self.HOVER_CONN:
+                                self.map.detach(new_room, new_dir)
+
+                            if cur_conn.r1 == self.move_room:
+                                cur_conn.r1.detach_single(self.move_dir)
+                                cur_conn.r1 = new_room
+                                cur_conn.dir1 = new_dir
+                                cur_conn.r1.attach_conn(cur_conn)
+                            else:
+                                cur_conn.r2.detach_single(self.move_dir)
+                                cur_conn.r2 = new_room
+                                cur_conn.dir2 = new_dir
+                                cur_conn.r2.attach_conn(cur_conn)
+
+                            need_gfx_update = True
+
+                if (need_gfx_update):
+                    self.trigger_redraw()
+
         elif (event.button == 3):
             if (event.type == gtk.gdk.BUTTON_PRESS):
                 need_gfx_update = False
@@ -1829,6 +1869,10 @@ class GUI(object):
 
                 if (need_gfx_update):
                     self.trigger_redraw()
+
+        if not saved_move_vars:
+            self.move_room = None
+            self.move_dir = None
 
     def on_edit_room_notebook_page(self, widget, page, page_num):
         """
@@ -1994,7 +2038,7 @@ class GUI(object):
                         if room.get_loopback(self.curhover[1]):
                             self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection)' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
                         self.set_hover('(%d, %d) - New connection (right-click: loopback) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
@@ -2028,6 +2072,8 @@ class GUI(object):
                         return
                     self.map.del_room(self.curhover)
                     self.trigger_redraw()
+                    self.move_room = None
+                    self.move_dir = None
 
     def nudge_lock_toggled(self, widget):
         """
