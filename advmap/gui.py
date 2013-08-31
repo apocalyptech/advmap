@@ -870,6 +870,9 @@ class GUI(object):
         dx_orig = x2-x1
         dy_orig = y2-y1
         dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        if dist < 1:
+            # Prevent some division-by-zero errors
+            dist = 1
         dx = dx_orig / dist
         dy = dy_orig / dist
         coord_list = []
@@ -986,6 +989,10 @@ class GUI(object):
             y1 = room_y+self.CONN_OFF[dir][1]
             orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
             orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+
+            # Factor in our varying stublength
+            orig_x2 = x1 - conn.stublength*(x1 - orig_x2)
+            orig_y2 = y1 - conn.stublength*(y1 - orig_y2)
 
             # We're actually going to pick a point halfway between the two,
             # to prevent stubs that appear to connect to rooms they don't
@@ -2094,7 +2101,7 @@ class GUI(object):
                         if room.get_loopback(self.curhover[1]):
                             self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - R: change render type' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - R: change render type, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
                         self.set_hover('(%d, %d) - New connection (right-click: loopback, middle-click: link to existing) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
@@ -2141,6 +2148,17 @@ class GUI(object):
                             conn.set_render_midpoint_b()
                         else:
                             conn.set_render_regular()
+                        self.trigger_redraw(False)
+                        self.reset_transient_operations()
+                elif (key == 's'):
+                    room = self.curhover[0]
+                    conn_dir = self.curhover[1]
+                    conn = room.get_conn(conn_dir)
+                    if conn:
+                        cur_length = conn.stublength
+                        conn.set_stublength(cur_length+1)
+                        if conn.stublength == cur_length:
+                            conn.set_stublength(1)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
 

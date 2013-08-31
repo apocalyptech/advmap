@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 4
+SAVEFILE_VER = 5
 
 class Group(object):
     """
@@ -406,7 +406,7 @@ class Connection(object):
     RENDER_MIDPOINT_A = 1
     RENDER_MIDPOINT_B = 2
 
-    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0, render=0):
+    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0, render=0, stublength=1):
         self.r1 = r1
         self.dir1 = dir1
         self.r2 = r2
@@ -414,6 +414,7 @@ class Connection(object):
         self.type = type
         self.passage = passage
         self.render = render
+        self.stublength = stublength
 
     def set_regular(self):
         self.type = self.CONN_REGULAR
@@ -472,6 +473,13 @@ class Connection(object):
     def is_render_midpoint_b(self):
         return (self.render == self.RENDER_MIDPOINT_B)
 
+    def set_stublength(self, stublength=1):
+        if stublength < 1:
+            stublength = 1
+        elif stublength > 3:
+            stublength = 3
+        self.stublength = stublength
+
     def __repr__(self):
         if (self.is_oneway_a()):
             conntext = '<-'
@@ -503,6 +511,7 @@ class Connection(object):
         df.writeuchar(self.type)
         df.writeuchar(self.passage)
         df.writeuchar(self.render)
+        df.writeuchar(self.stublength)
 
 class Map(object):
     """
@@ -888,6 +897,8 @@ class Map(object):
                 conn.passage = df.readuchar()
             if version >= 4:
                 conn.render = df.readuchar()
+            if version >= 5:
+                conn.set_stublength(df.readuchar())
 
         # Now load groups
         for i in range(num_groups):

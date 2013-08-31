@@ -78,6 +78,10 @@ Then groups of Maps, for each map:
         0 = Regular (v4)
         1 = Midpoint A (v4)
         2 = Midpoint B (v4)
+    & Render Stub Length: (v5)
+        0, 1 = Regular length (will normalize to 1) (v5)
+        2 = Double (v5)
+        3+ = Triple (v5)
 
   Followed by however many room groups.  For each group:
   % Number of rooms in group
@@ -91,3 +95,4 @@ v1 - Various rolling changes
 v2 - Added Connection "passage" field
 v3 - Added loopback information for rooms
 v4 - Added Connection "render type" field
+v5 - Added Connection "render stub length" field
