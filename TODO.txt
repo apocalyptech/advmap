@@ -2,6 +2,8 @@ RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
  * Should we still be able to edit Notes in readonly mode?
+ * Checkbox on new room dialog to auto-group with "from" room
+ * Different visual styles for groupings
 
 GUI stuffs:
  * Can trigger some unpack warnings by hovering around the lower-right-hand
@@ -17,6 +19,8 @@ GUI stuffs:
  * Can connect indirectly on the side of the map, which looks a bit
    strange; should figure out how to make that look better, or just disallow
    it.
+ * "Moving" a connection to itself seems to create a decoupled connection
+   where one room retains the connection link but the other's forgotten it.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap
