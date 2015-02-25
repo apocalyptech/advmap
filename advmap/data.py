@@ -34,7 +34,7 @@ from advmap.file import *
 # (which is nice while saving/loading).
 #
 
-__all__ = [ 'Room', 'Connection', 'Map', 'Game', 
+__all__ = [ 'Room', 'Connection', 'Map', 'Game', 'Group',
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
         'DIR_LIST', 'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 
@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 5
+SAVEFILE_VER = 6
 
 class Group(object):
     """
@@ -90,10 +90,26 @@ class Group(object):
     connections, which nevertheless all take up one screen.
     (Could also be used for other purposes as well, of course)
     """
+
+    # Style constants
+    STYLE_NORMAL = 0
+    STYLE_RED = 1
+    STYLE_GREEN = 2
+    STYLE_BLUE = 3
+    STYLE_YELLOW = 4
+    STYLE_PURPLE = 5
+    STYLE_CYAN = 6
+    STYLE_FAINT = 7
+    STYLE_DARK = 8
+
+    # Not really a style
+    STYLE_MAX = 9
+
     def __init__(self, room1, room2):
         self.rooms = []
         self.add_room(room1)
         self.add_room(room2)
+        self.style = self.STYLE_NORMAL
 
     def get_rooms(self):
         """
@@ -128,6 +144,12 @@ class Group(object):
             pass
         return (len(self.rooms) < 2)
 
+    def increment_style(self):
+        """
+        Increments our style
+        """
+        self.style = (self.style + 1) % self.STYLE_MAX
+
     def save(self, df):
         """
         Saves ourself to the given filehandle
@@ -135,6 +157,7 @@ class Group(object):
         if (len(self.get_rooms()) < 2):
             raise Exception('Warning: a group cannot consist of only one room')
         df.writeshort(len(self.get_rooms()))
+        df.writeuchar(self.style)
         for room in self.get_rooms():
             df.writeshort(room.id)
 
@@ -146,6 +169,10 @@ class Group(object):
         num_rooms = df.readshort()
         if (num_rooms < 2):
             raise LoadException('Group stated it had only %d rooms' % (num_rooms))
+        if version > 5:
+            style = df.readuchar()
+        else:
+            style = Group.STYLE_NORMAL
         rooms = []
         for i in range(num_rooms):
             id = df.readshort()
@@ -154,6 +181,7 @@ class Group(object):
                 raise LoadException('Room %d does not exist while loading group' % (id))
             rooms.append(room)
         group = Group(rooms[0], rooms[1])
+        group.style = style
         for room in rooms[2:]:
             group.add_room(room)
         return group

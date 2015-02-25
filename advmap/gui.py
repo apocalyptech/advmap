@@ -1311,7 +1311,19 @@ class GUI(object):
         self.c_highlight_nudge = (.7, .7, .7, .2)
         self.c_highlight_del = (1, .5, .5, .2)
         self.c_highlight_new = (.5, .5, 1, .2)
-        self.c_group = (.95, .95, .95, 1)
+
+        self.c_group_map = {
+                Group.STYLE_NORMAL: (.85, .85, .85, 1),
+                Group.STYLE_RED: (.95, .85, .85, 1),
+                Group.STYLE_GREEN: (.85, .95, .85, 1),
+                Group.STYLE_BLUE: (.85, .85, .95, 1),
+                Group.STYLE_YELLOW: (.95, .95, .85, 1),
+                Group.STYLE_PURPLE: (.95, .85, .95, 1),
+                Group.STYLE_CYAN: (.85, .95, .95, 1),
+                Group.STYLE_FAINT: (.95, .95, .95, 1),
+                Group.STYLE_DARK: (.65, .65, .65, 1),
+            }
+        self.c_group_default = self.c_group_map[Group.STYLE_NORMAL]
 
         c_default_text = (0, 0, 0, 1)
         self.c_type_map = {
@@ -1371,7 +1383,10 @@ class GUI(object):
             min_y -= self.room_spc_grp
             max_x += self.room_spc_grp + self.room_w
             max_y += self.room_spc_grp + self.room_h
-            self.cleanctx.set_source_rgba(*self.c_group)
+            if group.style in self.c_group_map:
+                self.cleanctx.set_source_rgba(*self.c_group_map[group.style])
+            else:
+                self.cleanctx.set_source_rgba(*self.c_group_default)
             self.cleanctx.rectangle(min_x, min_y, max_x-min_x, max_y-min_y)
             self.cleanctx.fill()
 
@@ -2154,7 +2169,10 @@ class GUI(object):
                     self.curhover = room
                     self.hover_room()
                     self.mainarea.queue_draw()
-                    self.set_hover('(%d, %d) - Edit Room' % (room.x+1, room.y+1))
+                    if room.group is not None:
+                        self.set_hover('(%d, %d) - Edit Room - G: change group render style' % (room.x+1, room.y+1))
+                    else:
+                        self.set_hover('(%d, %d) - Edit Room' % (room.x+1, room.y+1))
             elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
                 conn = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_CONN or self.curhover[0] != conn[0] or self.curhover[1] != conn[1]):
@@ -2205,6 +2223,12 @@ class GUI(object):
                     self.map.del_room(self.curhover)
                     self.trigger_redraw()
                     self.reset_transient_operations()
+                elif (key == 'g'):
+                    room = self.curhover
+                    if room.group is not None:
+                        room.group.increment_style()
+                        self.trigger_redraw()
+
             if (self.hover == self.HOVER_CONN):
                 if (key == 'r'):
                     room = self.curhover[0]
