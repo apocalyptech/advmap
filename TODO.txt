@@ -2,7 +2,6 @@ RFEs:
  * write out to PNG (crop appropriately)
  * write whole group out to PNG
  * Should we still be able to edit Notes in readonly mode?
- * Checkbox on new room dialog to auto-group with "from" room
  * Different visual styles for groupings
 
 GUI stuffs:

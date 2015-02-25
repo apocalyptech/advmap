@@ -117,6 +117,9 @@ class GUI(object):
         self.new_conn_style_align = self.builder.get_object('new_conn_style_align')
         self.new_conn_type_label = self.builder.get_object('new_conn_type_label')
         self.new_conn_type_align = self.builder.get_object('new_conn_type_align')
+        self.new_group_with_label = self.builder.get_object('new_group_with_label')
+        self.new_group_with_align = self.builder.get_object('new_group_with_align')
+        self.new_group_with_button = self.builder.get_object('new_group_with_button')
 
         self.new_to_dir_box = gtk.combo_box_new_text()
         self.new_to_dir_box.set_name('new_to_dir_box')
@@ -1526,6 +1529,8 @@ class GUI(object):
                     self.new_conn_style_align.hide()
                     self.new_conn_type_label.hide()
                     self.new_conn_type_align.hide()
+                    self.new_group_with_label.hide()
+                    self.new_group_with_align.hide()
                     room = self.curhover
                     if (self.readonly_lock.get_active()):
                         self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
@@ -1783,6 +1788,9 @@ class GUI(object):
                             self.new_conn_style_align.show_all()
                             self.new_conn_type_label.show_all()
                             self.new_conn_type_align.show_all()
+                            self.new_group_with_label.show_all()
+                            self.new_group_with_align.show_all()
+                            self.new_group_with_button.set_active(False)
                             self.new_to_dir_box.set_active(DIR_OPP[dir])
                             self.new_conn_type_pass_twoway.set_active(True)
                             self.new_conn_style_regular.set_active(True)
@@ -1841,6 +1849,21 @@ class GUI(object):
                                     newconn.set_ladder()
                                 elif self.new_conn_style_dotted.get_active():
                                     newconn.set_dotted()
+
+                                # Handle adding grouping if we've been told to, as well.
+                                if self.new_group_with_button.get_active():
+                                    self.map.add_room_to_group(newroom, room)
+
+                                # Temp, report
+                                #print 'Existing Groups:'
+                                #print
+                                #for (idx, group) in enumerate(self.map.groups):
+                                #    print 'Group %d:' % (idx+1)
+                                #    for room_view in group.rooms:
+                                #        print ' * %s' % room_view.name
+                                #    print
+                                #print
+
                                 need_gfx_update = True
                                 if (len(self.map.rooms) == 256):
                                     self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
