@@ -1494,6 +1494,11 @@ class GUI(object):
         """
         Handle clicks-n-such
         """
+
+        # If these vars remain False, at the end of this function, we'll be
+        # clearing out any transient vars that exist (such as moving a connection,
+        # or doing a freeform link between rooms).  In practice this means that
+        # a transient operation is never going to "span" any number of clicks.
         saved_move_vars = False
         saved_link_conn_vars = False
 
@@ -1867,25 +1872,27 @@ class GUI(object):
                         new_room = self.curhover[0]
                         new_dir = self.curhover[1]
 
-                        cur_conn = self.move_room.get_conn(self.move_dir)
-                        (orig_room, orig_dir) = cur_conn.get_opposite(self.move_room)
-                        if orig_room != new_room:
+                        # If we click again on the same connection spot, do nothing:
+                        if self.move_room != new_room or self.move_dir != new_dir:
+                            cur_conn = self.move_room.get_conn(self.move_dir)
+                            (orig_room, orig_dir) = cur_conn.get_opposite(self.move_room)
+                            if orig_room != new_room:
 
-                            if self.hover == self.HOVER_CONN:
-                                self.map.detach(new_room, new_dir)
+                                if self.hover == self.HOVER_CONN:
+                                    self.map.detach(new_room, new_dir)
 
-                            if cur_conn.r1 == self.move_room:
-                                cur_conn.r1.detach_single(self.move_dir)
-                                cur_conn.r1 = new_room
-                                cur_conn.dir1 = new_dir
-                                cur_conn.r1.attach_conn(cur_conn)
-                            else:
-                                cur_conn.r2.detach_single(self.move_dir)
-                                cur_conn.r2 = new_room
-                                cur_conn.dir2 = new_dir
-                                cur_conn.r2.attach_conn(cur_conn)
+                                if cur_conn.r1 == self.move_room:
+                                    cur_conn.r1.detach_single(self.move_dir)
+                                    cur_conn.r1 = new_room
+                                    cur_conn.dir1 = new_dir
+                                    cur_conn.r1.attach_conn(cur_conn)
+                                else:
+                                    cur_conn.r2.detach_single(self.move_dir)
+                                    cur_conn.r2 = new_room
+                                    cur_conn.dir2 = new_dir
+                                    cur_conn.r2.attach_conn(cur_conn)
 
-                            need_gfx_update = True
+                                need_gfx_update = True
 
                 elif self.link_conn_room is not None and self.link_conn_dir is not None:
                     # We've received a previous "new connection" click, so process it now,

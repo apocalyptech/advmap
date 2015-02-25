@@ -19,8 +19,6 @@ GUI stuffs:
  * Can connect indirectly on the side of the map, which looks a bit
    strange; should figure out how to make that look better, or just disallow
    it.
- * "Moving" a connection to itself seems to create a decoupled connection
-   where one room retains the connection link but the other's forgotten it.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap
