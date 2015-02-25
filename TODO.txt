@@ -1,8 +1,8 @@
 RFEs:
- * write out to PNG (crop appropriately)
  * write whole group out to PNG
  * Should we still be able to edit Notes in readonly mode?
  * Different visual styles for groupings
+ * shift-click from main screen to group
 
 GUI stuffs:
  * Can trigger some unpack warnings by hovering around the lower-right-hand
@@ -10,7 +10,6 @@ GUI stuffs:
  * Three-line title will overlap "(notes)" on my Laptop display
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
- * set_sensitive(False) for global nudge buttons when not available
  * Show "(notes)" on map for Label rooms
  * Mouseover hover notes text, when available
  * Should really draw some little icons for mouseovers, instead of just
@@ -26,8 +25,6 @@ Internal stuffs:
 
 Possibly, sometime:
  * redo internal storage mechanisms/mousemaps to allow > 256 rooms
- * Arbitrary room coloring / highlighting
- * one-way linking
  * multiple links from the same direction
  * option double-sized rooms
 

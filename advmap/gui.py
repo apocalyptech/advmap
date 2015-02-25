@@ -177,6 +177,18 @@ class GUI(object):
         self.notes_window = self.builder.get_object('notes_window')
         self.global_notes_view = self.builder.get_object('global_notes_view')
 
+        # Nudge buttons
+        self.nudge_n = self.builder.get_object('nudge_n')
+        self.nudge_ne = self.builder.get_object('nudge_ne')
+        self.nudge_e = self.builder.get_object('nudge_e')
+        self.nudge_se = self.builder.get_object('nudge_se')
+        self.nudge_s = self.builder.get_object('nudge_s')
+        self.nudge_sw = self.builder.get_object('nudge_sw')
+        self.nudge_w = self.builder.get_object('nudge_w')
+        self.nudge_nw = self.builder.get_object('nudge_nw')
+        self.nudge_buttons = [self.nudge_n, self.nudge_ne, self.nudge_e, self.nudge_se,
+                self.nudge_s, self.nudge_sw, self.nudge_w, self.nudge_nw]
+
         # Tooltips
         self.builder.get_object('nudge_n').set_tooltip_text('Nudge map to the north')
         self.builder.get_object('nudge_ne').set_tooltip_text('Nudge map to the northeast')
@@ -2221,9 +2233,19 @@ class GUI(object):
 
     def nudge_lock_toggled(self, widget):
         """
-        Lets us know to redraw the mousemaps because nudging is locked/unlocked.
-        (Note that this actually just triggers a full redraw)
+        Things to do when our nudge lock is toggled on/off.
         """
+
+        # First loop through our nudge buttons and set them as active or not,
+        # depending on our status
+        if self.nudge_lock.get_active():
+            nudge_button_status = True
+        else:
+            nudge_button_status = False
+        for widget in self.nudge_buttons:
+            widget.set_sensitive(nudge_button_status)
+
+        # Now trigger a redraw if we have to
         if (not self.readonly_lock.get_active()):
             self.trigger_redraw()
 
