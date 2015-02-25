@@ -1496,16 +1496,23 @@ class GUI(object):
         """
         saved_move_vars = False
         saved_link_conn_vars = False
+
+        # Left-click
         if (event.button == 1):
+
             if (self.hover == self.HOVER_NONE):
+                # If we don't have anything selected, we'll drag the canvas
                 self.dragging = True
                 self.hold_x = event.x_root
                 self.hold_y = event.y_root
                 self.diff_x = 0
                 self.diff_y = 0
                 self.mainarea.window.set_cursor(self.cursor_move_drag)
+
             elif (event.type == gtk.gdk.BUTTON_PRESS):
+                # Presumably this check was put here for a reason, though I don't recall why
                 need_gfx_update = False
+
                 if (self.hover == self.HOVER_ROOM):
                     # edit/view room details
                     self.new_to_dir_label.hide()
@@ -1750,6 +1757,7 @@ class GUI(object):
                     dir = self.curhover[1]
                     self.map.detach(room, dir)
                     need_gfx_update = True
+
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
                     room = self.curhover[0]
@@ -1831,12 +1839,14 @@ class GUI(object):
                                 need_gfx_update = True
                                 if (len(self.map.rooms) == 256):
                                     self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
+
                 elif (self.hover == self.HOVER_EDGE):
                     # move the room, if possible
                     room = self.curhover[0]
                     dir = self.curhover[1]
                     if (self.map.move_room(room, dir)):
                         need_gfx_update = True
+
                 else:
                     # Nothing...
                     pass
@@ -1845,10 +1855,14 @@ class GUI(object):
                     self.trigger_redraw()
 
         elif (event.button == 2):
+
+            # Processing a middle click
             if (event.type == gtk.gdk.BUTTON_PRESS):
                 need_gfx_update = False
 
                 if self.move_room is not None and self.move_dir is not None:
+                    # We've received a previous "move connection" click, so process it now,
+                    # so long as we're hovering over a new connection area
                     if (self.hover == self.HOVER_CONN or self.hover == self.HOVER_CONN_NEW):
                         new_room = self.curhover[0]
                         new_dir = self.curhover[1]
@@ -1874,6 +1888,8 @@ class GUI(object):
                             need_gfx_update = True
 
                 elif self.link_conn_room is not None and self.link_conn_dir is not None:
+                    # We've received a previous "new connection" click, so process it now,
+                    # so long as we're hoving over a new connection area
                     if (self.hover == self.HOVER_CONN_NEW):
                         new_room = self.curhover[0]
                         new_dir = self.curhover[1]
@@ -1883,14 +1899,20 @@ class GUI(object):
                             need_gfx_update = True
 
                 else:
+                    # We have no existing "move" commands, so figure out if we're moving a connection or
+                    # adding a new one.
+
                     if (self.hover == self.HOVER_CONN):
+                        # We're moving an existing connection
                         self.move_room = self.curhover[0]
                         self.move_dir = self.curhover[1]
                         saved_move_vars = True
                         self.set_secondary_status('Middle-click to move connection')
                         # TODO: it would probably be nice to have some different GUI highlighting
                         # when this is active, as well.
+
                     elif (self.hover == self.HOVER_CONN_NEW):
+                        # We're adding a new connection in a free-form sort of way
                         self.link_conn_room = self.curhover[0]
                         self.link_conn_dir = self.curhover[1]
                         saved_link_conn_vars = True
@@ -1902,9 +1924,14 @@ class GUI(object):
                     self.trigger_redraw()
 
         elif (event.button == 3):
+            # Processing a right click
+
             if (event.type == gtk.gdk.BUTTON_PRESS):
                 need_gfx_update = False
+
                 if (self.hover == self.HOVER_CONN_NEW):
+                    # If we're hovering over a new connection, right-click will
+                    # create a loopback
                     room = self.curhover[0]
                     dir = self.curhover[1]
                     room.set_loopback(dir)
