@@ -2114,6 +2114,8 @@ class GUI(object):
             self.clean_hover()
         self.draw()
         self.mainarea.queue_draw()
+        if not clean_hover:
+            self.redraw_current_hover()
 
     def on_map_released(self, widget, event):
         """
@@ -2123,10 +2125,25 @@ class GUI(object):
             self.dragging = False
             self.mainarea.window.set_cursor(None)
 
+    def redraw_current_hover(self):
+        """
+        Called after some redraws to make sure that we remain highlighting
+        our current hover.
+        """
+        if self.hover == self.HOVER_ROOM:
+            self.hover_room()
+        elif self.hover == self.HOVER_CONN:
+            self.hover_conn(self.c_highlight_del)
+        elif self.hover == self.HOVER_CONN_NEW:
+            self.hover_conn()
+        elif self.hover == self.HOVER_EDGE:
+            self.hover_edge()
+
     def on_mouse_changed(self, widget, event):
         """
         Track mouse changes
         """
+
         if not self.initgfx:
             return
         if self.dragging:
@@ -2227,7 +2244,7 @@ class GUI(object):
                     room = self.curhover
                     if room.group is not None:
                         room.group.increment_style()
-                        self.trigger_redraw()
+                        self.trigger_redraw(False)
 
             if (self.hover == self.HOVER_CONN):
                 if (key == 'r'):

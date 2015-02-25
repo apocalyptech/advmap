@@ -17,8 +17,6 @@ GUI stuffs:
    strange; should figure out how to make that look better, or just disallow
    it.
  * Have a separate set of "activated" icons for our toggleable buttons
- * Highlight gets lost on redraw, can be annoying while changing connection
-   type or group color.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap
