@@ -169,7 +169,7 @@ class Group(object):
         num_rooms = df.readshort()
         if (num_rooms < 2):
             raise LoadException('Group stated it had only %d rooms' % (num_rooms))
-        if version > 5:
+        if version >= 6:
             style = df.readuchar()
         else:
             style = Group.STYLE_NORMAL
