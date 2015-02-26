@@ -189,21 +189,28 @@ class GUI(object):
         self.nudge_buttons = [self.nudge_n, self.nudge_ne, self.nudge_e, self.nudge_se,
                 self.nudge_s, self.nudge_sw, self.nudge_w, self.nudge_nw]
 
+        # Resize buttons
+        self.resize_n = self.builder.get_object('resize_n')
+        self.resize_s = self.builder.get_object('resize_s')
+        self.resize_w = self.builder.get_object('resize_w')
+        self.resize_e = self.builder.get_object('resize_e')
+        self.resize_buttons = [self.resize_n, self.resize_s, self.resize_w, self.resize_e]
+
         # Tooltips
-        self.builder.get_object('nudge_n').set_tooltip_text('Nudge map to the north')
-        self.builder.get_object('nudge_ne').set_tooltip_text('Nudge map to the northeast')
-        self.builder.get_object('nudge_e').set_tooltip_text('Nudge map to the east')
-        self.builder.get_object('nudge_se').set_tooltip_text('Nudge map to the southeast')
-        self.builder.get_object('nudge_s').set_tooltip_text('Nudge map to the south')
-        self.builder.get_object('nudge_sw').set_tooltip_text('Nudge map to the southwest')
-        self.builder.get_object('nudge_w').set_tooltip_text('Nudge map to the west')
-        self.builder.get_object('nudge_nw').set_tooltip_text('Nudge map to the northwest')
-        self.builder.get_object('nudge_lock').set_tooltip_text('Toggle map nudging')
-        self.builder.get_object('readonly_lock').set_tooltip_text('Toggle readonly')
-        self.builder.get_object('resize_n').set_tooltip_text('Cut off bottom row of map')
-        self.builder.get_object('resize_s').set_tooltip_text('Add row to bottom of map')
-        self.builder.get_object('resize_w').set_tooltip_text('Cut off rightmost row of map')
-        self.builder.get_object('resize_e').set_tooltip_text('Add column to right of map')
+        self.nudge_n.set_tooltip_text('Nudge map to the north')
+        self.nudge_ne.set_tooltip_text('Nudge map to the northeast')
+        self.nudge_e.set_tooltip_text('Nudge map to the east')
+        self.nudge_se.set_tooltip_text('Nudge map to the southeast')
+        self.nudge_s.set_tooltip_text('Nudge map to the south')
+        self.nudge_sw.set_tooltip_text('Nudge map to the southwest')
+        self.nudge_w.set_tooltip_text('Nudge map to the west')
+        self.nudge_nw.set_tooltip_text('Nudge map to the northwest')
+        self.nudge_lock.set_tooltip_text('Toggle map nudging')
+        self.readonly_lock.set_tooltip_text('Toggle readonly')
+        self.resize_n.set_tooltip_text('Cut off bottom row of map')
+        self.resize_s.set_tooltip_text('Add row to bottom of map')
+        self.resize_w.set_tooltip_text('Cut off rightmost row of map')
+        self.resize_e.set_tooltip_text('Add column to right of map')
         self.builder.get_object('edit_game_button').set_tooltip_text('Edit map properties')
 
         # Explicitly set our widget names (needed for gtk+ 2.20 compatibility)
@@ -2277,24 +2284,25 @@ class GUI(object):
         Things to do when our nudge lock is toggled on/off.
         """
 
-        # First loop through our nudge buttons and set them as active or not,
-        # depending on our status
-        if self.nudge_lock.get_active():
-            nudge_button_status = True
-        else:
-            nudge_button_status = False
-        for widget in self.nudge_buttons:
-            widget.set_sensitive(nudge_button_status)
-
-        # Now trigger a redraw if we have to
+        # Trigger a redraw if we have to
         if (not self.readonly_lock.get_active()):
             self.trigger_redraw()
 
     def readonly_toggled(self, widget):
         """
-        Lets us know to redraw the mousemaps because we've entered readonly mode
-        (Note that this actually just triggers a full redraw)
+        Tasks to perform when we've toggled into readonly mode.
         """
+
+        # Loop through our nudge/resize buttons and set them as active or not,
+        # depending on our status
+        if self.readonly_lock.get_active():
+            button_status = False
+        else:
+            button_status = True
+        for widget in self.nudge_buttons + self.resize_buttons + [self.nudge_lock]:
+            widget.set_sensitive(button_status)
+
+        # Trigger a redraw if our graphics have been initialized
         if self.initgfx:
             self.trigger_redraw()
 
