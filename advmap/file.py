@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/evn python2
 # vim: set expandtab tabstop=4 shiftwidth=4:
 #
 # Adventure Game Mapper

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 # vim: set expandtab tabstop=4 shiftwidth=4:
 #
 # Adventure Game Mapper
@@ -333,8 +333,8 @@ class GUI(object):
         if (initfile):
             try:
                 self.load_from_file(initfile)
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
                 self.errordialog('Unable to load file: %s - starting with a blank map' % e)
         if not self.curfile:
             self.create_new_game()
@@ -699,7 +699,7 @@ class GUI(object):
             if response == gtk.RESPONSE_OK:
                 try:
                     self.load_from_file(dialog.get_filename())
-                except Exception, e:
+                except Exception as e:
                     self.errordialog('Unable to open file: %s' % e, dialog)
                     rundialog = True
 
@@ -716,7 +716,7 @@ class GUI(object):
                 self.load_from_file(self.curfile)
                 self.set_delayed_edit()
                 self.set_status('Reverted to on-disk copy of %s' % self.curfile)
-            except Exception, e:
+            except Exception as e:
                 self.errordialog('Unable to revert, error in on-disk file: %s' % e)
         else:
             self.errordialog('Cannot revert, this map has never been saved to disk.')
@@ -1722,14 +1722,14 @@ class GUI(object):
                                     need_gfx_update = True
 
                             # Temp, report
-                            #print 'Existing Groups:'
-                            #print
+                            #print('Existing Groups:')
+                            #print('')
                             #for (idx, group) in enumerate(self.map.groups):
-                            #    print 'Group %d:' % (idx+1)
+                            #    print('Group %d:' % (idx+1))
                             #    for room_view in group.rooms:
-                            #        print ' * %s' % room_view.name
-                            #    print
-                            #print
+                            #        print(' * %s' % room_view.name)
+                            #    print('')
+                            #print('')
 
                             # ... advanced links ...
                             for dir in range(len(DIR_OPP)):
@@ -1845,7 +1845,7 @@ class GUI(object):
                             if (result == gtk.RESPONSE_OK):
                                 try:
                                     newroom = self.map.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
-                                except Exception, e:
+                                except Exception as e:
                                     self.errordialog("Couldn't add room: %s" % (e))
                                     return
                                 if (self.roomtype_radio_hi_green.get_active()):
@@ -1889,14 +1889,14 @@ class GUI(object):
                                     self.map.add_room_to_group(newroom, room)
 
                                 # Temp, report
-                                #print 'Existing Groups:'
-                                #print
+                                #print('Existing Groups:')
+                                #print('')
                                 #for (idx, group) in enumerate(self.map.groups):
-                                #    print 'Group %d:' % (idx+1)
+                                #    print('Group %d:' % (idx+1))
                                 #    for room_view in group.rooms:
-                                #        print ' * %s' % room_view.name
-                                #    print
-                                #print
+                                #        print(' * %s' % room_view.name)
+                                #    print('')
+                                #print('')
 
                                 need_gfx_update = True
                                 if (len(self.map.rooms) == 256):
