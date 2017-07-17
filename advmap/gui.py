@@ -403,6 +403,10 @@ class GUI(object):
         self.ladder_down_surf = cairo.ImageSurface.create_from_png(self.resfile('ladder_down.png'))
         self.door_in_surf = cairo.ImageSurface.create_from_png(self.resfile('door_in.png'))
         self.door_out_surf = cairo.ImageSurface.create_from_png(self.resfile('door_out.png'))
+        self.ladder_up_rev_surf = cairo.ImageSurface.create_from_png(self.resfile('ladder_up_rev.png'))
+        self.ladder_down_rev_surf = cairo.ImageSurface.create_from_png(self.resfile('ladder_down_rev.png'))
+        self.door_in_rev_surf = cairo.ImageSurface.create_from_png(self.resfile('door_in_rev.png'))
+        self.door_out_rev_surf = cairo.ImageSurface.create_from_png(self.resfile('door_out_rev.png'))
 
         # Keyboard mask for processing keys
         self.keymask = gtk.gdk.CONTROL_MASK|gtk.gdk.MOD1_MASK|gtk.gdk.MOD3_MASK
@@ -1246,11 +1250,11 @@ class GUI(object):
             cur_x = x+(self.room_w-icon_dim)/2
             max_w = self.room_w - self.room_spc - icon_dim - icon_txt_spc
             max_h = icon_dim + 4
-            for (label, graphic) in [
-                    (room.up, self.ladder_up_surf),
-                    (room.down, self.ladder_down_surf),
-                    (room.door_in, self.door_in_surf),
-                    (room.door_out, self.door_out_surf)]:
+            for (label, (graphic_light, graphic_dark)) in [
+                    (room.up, (self.ladder_up_surf, self.ladder_up_rev_surf)),
+                    (room.down, (self.ladder_down_surf, self.ladder_down_rev_surf)),
+                    (room.door_in, (self.door_in_surf, self.door_in_rev_surf)),
+                    (room.door_out, (self.door_out_surf, self.door_out_rev_surf))]:
                 if (label and label != ''):
                     layout = pango.Layout(self.pangoctx)
                     text = label
@@ -1271,6 +1275,10 @@ class GUI(object):
                     text_x = ladder_x + icon_dim + icon_txt_spc
 
                     # Draw the icon
+                    if room.type == Room.TYPE_DARK:
+                        graphic = graphic_dark
+                    else:
+                        graphic = graphic_light
                     ctx.set_source_surface(graphic, ladder_x, cur_y)
                     ctx.move_to(cur_x, cur_y)
                     ctx.paint()
