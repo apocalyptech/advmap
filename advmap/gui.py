@@ -2302,6 +2302,16 @@ class GUI(object):
         for widget in self.nudge_buttons + self.resize_buttons + [self.nudge_lock]:
             widget.set_sensitive(button_status)
 
+        # Update our image if need be
+        if self.readonly_lock.get_active():
+            color = self.readonly_lock.get_style().bg[gtk.STATE_ACTIVE]
+            image = self.readonly_lock.child
+            pixbuf = image.get_pixbuf()
+            pixbuf = pixbuf.composite_color_simple(pixbuf.get_property('width'),
+                    pixbuf.get_property('height'), gtk.gdk.INTERP_NEAREST,
+                    255, 128, color, color)
+            image.set_from_pixbuf(pixbuf)
+
         # Trigger a redraw if our graphics have been initialized
         if self.initgfx:
             self.trigger_redraw()
