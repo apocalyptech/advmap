@@ -588,6 +588,9 @@ class Map(object):
         for conn in self.conns:
             newconn = newmap.connect_id(conn.r1.id, conn.dir1, conn.r2.id, conn.dir2)
             newconn.type = conn.type
+            newconn.passage = conn.passage
+            newconn.render = conn.render
+            newconn.stublength = conn.stublength
         for group in self.groups:
             r1 = newmap.get_room(group.rooms[0].id)
             r2 = newmap.get_room(group.rooms[1].id)
