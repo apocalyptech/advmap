@@ -2220,9 +2220,9 @@ class GUI(object):
                         if room.get_loopback(self.curhover[1]):
                             self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
-                        self.set_hover('(%d, %d) - New connection (right-click: loopback, middle-click: link to existing) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        self.set_hover('(%d, %d) - New connection to the %s - right-click: loopback, middle-click: link to existing' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
                 edge = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
