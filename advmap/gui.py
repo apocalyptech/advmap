@@ -2184,6 +2184,9 @@ class GUI(object):
             self.hold_y = event.y_root
             return
 
+        # Look to see if we're in readonly mode
+        readonly = self.readonly_lock.get_active()
+
         # Figure out if we're hoving over anything
         pixel_offset = int((self.mmsurf.get_stride() * event.y) + (event.x*4))
         if (event.y > self.area_y or event.x > self.area_x):
@@ -2201,37 +2204,42 @@ class GUI(object):
                     self.curhover = room
                     self.hover_room()
                     self.mainarea.queue_draw()
-                    if room.group is not None:
-                        self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type, G: change group render style' % (room.x+1, room.y+1))
+                    if readonly:
+                        self.set_hover('(%d, %d) - View Details' % (room.x+1, room.y+1))
                     else:
-                        self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type' % (room.x+1, room.y+1))
-            elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
-                conn = (room, hoverpixel[1])
-                if (self.hover != self.HOVER_CONN or self.curhover[0] != conn[0] or self.curhover[1] != conn[1]):
-                    self.clean_hover()
-                    self.hover = typeidx
-                    self.curhover = conn
-                    if (self.hover == self.HOVER_CONN_NEW):
-                        self.hover_conn()
-                    else:
-                        self.hover_conn(self.c_highlight_del)
-                    self.mainarea.queue_draw()
-                    if (self.hover == self.HOVER_CONN):
-                        if room.get_loopback(self.curhover[1]):
-                            self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        if room.group is not None:
+                            self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type, G: change group render style' % (room.x+1, room.y+1))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
-                    else:
-                        self.set_hover('(%d, %d) - New connection to the %s - right-click: loopback, middle-click: link to existing' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type' % (room.x+1, room.y+1))
+            elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
+                if not readonly:
+                    conn = (room, hoverpixel[1])
+                    if (self.hover != self.HOVER_CONN or self.curhover[0] != conn[0] or self.curhover[1] != conn[1]):
+                        self.clean_hover()
+                        self.hover = typeidx
+                        self.curhover = conn
+                        if (self.hover == self.HOVER_CONN_NEW):
+                            self.hover_conn()
+                        else:
+                            self.hover_conn(self.c_highlight_del)
+                        self.mainarea.queue_draw()
+                        if (self.hover == self.HOVER_CONN):
+                            if room.get_loopback(self.curhover[1]):
+                                self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            else:
+                                self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                        else:
+                            self.set_hover('(%d, %d) - New connection to the %s - right-click: loopback, middle-click: link to existing' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
-                edge = (room, hoverpixel[1])
-                if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
-                    self.clean_hover()
-                    self.hover = self.HOVER_EDGE
-                    self.curhover = edge
-                    self.hover_edge()
-                    self.mainarea.queue_draw()
-                    self.set_hover('(%d, %d) - Nudge Room to %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                if not readonly:
+                    edge = (room, hoverpixel[1])
+                    if (self.hover != self.HOVER_EDGE or self.curhover[0] != edge[0] or self.curhover[1] != edge[1]):
+                        self.clean_hover()
+                        self.hover = self.HOVER_EDGE
+                        self.curhover = edge
+                        self.hover_edge()
+                        self.mainarea.queue_draw()
+                        self.set_hover('(%d, %d) - Nudge Room to %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             else:
                 raise Exception("Invalid R code in bit mousemap")
         else:
@@ -2243,6 +2251,11 @@ class GUI(object):
         """
         Handles keypresses
         """
+        # Currently all of our keypresses edit data, so we can return right away
+        # if we're in readonly mode
+        if self.readonly_lock.get_active():
+            return
+
         if (event.keyval < 256 and (event.state & self.keymask) == 0):
             key = chr(event.keyval).lower()
             # Next two key handlers are just testing until we tie them into
