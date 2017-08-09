@@ -50,6 +50,12 @@ The `D` key can be used to delete a room, and `H`/`V` can be used to toggle hori
 and vertical offset (useful in some circumstances to make maps look prettier).  The
 offsets are also available as checkboxes inside the room edit dialog.
 
+When highlighting a connection, `S` can be used to change the "stub" length (how far
+out the initial line is drawn from the room before it starts connecting to the other
+room), `P` can be used to change the connection path (straight line, or one of two
+"kinked" lines), `O` can be used to change the orientation (two-way or one-way), and
+`T' can be used to change the connection type: regular, ladder, or dotted line.
+
 Screenshots
 ===========
 

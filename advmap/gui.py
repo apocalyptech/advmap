@@ -2220,7 +2220,7 @@ class GUI(object):
                         if room.get_loopback(self.curhover[1]):
                             self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                         else:
-                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - R: change render type, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                            self.set_hover('(%d, %d) - Remove %s connection (middle-click: move connection) - T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                     else:
                         self.set_hover('(%d, %d) - New connection (right-click: loopback, middle-click: link to existing) to the %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
@@ -2268,11 +2268,11 @@ class GUI(object):
                     self.trigger_redraw()
 
             if (self.hover == self.HOVER_CONN):
-                if (key == 'r'):
-                    room = self.curhover[0]
-                    conn_dir = self.curhover[1]
-                    conn = room.get_conn(conn_dir)
-                    if conn:
+                room = self.curhover[0]
+                conn_dir = self.curhover[1]
+                conn = room.get_conn(conn_dir)
+                if conn:
+                    if (key == 'p'):
                         if conn.is_render_regular():
                             conn.set_render_midpoint_a()
                         elif conn.is_render_midpoint_a():
@@ -2281,15 +2281,29 @@ class GUI(object):
                             conn.set_render_regular()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
-                elif (key == 's'):
-                    room = self.curhover[0]
-                    conn_dir = self.curhover[1]
-                    conn = room.get_conn(conn_dir)
-                    if conn:
+                    elif (key == 's'):
                         cur_length = conn.stublength
                         conn.set_stublength(cur_length+1)
                         if conn.stublength == cur_length:
                             conn.set_stublength(1)
+                        self.trigger_redraw(False)
+                        self.reset_transient_operations()
+                    elif (key == 't'):
+                        if conn.is_regular():
+                            conn.set_ladder()
+                        elif conn.is_ladder():
+                            conn.set_dotted()
+                        else:
+                            conn.set_regular()
+                        self.trigger_redraw(False)
+                        self.reset_transient_operations()
+                    elif (key == 'o'):
+                        if conn.is_twoway():
+                            conn.set_oneway_a()
+                        elif conn.is_oneway_a():
+                            conn.set_oneway_b()
+                        else:
+                            conn.set_twoway()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
 
