@@ -203,6 +203,9 @@ class Room(object):
     TYPE_HI_CYAN = 8
     TYPE_DARK = 9
 
+    # Not actually a type...
+    TYPE_MAX = 10
+
     # English equivalents
     TYPE_TXT = {
             TYPE_NORMAL: 'Normal Room',
@@ -356,6 +359,12 @@ class Room(object):
             return self.group.has_room(room)
         else:
             return False
+
+    def increment_type(self):
+        """
+        Increments our type
+        """
+        self.type = (self.type + 1) % self.TYPE_MAX
 
     def save(self, df):
         """

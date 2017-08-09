@@ -46,15 +46,32 @@ You can also nudge a room in any direction by clicking more on the inside of the
 room itself.  Clicking on the main room itself will allow you to edit the room,
 add notes, and manually tweak any connections coming into/out of the room.
 
-The `D` key can be used to delete a room, and `H`/`V` can be used to toggle horizontal
-and vertical offset (useful in some circumstances to make maps look prettier).  The
-offsets are also available as checkboxes inside the room edit dialog.
+Controls while highlighting a room:
 
-When highlighting a connection, `S` can be used to change the "stub" length (how far
-out the initial line is drawn from the room before it starts connecting to the other
-room), `P` can be used to change the connection path (straight line, or one of two
-"kinked" lines), `O` can be used to change the orientation (two-way or one-way), and
-`T' can be used to change the connection type: regular, ladder, or dotted line.
+* `Left Mouse` - Edit room details (Room Name, type, up/down/in/out labels, notes, vert/horiz offsets, room grouping, connection details)
+* `D` - Delete the room
+* `H` - Toggle horizontal offset (useful in some circumstances to make maps look prettier)
+* `V` - Toggle vertical offset (useful in some circumstances to make maps look prettier)
+* `T` - Change room type
+
+Controls while highlighting the edge of a room:
+
+* `Left Mouse` - Nudge room in the specified direction
+
+Controls while highlighting an "empty" connection on the side of a room:
+
+* `Left Mouse` - Create new connected room (or connect to existing room if one is directly adjacent already)
+* `Right Mouse` - Create a loopback connection
+* `Middle Mouse` - Connect to existing room (use middle mouse again on another room's empty slot to connect)
+
+Controls while highlighting an existing connection:
+
+* `Left Mouse` - Remove connection
+* `Middle Mouse` - Move connection (use middle mouse again on another room's empty slot to move)
+* `T` - Change connection type (regular, ladder, dotted)
+* `O` - Change orientation (two-way, one-way in, one-way out)
+* `P` - Change path (straight line or kinked/bent line)
+* `S` - Change stub length (how far out the initial line is drawn before it gets connected to the other room)
 
 Screenshots
 ===========
