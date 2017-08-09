@@ -2346,15 +2346,25 @@ class GUI(object):
         for widget in self.nudge_buttons + self.resize_buttons + [self.nudge_lock]:
             widget.set_sensitive(button_status)
 
+        # I think that I'd originally done this to try and have the lock icon image
+        # get a dark background just like the Button does (or at least, whatever the
+        # appropriate color is).  It looks like we're specifying the color incorrectly
+        # though; the call to pixbuf.composite_color_simple raises:
+        #   TypeError: Gdk.Pixbuf.composite_color_simple() argument 6 must be an integer, not gtk.gdk.Color
+        # ... I *think* that this probably has something to do with colormaps; rather
+        # than specifying a color, I bet the integer is an index within the colormap
+        # rather than a color specification itself.  Anyway, just commenting it out.
+        # I expect I'll never bother fixing this.
+
         # Update our image if need be
-        if self.readonly_lock.get_active():
-            color = self.readonly_lock.get_style().bg[gtk.STATE_ACTIVE]
-            image = self.readonly_lock.child
-            pixbuf = image.get_pixbuf()
-            pixbuf = pixbuf.composite_color_simple(pixbuf.get_property('width'),
-                    pixbuf.get_property('height'), gtk.gdk.INTERP_NEAREST,
-                    255, 128, color, color)
-            image.set_from_pixbuf(pixbuf)
+        #if self.readonly_lock.get_active():
+        #    color = self.readonly_lock.get_style().bg[gtk.STATE_ACTIVE]
+        #    image = self.readonly_lock.child
+        #    pixbuf = image.get_pixbuf()
+        #    pixbuf = pixbuf.composite_color_simple(pixbuf.get_property('width'),
+        #            pixbuf.get_property('height'), gtk.gdk.INTERP_NEAREST,
+        #            255, 128, color, color)
+        #    image.set_from_pixbuf(pixbuf)
 
         # Trigger a redraw if our graphics have been initialized
         if self.initgfx:
