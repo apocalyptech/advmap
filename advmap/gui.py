@@ -2202,9 +2202,9 @@ class GUI(object):
                     self.hover_room()
                     self.mainarea.queue_draw()
                     if room.group is not None:
-                        self.set_hover('(%d, %d) - Edit Room - G: change group render style' % (room.x+1, room.y+1))
+                        self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, G: change group render style' % (room.x+1, room.y+1))
                     else:
-                        self.set_hover('(%d, %d) - Edit Room' % (room.x+1, room.y+1))
+                        self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset' % (room.x+1, room.y+1))
             elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
                 conn = (room, hoverpixel[1])
                 if (self.hover != self.HOVER_CONN or self.curhover[0] != conn[0] or self.curhover[1] != conn[1]):
@@ -2260,6 +2260,12 @@ class GUI(object):
                     if room.group is not None:
                         room.group.increment_style()
                         self.trigger_redraw(False)
+                elif (key == 'h'):
+                    self.curhover.offset_x = not self.curhover.offset_x
+                    self.trigger_redraw()
+                elif (key == 'v'):
+                    self.curhover.offset_y = not self.curhover.offset_y
+                    self.trigger_redraw()
 
             if (self.hover == self.HOVER_CONN):
                 if (key == 'r'):

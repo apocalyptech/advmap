@@ -46,6 +46,10 @@ You can also nudge a room in any direction by clicking more on the inside of the
 room itself.  Clicking on the main room itself will allow you to edit the room,
 add notes, and manually tweak any connections coming into/out of the room.
 
+The `D` key can be used to delete a room, and `H`/`V` can be used to toggle horizontal
+and vertical offset (useful in some circumstances to make maps look prettier).  The
+offsets are also available as checkboxes inside the room edit dialog.
+
 Screenshots
 ===========
 
