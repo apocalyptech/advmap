@@ -92,18 +92,17 @@ class Group(object):
     """
 
     # Style constants
-    STYLE_NORMAL = 0
-    STYLE_RED = 1
-    STYLE_GREEN = 2
-    STYLE_BLUE = 3
-    STYLE_YELLOW = 4
-    STYLE_PURPLE = 5
-    STYLE_CYAN = 6
-    STYLE_FAINT = 7
-    STYLE_DARK = 8
-
-    # Not really a style
     STYLE_MAX = 9
+    (STYLE_NORMAL,
+        STYLE_RED,
+        STYLE_GREEN,
+        STYLE_BLUE,
+        STYLE_YELLOW,
+        STYLE_PURPLE,
+        STYLE_CYAN,
+        STYLE_FAINT,
+        STYLE_DARK,
+        ) = range(STYLE_MAX)
 
     def __init__(self, room1, room2):
         self.rooms = []
@@ -192,19 +191,18 @@ class Room(object):
     """
 
     # Type constants
-    TYPE_NORMAL = 0
-    TYPE_HI_GREEN = 1
-    TYPE_LABEL = 2
-    TYPE_HI_BLUE = 3
-    TYPE_HI_RED = 4
-    TYPE_FAINT = 5
-    TYPE_HI_YELLOW = 6
-    TYPE_HI_PURPLE = 7
-    TYPE_HI_CYAN = 8
-    TYPE_DARK = 9
-
-    # Not actually a type...
     TYPE_MAX = 10
+    (TYPE_NORMAL,
+        TYPE_HI_GREEN,
+        TYPE_LABEL,
+        TYPE_HI_BLUE,
+        TYPE_HI_RED,
+        TYPE_FAINT,
+        TYPE_HI_YELLOW,
+        TYPE_HI_PURPLE,
+        TYPE_HI_CYAN,
+        TYPE_DARK,
+        ) = range(TYPE_MAX)
 
     # English equivalents
     TYPE_TXT = {
