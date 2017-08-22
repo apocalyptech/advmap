@@ -1,0 +1,1 @@
+coverage2 run --source=advmap ./runtests.py && coverage2 report -m

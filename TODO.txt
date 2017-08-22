@@ -18,6 +18,7 @@ GUI stuffs:
    it.
  * Have a separate set of "activated" icons for our toggleable buttons
  * Manage room grouping via hotkey in main window
+ * Undo/Redo would be real nice
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap

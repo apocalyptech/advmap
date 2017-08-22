@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 6
+SAVEFILE_VER = 7
 
 class Group(object):
     """
@@ -158,10 +158,10 @@ class Group(object):
         df.writeshort(len(self.get_rooms()))
         df.writeuchar(self.style)
         for room in self.get_rooms():
-            df.writeshort(room.id)
+            df.writeshort(room.idnum)
 
     @staticmethod
-    def load(df, map, version):
+    def load(df, mapobj, version):
         """
         Loads ourself, given a map object (to do room lookups) and a filehandle
         """
@@ -174,10 +174,10 @@ class Group(object):
             style = Group.STYLE_NORMAL
         rooms = []
         for i in range(num_rooms):
-            id = df.readshort()
-            room = map.get_room(id)
+            identifier = df.readshort()
+            room = mapobj.get_room(identifier)
             if (room is None):
-                raise LoadException('Room %d does not exist while loading group' % (id))
+                raise LoadException('Room %d does not exist while loading group' % (identifier))
             rooms.append(room)
         group = Group(rooms[0], rooms[1])
         group.style = style
@@ -218,8 +218,8 @@ class Room(object):
             TYPE_DARK: 'Dark'
         }
 
-    def __init__(self, id, x, y):
-        self.id = id
+    def __init__(self, idnum, x, y):
+        self.idnum = idnum
         self.x = x
         self.y = y
         self.name = ''
@@ -241,7 +241,7 @@ class Room(object):
         copy connections or groups; that has to be handled by
         the Map object
         """
-        newroom = Room(self.id, self.x, self.y)
+        newroom = Room(self.idnum, self.x, self.y)
         newroom.name = self.name
         newroom.notes = self.notes
         newroom.up = self.up
@@ -261,13 +261,12 @@ class Room(object):
         """
         return (self.name == '(unexplored)')
 
-    def set_loopback(self, dir):
+    def set_loopback(self, direction):
         """
         Sets a loopback at the given direction
         """
-        if dir in self.conns:
-            self.detach(dir)
-        self.loopbacks[dir] = True
+        if direction not in self.conns:
+            self.loopbacks[direction] = True
 
     def attach_conn(self, conn):
         """
@@ -277,74 +276,102 @@ class Room(object):
         to build up a totally new Connection object.
         """
         if conn.r1 == self:
-            if conn.dir1 in self.conns or conn.dir1 in self.loopbacks:
-                self.detach(conn.dir1)
-            self.conns[conn.dir1] = conn
+            if conn.dir1 not in self.conns and conn.dir1 not in self.loopbacks:
+                self.conns[conn.dir1] = conn
         elif conn.r2 == self:
-            if conn.dir2 in self.conns or conn.dir2 in self.loopbacks:
-                self.detach(conn.dir2)
-            self.conns[conn.dir2] = conn
+            if conn.dir2 not in self.conns and conn.dir2 not in self.loopbacks:
+                self.conns[conn.dir2] = conn
         else:
             raise Exception('Given connection does not involve this room')
 
-    def connect(self, dir, room, dir2=None):
+    def connect(self, direction, other_room, direction2=None):
         """
-        Connects ourself to another room.  Note
-        that we expect another Room object here, and
-        that any new connection will disconnect any
-        existing connection.  Will return the new Connection
-        object which was created
+        Connects ourself to another room.  Will default to the opposite
+        direction on the other room, if no other direction is specified.
+        Will return the new Connection object which was created, or
+        `None` if there was already a connection or loopback in the
+        way.
         """
-        if dir2 is None:
-            dir2 = DIR_OPP[dir]
-        if dir in self.conns or dir in self.loopbacks:
-            self.detach(dir)
-        if dir2 in room.conns:
-            room.detach(dir2)
-        conn = Connection(self, dir, room, dir2)
-        self.conns[dir] = conn
-        room.conns[dir2] = conn
+        if direction2 is None:
+            direction2 = DIR_OPP[direction]
+        if direction in self.conns or direction in self.loopbacks:
+            return None
+        if direction2 in other_room.conns or direction2 in other_room.loopbacks:
+            return None
+        conn = Connection(self, direction, other_room, direction2)
+        self.conns[direction] = conn
+        other_room.conns[direction2] = conn
         return conn
 
-    def detach(self, dir):
+    def detach(self, direction):
         """
         Detaches ourself from a direction.  Will
-        additionally detach the opposite end.
+        additionally detach the opposite end, if this is the
+        last End to be detached.  Returns `True` if the connection
+        should be completely torn down by whatever's calling the
+        method, or `False` if it should be kept alive.
         """
-        if dir not in self.conns and dir not in self.loopbacks:
+        # First do a couple sanity checks
+        if direction not in self.conns and direction not in self.loopbacks:
             raise Exception('No connections or loopbacks to detach')
-        if dir in self.conns:
-            conn = self.conns[dir]
-            (other, other_dir) = conn.get_opposite(self)
-            del self.conns[dir]
-            del other.conns[other_dir]
-        if dir in self.loopbacks:
-            del self.loopbacks[dir]
 
-    def detach_single(self, dir):
+        # Set a default return val
+        retval = False
+
+        # Process
+        if direction in self.conns:
+            # Now see if we have more than one connection on this end.
+            # If so, just trim the ends dict.
+            conn_var = self.conns[direction]
+            (primary_dir, ends_dict) = conn_var.get_primary_ends_dict(self)
+            if len(ends_dict) == 1:
+                conn = self.conns[direction]
+                (other, other_dirs) = conn.get_opposite(self)
+                del self.conns[direction]
+                for other_dir in other_dirs:
+                    del other.conns[other_dir]
+                retval = True
+            else:
+                del ends_dict[direction]
+                del self.conns[direction]
+                # Set a new primary, if we just deleted the primary
+                if direction == primary_dir:
+                    if self.idnum == conn_var.r1.idnum:
+                        conn_var.dir1 = next(iter(ends_dict.keys()))
+                    else:
+                        conn_var.dir2 = next(iter(ends_dict.keys()))
+
+        # Get rid of any loopbacks which we might have
+        if direction in self.loopbacks:
+            del self.loopbacks[direction]
+
+        # And return
+        return retval
+
+    def detach_single(self, direction):
         """
         Detaches ourselves from the given direction.  Will not
         touch the opposite end.
         """
-        if dir in self.conns:
-            del self.conns[dir]
-        if dir in self.loopbacks:
-            del self.loopbacks[dir]
+        if direction in self.conns:
+            del self.conns[direction]
+        if direction in self.loopbacks:
+            del self.loopbacks[direction]
 
-    def get_loopback(self, dir):
+    def get_loopback(self, direction):
         """
         Returns True if there's a loopback at the given direction,
         False otherwise.
         """
-        return (dir in self.loopbacks)
+        return (direction in self.loopbacks)
 
-    def get_conn(self, dir):
+    def get_conn(self, direction):
         """
         Returns the Connection object at our given direction, if
         we can.  Returns None otherwise.
         """
-        if dir in self.conns:
-            return self.conns[dir]
+        if direction in self.conns:
+            return self.conns[direction]
         else:
             return None
 
@@ -373,7 +400,7 @@ class Room(object):
             flagbits = flagbits | 0x2
         if (self.offset_y):
             flagbits = flagbits | 0x1
-        df.writeshort(self.id)
+        df.writeshort(self.idnum)
         df.writeuchar(self.x)
         df.writeuchar(self.y)
         df.writestr(self.name)
@@ -396,10 +423,10 @@ class Room(object):
         """
         Loads a room from the given filehandle
         """
-        id = df.readshort()
+        idnum = df.readshort()
         x = df.readuchar()
         y = df.readuchar()
-        room = Room(id, x, y)
+        room = Room(idnum, x, y)
         room.name = df.readstr()
         room.type = df.readuchar()
         room.up = df.readstr()
@@ -420,6 +447,93 @@ class Room(object):
                     room.loopbacks[direction] = True
         return room
 
+class ConnectionEnd(object):
+    """
+    An object describing one end of a connection.  This is, essentially, a
+    glorified dict which is meant to hold onto four bits of information:
+        1) The direction of the room that we're attached to
+        2) The type of connection (regular, ladder, dotted)
+        3) The "stub length" - how far out from the room before we start
+           drawing towards the full connection's midpoint
+        4) The method of rendering the path to the connection's midpoint
+           (straight line, or single right-angle bend, in one of two 
+           orientations)
+    """
+
+    CONN_REGULAR = 0
+    CONN_LADDER = 1
+    CONN_DOTTED = 2
+
+    RENDER_REGULAR = 0
+    RENDER_MIDPOINT_A = 1
+    RENDER_MIDPOINT_B = 2
+
+    STUB_REGULAR = 1
+    STUB_MAX = 3
+
+    def __init__(self, room, direction, conn_type=0, render_type=0, stub_length=1):
+        self.room = room
+        self.direction = direction
+        self.conn_type = conn_type
+        self.render_type = render_type
+        self.stub_length = stub_length
+        if self.stub_length < self.STUB_REGULAR:
+            self.stub_length = self.STUB_REGULAR
+        elif self.stub_length > self.STUB_MAX:
+            self.stub_length = self.STUB_MAX
+
+    def set_regular(self):
+        self.conn_type = self.CONN_REGULAR
+
+    def set_ladder(self):
+        self.conn_type = self.CONN_LADDER
+
+    def set_dotted(self):
+        self.conn_type = self.CONN_DOTTED
+
+    def is_regular(self):
+        return (self.conn_type == self.CONN_REGULAR)
+
+    def is_ladder(self):
+        return (self.conn_type == self.CONN_LADDER)
+
+    def is_dotted(self):
+        return (self.conn_type == self.CONN_DOTTED)
+
+    def set_render_regular(self):
+        self.render_type = self.RENDER_REGULAR
+
+    def set_render_midpoint_a(self):
+        self.render_type = self.RENDER_MIDPOINT_A
+
+    def set_render_midpoint_b(self):
+        self.render_type = self.RENDER_MIDPOINT_B
+
+    def is_render_regular(self):
+        return (self.render_type == self.RENDER_REGULAR)
+
+    def is_render_midpoint_a(self):
+        return (self.render_type == self.RENDER_MIDPOINT_A)
+
+    def is_render_midpoint_b(self):
+        return (self.render_type == self.RENDER_MIDPOINT_B)
+
+    def set_stub_length(self, stub_length=1):
+        if stub_length < self.STUB_REGULAR:
+            stub_length = self.STUB_REGULAR
+        elif stub_length > self.STUB_MAX:
+            stub_length = self.STUB_MAX
+        self.stub_length = stub_length
+
+    def save(self, df):
+        """
+        Saves ourself to a filehandle
+        """
+        df.writeuchar(self.direction)
+        df.writeuchar(self.conn_type)
+        df.writeuchar(self.render_type)
+        df.writeuchar(self.stub_length)
+
 class Connection(object):
     """
     A connection between two rooms.  Mostly just a data container,
@@ -429,45 +543,161 @@ class Connection(object):
     sense in there.
     """
 
-    CONN_REGULAR = 0
-    CONN_LADDER = 1
-    CONN_DOTTED = 2
-
     PASS_TWOWAY = 0
     PASS_ONEWAY_A = 1
     PASS_ONEWAY_B = 2
 
-    RENDER_REGULAR = 0
-    RENDER_MIDPOINT_A = 1
-    RENDER_MIDPOINT_B = 2
+    def __init__(self, r1, dir1, r2, dir2,
+            passage=0,
+            conn_type=ConnectionEnd.CONN_REGULAR,
+            render_type=ConnectionEnd.RENDER_REGULAR,
+            stub_length=ConnectionEnd.STUB_REGULAR):
+        """
+        Initialization of Connections.  New in savegame format v7 is supporting multiple
+        directions on both sides of the connection, and the ability to tweak the
+        connection parameters independently on each side.  `dir1` and `dir2` specify the
+        "primary" connection between the two rooms - this one will be used to compute
+        the midpoints of the connection (where all the various components will converge)
+        and will render a bit more efficiently if possible (ie: if both ends of the
+        connection are set to REGULAR_MIDPOINT and the same connection type, it'll render
+        the line in one go rather than dividing it into parts).
 
-    def __init__(self, r1, dir1, r2, dir2, type=0, passage=0, render=0, stublength=1):
+        All the actual details of how to render the connections have moved into the
+        ConnectionEnd object, which is stored in `ends1` and `ends2`.  This is a dict with
+        the direction as keys.
+
+        The one thing which isn't yet stored in ConnectionEnd is the oneway/twoway
+        information, which feels like it should still sit up at the higher level.
+        """
         self.r1 = r1
         self.dir1 = dir1
+        self.ends1 = {dir1: ConnectionEnd(r1, dir1,
+            conn_type=conn_type,
+            render_type=render_type,
+            stub_length=stub_length,
+            )}
         self.r2 = r2
         self.dir2 = dir2
-        self.type = type
+        self.ends2 = {dir2: ConnectionEnd(r2, dir2,
+            conn_type=conn_type,
+            render_type=render_type,
+            stub_length=stub_length,
+            )}
         self.passage = passage
-        self.render = render
-        self.stublength = stublength
+        self.symmetric = True
 
-    def set_regular(self):
-        self.type = self.CONN_REGULAR
+    def set_symmetric(self, symmetric=True):
+        """
+        Sets our `symmetric` boolean which specifies whether the ConnectionEnd
+        objects are allowed to drift from each other.  When specifying `False`,
+        the only internal change is to update our `symmetric` boolean.  When
+        specifying `True` (the default), all ConnectionEnd attributes will be
+        updated to match the attributes of the primary ConnectionEnd on r1's side.
+        """
+        if symmetric:
+            self.symmetric = True
+            main_ce = self.ends1[self.dir1]
+            for end in self.get_end_list(self.r1, self.dir1):
+                if end != main_ce:
+                    end.conn_type = main_ce.conn_type
+                    end.render_type = main_ce.render_type
+                    end.stub_length = main_ce.stub_length
+        else:
+            self.symmetric = False
 
-    def set_ladder(self):
-        self.type = self.CONN_LADDER
+    def get_primary_ends_dict(self, room):
+        """
+        Given a room, return a tuple containing:
+            1) The "primary" direction of that side of the room
+            2) the ends dict which matches the room
+        """
+        if room.idnum == self.r1.idnum:
+            return (self.dir1, self.ends1)
+        elif room.idnum == self.r2.idnum:
+            return (self.dir2, self.ends2)
+        else:
+            raise Exception('Room %d is not part of connection %s' % (room.idnum, self))
 
-    def set_dotted(self):
-        self.type = self.CONN_DOTTED
+    def get_all_ends(self):
+        """
+        Returns a list of all ConnectionEnds in this Connection
+        """
+        return list(self.ends1.values()) + list(self.ends2.values())
 
-    def is_regular(self):
-        return (self.type == self.CONN_REGULAR)
+    def get_end_list(self, room, direction):
+        """
+        Returns a list of ConnectionEnds to process, given both our internal
+        `symmetric` boolean, and the specified room and direction.  If `symmetric`
+        is `True`, this will be a list of all available ConnectionEnd objects inside
+        this Connection.  Otherwise, it will be a list containing only the single
+        End specified by the arguments.
+        """
+        if self.symmetric:
+            return self.get_all_ends()
+        else:
+            to_process = []
+            if room.idnum == self.r1.idnum and direction in self.ends1:
+                to_process = [self.ends1[direction]]
+            elif room.idnum == self.r2.idnum and direction in self.ends2:
+                to_process = [self.ends2[direction]]
+            return to_process
 
-    def is_ladder(self):
-        return (self.type == self.CONN_LADDER)
+    def connect_extra(self, room, direction):
+        """
+        Adds an extra connection end to ourselves, with the specified parameters.  This will
+        refuse to do anything if there's an existing connection or loopback in that direction
+        on the room.  Will inherit its ConnectionEnd parameters from the primary connection
+        endpoint of the room it's operating on.
 
-    def is_dotted(self):
-        return (self.type == self.CONN_DOTTED)
+        Returns the newly-created ConnectionEnd object, if one was created.  `None` otherwise.
+        """
+        if room == self.r1:
+            endsvar = self.ends1
+            attribute_end = self.ends1[self.dir1]
+        elif room == self.r2:
+            endsvar = self.ends2
+            attribute_end = self.ends2[self.dir2]
+        else:
+            raise Exception('Specified room %s is not part of Connection %s' % (room.idnum, self))
+        
+        if (direction not in room.loopbacks and direction not in room.conns and
+                direction not in endsvar):
+            room.conns[direction] = self
+            endsvar[direction] = ConnectionEnd(room, direction,
+                conn_type=attribute_end.conn_type,
+                render_type=attribute_end.render_type,
+                stub_length=attribute_end.stub_length)
+            return endsvar[direction]
+        
+        return None
+
+    def set_regular(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_regular()
+
+    def set_ladder(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_ladder()
+
+    def set_dotted(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_dotted()
+
+    def set_render_regular(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_render_regular()
+
+    def set_render_midpoint_a(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_render_midpoint_a()
+
+    def set_render_midpoint_b(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.set_render_midpoint_b()
+
+    def set_stub_length(self, room, direction, stub_length=ConnectionEnd.STUB_REGULAR):
+        for end in self.get_end_list(room, direction):
+            end.set_stub_length(stub_length)
 
     def set_twoway(self):
         self.passage = self.PASS_TWOWAY
@@ -490,31 +720,6 @@ class Connection(object):
     def is_oneway(self):
         return (self.is_oneway_a() or self.is_oneway_b())
 
-    def set_render_regular(self):
-        self.render = self.RENDER_REGULAR
-
-    def set_render_midpoint_a(self):
-        self.render = self.RENDER_MIDPOINT_A
-
-    def set_render_midpoint_b(self):
-        self.render = self.RENDER_MIDPOINT_B
-
-    def is_render_regular(self):
-        return (self.render == self.RENDER_REGULAR)
-
-    def is_render_midpoint_a(self):
-        return (self.render == self.RENDER_MIDPOINT_A)
-
-    def is_render_midpoint_b(self):
-        return (self.render == self.RENDER_MIDPOINT_B)
-
-    def set_stublength(self, stublength=1):
-        if stublength < 1:
-            stublength = 1
-        elif stublength > 3:
-            stublength = 3
-        self.stublength = stublength
-
     def __repr__(self):
         if (self.is_oneway_a()):
             conntext = '<-'
@@ -522,31 +727,55 @@ class Connection(object):
             conntext = '->'
         else:
             conntext = '<->'
-        return '<Connection - %s (%s) %s %s (%s)>' % (self.r1.name, DIR_2_TXT[self.dir1], conntext, self.r2.name, DIR_2_TXT[self.dir2])
+        return '<Connection - %s (%s) %s %s (%s)>' % (
+                self.r1.name,
+                ', '.join([DIR_2_TXT[d] for d in self.ends1.keys()]),
+                conntext,
+                self.r2.name,
+                ', '.join([DIR_2_TXT[d] for d in self.ends2.keys()]),
+                )
 
     def get_opposite(self, room):
         """
-        Given a room, return a tuple of (room, dir) corresponding
-        to the "other" end of the room.
+        Given a room, return a tuple of (room, dirs) corresponding
+        to the "other" end of the room.  `dirs` is a list
         """
-        # TODO: Again note that this doesn't support self-looping conns
-        if (room.id == self.r1.id):
-            return (self.r2, self.dir2)
+        if (room.idnum == self.r1.idnum):
+            return (self.r2, list(self.ends2.keys()))
+        elif (room.idnum == self.r2.idnum):
+            return (self.r1, list(self.ends1.keys()))
         else:
-            return (self.r1, self.dir1)
+            raise Exception('Room %d not valid for this connection' % (room.idnum))
 
     def save(self, df):
         """
         Saves ourself to a filehandle
         """
-        df.writeshort(self.r1.id)
+
+        flagbits = 0
+        if (self.symmetric):
+            flagbits = flagbits | 0x1
+
+        df.writeshort(self.r1.idnum)
         df.writeuchar(self.dir1)
-        df.writeshort(self.r2.id)
+        df.writeshort(self.r2.idnum)
         df.writeuchar(self.dir2)
-        df.writeuchar(self.type)
         df.writeuchar(self.passage)
-        df.writeuchar(self.render)
-        df.writeuchar(self.stublength)
+        df.writeuchar(flagbits)
+
+        # We're going to go ahead and sort the ends that we write
+        # out, so that there's no chance of functionally-identical
+        # maps containing different data.  Would like to be able to
+        # diff map files without having to take internal ordering
+        # into account.
+
+        df.writeuchar(len(self.ends1))
+        for direction in sorted(self.ends1.keys()):
+            self.ends1[direction].save(df)
+
+        df.writeuchar(len(self.ends2))
+        for direction in sorted(self.ends2.keys()):
+            self.ends2[direction].save(df)
 
 class Map(object):
     """
@@ -593,24 +822,34 @@ class Map(object):
             newroom = room.duplicate()
             newmap.inject_room_obj(newroom)
         for conn in self.conns:
-            newconn = newmap.connect_id(conn.r1.id, conn.dir1, conn.r2.id, conn.dir2)
-            newconn.type = conn.type
+            newconn = newmap.connect_id(conn.r1.idnum, conn.dir1, conn.r2.idnum, conn.dir2)
             newconn.passage = conn.passage
-            newconn.render = conn.render
-            newconn.stublength = conn.stublength
+            newconn.symmetric = conn.symmetric
+            for (new_room, primary_dir, orig_ends, new_ends) in [(newconn.r1, newconn.dir1, conn.ends1, newconn.ends1),
+                    (newconn.r2, newconn.dir2, conn.ends2, newconn.ends2)]:
+                for orig_end in orig_ends.values():
+                    ce = newconn.connect_extra(new_room, orig_end.direction)
+                    if ce is None:
+                        if orig_end.direction == primary_dir:
+                            ce = new_ends[orig_end.direction]
+                        else:
+                            raise Exception('Unable to get ConnectionEnd for duplicated Map')
+                    ce.conn_type = orig_end.conn_type
+                    ce.render_type = orig_end.render_type
+                    ce.stub_length = orig_end.stub_length
         for group in self.groups:
-            r1 = newmap.get_room(group.rooms[0].id)
-            r2 = newmap.get_room(group.rooms[1].id)
-            newmap.add_room_to_group(r1, r2)
+            r1 = newmap.get_room(group.rooms[0].idnum)
+            r2 = newmap.get_room(group.rooms[1].idnum)
+            newmap.group_rooms(r1, r2)
             for room in group.rooms[2:]:
-                newmap.add_room_to_group(newmap.get_room(room.id), r1)
+                newmap.group_rooms(newmap.get_room(room.idnum), r1)
         return newmap
 
     def roomlist(self):
         """
         Returns a list of our rooms
         """
-        return self.rooms.values()
+        return list(self.rooms.values())
 
     def grab_id(self):
         """
@@ -633,9 +872,9 @@ class Map(object):
         """
         if self.roomxy[room.y][room.x]:
             raise Exception('Attempt to overwrite existing room at (%d, %d)' % (room.x+1, room.y+1))
-        if (room.id in self.rooms):
-            raise Exception('Room ID %d already exists' % (room.id))
-        self.rooms[room.id] = room
+        if (room.idnum in self.rooms):
+            raise Exception('Room ID %d already exists' % (room.idnum))
+        self.rooms[room.idnum] = room
         self.roomxy[room.y][room.x] = room
 
     def add_room_at(self, x, y, name):
@@ -644,24 +883,25 @@ class Map(object):
         Make sure to keep this in sync with inject_room_obj
         """
         # TODO: this limit is actually because of the way the GUI handles the mousemaps
-        if (len(self.rooms) == 256):
+        if (len(self.rooms) >= 256):
             raise Exception('Can only have 256 rooms on a map currently; sorry...')
         if self.roomxy[y][x]:
             raise Exception('A room already exists at (%d, %d)' % (x+1, y+1))
-        id = self.grab_id()
-        if id in self.rooms:
-            raise Exception('A room already exists with ID %d' % (id))
-        self.rooms[id] = Room(id, x, y)
-        self.rooms[id].name = name
-        self.roomxy[y][x] = self.rooms[id]
-        return self.rooms[id]
+        idnum = self.grab_id()
+        if idnum in self.rooms: # pragma: nocover
+            # There's really no conceivable way we could ever get here
+            raise Exception('A room already exists with ID %d' % (idnum))
+        self.rooms[idnum] = Room(idnum, x, y)
+        self.rooms[idnum].name = name
+        self.roomxy[y][x] = self.rooms[idnum]
+        return self.rooms[idnum]
 
-    def get_room(self, id):
+    def get_room(self, idnum):
         """
         Gets the specified room
         """
-        if (id in self.rooms):
-            return self.rooms[id]
+        if (idnum in self.rooms):
+            return self.rooms[idnum]
         else:
             return None
 
@@ -676,7 +916,7 @@ class Map(object):
         Connects two rooms, given the room objects and
         the direction.  If a second direction is not provided,
         the connection will be symmetrical.  Returns the new
-        connection.
+        connection, or None if something got in the way
         """
         # TODO: Note that technically we're limited to 65535
         # conns because we store the number of conns as a
@@ -687,10 +927,10 @@ class Map(object):
         # against the limit, so we should check for it if so.
         if dir2 is None:
             dir2 = DIR_OPP[dir1]
-        if dir1 in room1.conns:
-            self.detach(room1, dir1)
-        if dir2 in room2.conns:
-            self.detach(room2, dir2)
+        if dir1 in room1.conns or dir1 in room1.loopbacks:
+            return None
+        if dir2 in room2.conns or dir2 in room2.loopbacks:
+            return None
         self.conns.append(room1.connect(dir1, room2, dir2))
         return self.conns[-1]
 
@@ -704,35 +944,24 @@ class Map(object):
             raise Exception('Must specify two valid rooms')
         return self.connect(room1, dir1, room2, dir2)
 
-    def _detach_conn(self, conn):
-        """
-        Processes the detach of the given Connection object
-        """
-        # TODO: if we ever support conns which loop back
-        # to the same room, we'll have to watch for that.
-        self.conns.remove(conn)
-        conn.r1.detach(conn.dir1)
-
-    def detach(self, room, dir):
+    def detach(self, room, direction):
         """
         Detaches two rooms
         """
-        # TODO: interaction with _detach_conn is bizarre now that
-        # we're doing this loopback thing.
-        conn = room.get_conn(dir)
-        if conn:
-            self._detach_conn(conn)
-        if room.get_loopback(dir):
-            room.detach(dir)
+        conn = room.get_conn(direction)
+        if conn or room.get_loopback(direction):
+            delete_conn = room.detach(direction)
+            if delete_conn and conn:
+                self.conns.remove(conn)
 
-    def detach_id(self, id, dir):
+    def detach_id(self, idnum, direction):
         """
         Detaches two rooms, based on the ID
         """
-        room = self.get_room(id)
+        room = self.get_room(idnum)
         if (not room):
             raise Exception('Must specify a valid room')
-        return self.detach(room, dir)
+        return self.detach(room, direction)
 
     def del_room(self, room):
         """
@@ -740,19 +969,19 @@ class Map(object):
         that room, and also removes the room from its group,
         if necessary.
         """
-        id = room.id
+        idnum = room.idnum
         x = room.x
         y = room.y
         if room.group:
             self.remove_room_from_group(room)
-        for (dir, conn) in room.conns.items():
-            self._detach_conn(conn)
-        del self.rooms[id]
+        for direction in list(room.conns.keys()):
+            self.detach(room, direction)
+        del self.rooms[idnum]
         self.roomxy[y][x] = None
 
-    def dir_coord(self, room, dir, allow_invalid=False):
+    def dir_coord(self, room, direction, allow_invalid=False):
         """
-        Returns (x, y) coordinates of the space to the "dir" of the
+        Returns (x, y) coordinates of the space to the `direction` of the
         given room.
 
         If allow_invalid is true, this will return coordinates even outside
@@ -762,30 +991,30 @@ class Map(object):
         """
         x = room.x
         y = room.y
-        if (dir in [DIR_NW, DIR_W, DIR_SW]):
+        if (direction in [DIR_NW, DIR_W, DIR_SW]):
             if (x == 0 and not allow_invalid):
                 return None
             x -= 1
-        if (dir in [DIR_NE, DIR_E, DIR_SE]):
+        if (direction in [DIR_NE, DIR_E, DIR_SE]):
             if (x == self.w-1 and not allow_invalid):
                 return None
             x += 1
-        if (dir in [DIR_NW, DIR_N, DIR_NE]):
+        if (direction in [DIR_NW, DIR_N, DIR_NE]):
             if (y == 0 and not allow_invalid):
                 return None
             y -= 1
-        if (dir in [DIR_SW, DIR_S, DIR_SE]):
+        if (direction in [DIR_SW, DIR_S, DIR_SE]):
             if (y == self.h-1 and not allow_invalid):
                 return None
             y += 1
         return (x, y)
 
-    def move_room(self, room, dir):
+    def move_room(self, room, direction):
         """
         Attempts to move a room one space in the specified direction.
         Will return True/False depending on success.
         """
-        new_coords = self.dir_coord(room, dir)
+        new_coords = self.dir_coord(room, direction)
         if not new_coords:
             return False
         new_room = self.get_room_at(*new_coords)
@@ -797,31 +1026,31 @@ class Map(object):
         self.roomxy[room.y][room.x] = room
         return True
 
-    def nudge(self, dir):
+    def nudge(self, direction):
         """
         Attempts to "nudge" a map in the given direction.  Will return
         True/False depending on success
         """
         for room in self.roomlist():
-            if room and not self.dir_coord(room, dir):
+            if not self.dir_coord(room, direction):
                 return False
-        if (dir in [DIR_W, DIR_NW, DIR_N, DIR_NE]):
+        if (direction in [DIR_W, DIR_NW, DIR_N, DIR_NE]):
             for y in range(len(self.roomxy)):
                 for x in range(len(self.roomxy[y])):
                     if self.roomxy[y][x]:
-                        self.move_room(self.roomxy[y][x], dir)
+                        self.move_room(self.roomxy[y][x], direction)
         else:
             for y in range(len(self.roomxy)-1, -1, -1):
                 for x in range(len(self.roomxy[y])-1, -1, -1):
                     if self.roomxy[y][x]:
-                        self.move_room(self.roomxy[y][x], dir)
+                        self.move_room(self.roomxy[y][x], direction)
         return True
 
-    def resize(self, dir):
+    def resize(self, direction):
         """
         Resizes the map, if possible
         """
-        if (dir == DIR_E):
+        if (direction == DIR_E):
             # Limitations in W/H are due to storing these
             # as chars in the savefile.  And also because
             # seriously, what are you doing with a map that big?
@@ -831,7 +1060,7 @@ class Map(object):
             for row in self.roomxy:
                 row.append(None)
             return True
-        elif (dir == DIR_S):
+        elif (direction == DIR_S):
             if (self.h == 255):
                 return False
             self.h += 1
@@ -839,7 +1068,7 @@ class Map(object):
             for x in range(self.w):
                 self.roomxy[-1].append(None)
             return True
-        elif (dir == DIR_W):
+        elif (direction == DIR_W):
             if (self.w == 1):
                 return False
             for row in self.roomxy:
@@ -849,7 +1078,7 @@ class Map(object):
             for row in self.roomxy:
                 row.pop()
             return True
-        elif (dir == DIR_N):
+        elif (direction == DIR_N):
             if (self.h == 1):
                 return False
             for room in self.roomxy[-1]:
@@ -872,27 +1101,29 @@ class Map(object):
                 group.del_room(other_room)
             self.groups.remove(group)
 
-    def add_room_to_group(self, room_subj, room_to):
+    def group_rooms(self, room1, room2):
         """
-        Adds the specified room (room_subj) to a group containing the
-        specified other room (room_to).  If room_to does not currently
-        belong to a group, a new group is created.  If room_subj is
-        already part of a group, it will leave that group first (which
-        may result in that group being removed).
+        Puts `room1` and `room2` into a group together, if possible.
+        If neither are in a group currently, a new one is created.
+        If one of the two is in a group but the other isn't, the
+        non-grouped room will be added to the group.  If both are
+        already in a group, nothing will be changed.
 
-        Returns True if we changed anything, or False if room_subj and
-        room_to already belonged to the same group
+        Returns True if we changed anything, or False otherwise.
+        (This is primarily for the benefit of the GUI, to know if
+        anything needs to be redrawn)
         """
-        if (not room_subj.in_group_with(room_to)):
-            if (room_subj.group):
-                self.remove_room_from_group(room_subj)
-            if (room_to.group):
-                room_to.group.add_room(room_subj)
-            else:
-                self.groups.append(Group(room_subj, room_to))
+        if room1.group and room2.group:
+            return False
+        elif not room1.group and not room2.group:
+            self.groups.append(Group(room1, room2))
             return True
         else:
-            return False
+            if room1.group:
+                room1.group.add_room(room2)
+            else:
+                room2.group.add_room(room1)
+            return True
 
     def save(self, df):
         """
@@ -905,8 +1136,7 @@ class Map(object):
         df.writeshort(len(self.conns))
         df.writeshort(len(self.groups))
         for room in self.roomlist():
-            if room:
-                room.save(df)
+            room.save(df)
         for conn in self.conns:
             conn.save(df)
         for group in self.groups:
@@ -917,33 +1147,65 @@ class Map(object):
         """
         Loads a map from the given filehandle
         """
-        map = Map(df.readstr())
-        map.set_map_size(df.readuchar(), df.readuchar())
+        advmap = Map(df.readstr())
+        advmap.set_map_size(df.readuchar(), df.readuchar())
         num_rooms = df.readshort()
         num_conns = df.readshort()
         num_groups = df.readshort()
 
         # Load rooms
         for i in range(num_rooms):
-            map.inject_room_obj(Room.load(df, version))
+            advmap.inject_room_obj(Room.load(df, version))
 
         # Now load connections
         for i in range(num_conns):
-            conn = map.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
-            conn.type = df.readuchar()
-            if version >= 2:
+            conn = advmap.connect_id(df.readshort(), df.readuchar(), df.readshort(), df.readuchar())
+            if version >= 7:
                 conn.passage = df.readuchar()
-            if version >= 4:
-                conn.render = df.readuchar()
-            if version >= 5:
-                conn.set_stublength(df.readuchar())
+                flagbits = df.readuchar()
+                if ((flagbits & 0x01) == 0x01):
+                    conn.symmetric = True
+                else:
+                    conn.symmetric = False
+                for (room, primary_dir, ends) in [(conn.r1, conn.dir1, conn.ends1),
+                        (conn.r2, conn.dir2, conn.ends2)]:
+                    num_ends = df.readuchar()
+                    for j in range(num_ends):
+                        direction = df.readuchar()
+                        conn_type = df.readuchar()
+                        render_type = df.readuchar()
+                        stub_length = df.readuchar()
+                        ce = conn.connect_extra(room, direction)
+                        if ce is None:
+                            if direction == primary_dir:
+                                ce = ends[direction]
+                            else:
+                                raise LoadException('Found an existing ConnectionEnd where we shouldn\'t')
+                        ce.conn_type = conn_type
+                        ce.render_type = render_type
+                        ce.stub_length = stub_length
+            else:
+                ends = conn.get_all_ends()
+                conn_type = df.readuchar()
+                for end in ends:
+                    end.conn_type = conn_type
+                if version >= 2:
+                    conn.passage = df.readuchar()
+                if version >= 4:
+                    render_type = df.readuchar()
+                    for end in ends:
+                        end.render_type = render_type
+                if version >= 5:
+                    stub_length = df.readuchar()
+                    for end in ends:
+                        end.stub_length = stub_length
 
         # Now load groups
         for i in range(num_groups):
-            map.groups.append(Group.load(df, map, version))
+            advmap.groups.append(Group.load(df, advmap, version))
 
         # ... and return our object.
-        return map
+        return advmap
 
 class Game(object):
     """
@@ -955,13 +1217,22 @@ class Game(object):
         self.name = name
         self.maps = []
 
-    def add_map_obj(self, map):
-        self.maps.append(map)
+    def add_map_obj(self, mapobj):
+        """
+        Adds the specified Map object to our array, and return the index
+        of the map.
+        """
+        self.maps.append(mapobj)
         return len(self.maps)-1
 
     def add_map(self, name):
-        map = Map(name)
-        return (self.add_map_obj(map), map)
+        """
+        Adds a new map with the given name.  Returns a tuple containing:
+           1) The Index of the map
+           2) The map object itself
+        """
+        mapobj = Map(name)
+        return (self.add_map_obj(mapobj), mapobj)
 
     def replace_maps(self, maps):
         """
@@ -970,27 +1241,33 @@ class Game(object):
         """
         self.maps = maps
 
-    def save(self, filename):
+    def _save(self, df):
         """
-        Saves the game maps to a file
+        Save ourselves to a Savefile object
         """
-        df = Savefile(filename)
-        df.open_w()
         df.write('ADVMAP')
         df.writeshort(SAVEFILE_VER)
         df.writestr(self.name)
         df.writeshort(len(self.maps))
-        for map in self.maps:
-            map.save(df)
+        for mapobj in self.maps:
+            mapobj.save(df)
+
+    def save(self, filename):
+        """
+        Saves the game maps to a filename.  This is the main
+        routine that the GUI will end up calling - the heavy lifting
+        is actually done in the internal `_save` routine.
+        """
+        df = Savefile(filename)
+        df.open_w()
+        self._save(df)
         df.close()
 
     @staticmethod
-    def load(filename):
+    def _load(df):
         """
-        Loads a game from a savefile
+        Loads ourselves from a Savefile object.  Returns the Game object.
         """
-        df = Savefile(filename)
-        df.open_r()
         openstr = df.read(6)
         if (openstr != 'ADVMAP'):
             raise LoadException('Invalid Map File specified')
@@ -1002,5 +1279,15 @@ class Game(object):
         num_maps = df.readshort()
         for i in range(num_maps):
             game.add_map_obj(Map.load(df, version))
+        return game
+
+    @staticmethod
+    def load(filename):
+        """
+        Loads a game from a filename.  Returns the Game object
+        """
+        df = Savefile(filename)
+        df.open_r()
+        game = Game._load(df)
         df.close()
         return game

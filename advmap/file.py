@@ -18,6 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import io
 import os
 from struct import pack, unpack
 
@@ -35,12 +36,24 @@ class LoadException(Exception):
 class Savefile(object):
     """ Class that wraps around a file object, to simplify things """
 
-    def __init__(self, filename):
-        """ Empty object. """
+    def __init__(self, filename, in_memory=False):
+        """
+        Empty object.  Pass in `in_memory` = `True` to create an in-memory
+        BytesIO object rather than actually using `filename`.  `filename`
+        will be completely ignored in that case, and no changes will be
+        written to disk, though calling `close`, `open_r` or `open_w` may
+        end up overwriting that state.  `in_memory` is basically just designed
+        to be used with our unit tests.
+        """
         self.filename = filename
-        self.df = None
-        self.opened_r = False
-        self.opened_w = False
+        if in_memory:
+            self.df = io.BytesIO()
+            self.opened_r = True
+            self.opened_w = True
+        else:
+            self.df = None
+            self.opened_r = False
+            self.opened_w = False
 
     def exists(self):
         """ Returns true if the file currently exists. """
