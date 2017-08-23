@@ -275,6 +275,7 @@ class GUI(object):
         self.link_conn_dir = None
         self.add_extra_room = None
         self.add_extra_dir = None
+        self.grouping_room = None
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
         self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
@@ -2094,11 +2095,17 @@ class GUI(object):
 
         self.reset_transient_operations(saved_move_vars, saved_link_conn_vars)
 
-    def reset_transient_operations(self, saved_move_vars=False, saved_link_conn_vars=False, saved_add_extra_vars=False):
+    def reset_transient_operations(self,
+            saved_move_vars=False,
+            saved_link_conn_vars=False,
+            saved_add_extra_vars=False,
+            saved_grouping_vars=False,
+            ):
         """
-        We have three "transient" operations: moving existing connections, linking
-        two previously-unlinked directions between rooms, and adding an extra end
-        to a connection.  This will reset all the necessary vars.
+        We have four "transient" operations: moving existing connections, linking
+        two previously-unlinked directions between rooms, adding an extra end
+        to a connection, and grouping two rooms.  This will reset all the
+        necessary vars.
         """
 
         if not saved_move_vars:
@@ -2110,7 +2117,10 @@ class GUI(object):
         if not saved_add_extra_vars:
             self.add_extra_room = None
             self.add_extra_dir = None
-        if not saved_move_vars and not saved_link_conn_vars and not saved_add_extra_vars:
+        if not saved_grouping_vars:
+            self.grouping_room = None
+        if (not saved_move_vars and not saved_link_conn_vars and
+                not saved_add_extra_vars and not saved_grouping_vars):
             self.set_secondary_status('')
 
     def on_edit_room_notebook_page(self, widget, page, page_num):
@@ -2269,6 +2279,9 @@ class GUI(object):
                         actions.append(('T', 'change type'))
                         if self.hover_roomobj.group:
                             actions.append(('G', 'change group render'))
+                            actions.append(('O', 'remove from group'))
+                        else:
+                            actions.append(('G', 'add to group'))
 
                 elif self.hover == self.HOVER_CONN:
                     if not readonly:
@@ -2406,6 +2419,7 @@ class GUI(object):
         # or doing a freeform link between rooms).  In practice this means that
         # a transient operation is never going to "span" any number of clicks.
         saved_add_extra_vars = False
+        saved_grouping_vars = False
 
         if (event.keyval < 256 and (event.state & self.keymask) == 0):
             key = chr(event.keyval).lower()
@@ -2419,9 +2433,21 @@ class GUI(object):
                     self.trigger_redraw()
                 elif (key == 'g'):
                     room = self.curhover
-                    if room.group is not None:
+                    if self.grouping_room is not None:
+                        if self.mapobj.group_rooms(room, self.grouping_room):
+                            self.trigger_redraw(False)
+                            self.update_hover_text()
+                    elif room.group is None:
+                        self.grouping_room = room
+                        saved_grouping_vars = True
+                        self.set_secondary_status('G again to add to a group')
+                    else:
                         room.group.increment_style()
                         self.trigger_redraw(False)
+                elif (key == 'o'):
+                    if self.mapobj.remove_room_from_group(self.curhover):
+                        self.trigger_redraw(False)
+                        self.update_hover_text()
                 elif (key == 'h'):
                     self.curhover.offset_x = not self.curhover.offset_x
                     self.trigger_redraw()
@@ -2501,7 +2527,8 @@ class GUI(object):
                             pass
                         self.trigger_redraw(True)
 
-        self.reset_transient_operations(saved_add_extra_vars=saved_add_extra_vars)
+        self.reset_transient_operations(saved_add_extra_vars=saved_add_extra_vars,
+                saved_grouping_vars=saved_grouping_vars)
 
     def nudge_lock_toggled(self, widget):
         """

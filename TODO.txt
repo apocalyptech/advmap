@@ -1,7 +1,6 @@
 RFEs:
  * write whole group out to PNG
  * Should we still be able to edit Notes in readonly mode?
- * shift-click from main screen to group
 
 GUI stuffs:
  * Can trigger some unpack warnings by hovering around the lower-right-hand
@@ -17,7 +16,6 @@ GUI stuffs:
    strange; should figure out how to make that look better, or just disallow
    it.
  * Have a separate set of "activated" icons for our toggleable buttons
- * Manage room grouping via hotkey in main window
  * Undo/Redo would be real nice
 
 Internal stuffs:
@@ -28,5 +26,9 @@ Internal stuffs:
 Possibly, sometime:
  * redo internal storage mechanisms/mousemaps to allow > 256 rooms
  * multiple links from the same direction
+   -> Have that partially, now - can have multiple ends on the same room,
+      at least.
  * option double-sized rooms
 
+Would be nice, but probably never gonna happen:
+ * Port to PyQt

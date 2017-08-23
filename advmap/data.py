@@ -1276,14 +1276,19 @@ class Map(object):
 
     def remove_room_from_group(self, room):
         """
-        Removes the given room from its group
+        Removes the given room from its group.  Returns True
+        if something was changed, False otherwise.
         """
         group = room.group
-        to_delete = group.del_room(room)
-        if (to_delete):
-            for other_room in group.get_rooms():
-                group.del_room(other_room)
-            self.groups.remove(group)
+        if group:
+            to_delete = group.del_room(room)
+            if (to_delete):
+                for other_room in group.get_rooms():
+                    group.del_room(other_room)
+                self.groups.remove(group)
+            return True
+        else:
+            return False
 
     def group_rooms(self, room1, room2):
         """
