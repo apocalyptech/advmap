@@ -2263,7 +2263,8 @@ class GUI(object):
                         actions.append(('LMB', 'view details'))
                     else:
                         actions.append(('LMB', 'edit room'))
-                        actions.append(('D', 'delete'))
+                        actions.append(('WASD', 'nudge room'))
+                        actions.append(('X', 'delete'))
                         actions.append(('H/V', 'toggle horiz/vert offset'))
                         actions.append(('T', 'change type'))
                         if self.hover_roomobj.group:
@@ -2275,7 +2276,7 @@ class GUI(object):
                             actions.append(('X', 'remove loopback'))
                         else:
                             actions.append(('RMB', 'move connection'))
-                            actions.append(('X', 'remove connection'))
+                            actions.append(('C', 'remove connection'))
                             actions.append(('E', 'add extra'))
                             actions.append(('T', 'type'))
                             actions.append(('P', 'path'))
@@ -2410,7 +2411,7 @@ class GUI(object):
             key = chr(event.keyval).lower()
 
             if self.hover == self.HOVER_ROOM:
-                if (key == 'd'):
+                if (key == 'x'):
                     if (len(self.mapobj.rooms) < 2):
                         self.errordialog('You cannot remove the last room from a map', self.window)
                         return
@@ -2430,6 +2431,18 @@ class GUI(object):
                 elif (key == 't'):
                     self.curhover.increment_type()
                     self.trigger_redraw(False)
+                elif (key == 'w'):
+                    self.mapobj.move_room(self.curhover, DIR_N)
+                    self.trigger_redraw(True)
+                elif (key == 'a'):
+                    self.mapobj.move_room(self.curhover, DIR_W)
+                    self.trigger_redraw(True)
+                elif (key == 's'):
+                    self.mapobj.move_room(self.curhover, DIR_S)
+                    self.trigger_redraw(True)
+                elif (key == 'd'):
+                    self.mapobj.move_room(self.curhover, DIR_E)
+                    self.trigger_redraw(True)
 
             elif self.hover == self.HOVER_CONN:
                 room = self.curhover[0]
@@ -2437,7 +2450,7 @@ class GUI(object):
                 conn = room.get_conn(conn_dir)
                 if conn:
                     end = conn.get_end(room, conn_dir)
-                    if (key == 'x'):
+                    if (key == 'c'):
                         self.mapobj.detach(room, conn_dir)
                         self.trigger_redraw(True)
                     elif (key == 'p'):
