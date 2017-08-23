@@ -940,11 +940,15 @@ class GUI(object):
         coords_base = self.apply_xy_offset(*self.room_xy_coord(room.x, room.y), room=room)
         return (coords_base[0] + self.CONN_OFF[direction][0], coords_base[1] + self.CONN_OFF[direction][1])
 
-    def are_rooms_adjacent(self, conn):
+    def is_primary_adjacent(self, conn):
         """
-        Returns True if the two rooms are exactly adjacent to each
-        other (and implied that the connection "lines up" evenly as well).
-        False if not.
+        Returns True if the primary connection between two rooms are
+        "exactly" adjacent to each other (and implied that the
+        connection "lines up" evenly as well).  False if not.  This
+        will only act on the primary set of ConnectionEnds (in fact,
+        it doens't need to consider Ends since the primary dirs are
+        outside of that), and will only return True if the directions
+        are opposite from each other.
 
         This becomes problematic when factoring in the "offset" values
         for rooms - maps like my AMFV attempt end up with very wrong-looking
@@ -960,7 +964,6 @@ class GUI(object):
 
         # First off, if we're not connecting on opposite directions, we're
         # not considered adjacent
-        # TODO: it's possible this'll need some tweaking with our ConnectionEnd stuff...
         if conn.dir1 != DIR_OPP[conn.dir2]:
             return False
 
@@ -1038,7 +1041,6 @@ class GUI(object):
                 for coord in self.arrow_coords(x1, y1, orig_x2, orig_y2):
                     self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
 
-
             self.draw_conn_segment(ctx, x1, y1, x2, y2, end)
             return (x2, y2)
         else:
@@ -1099,57 +1101,68 @@ class GUI(object):
             if (conn):
                 if conn not in drawn_conns:
 
-                    # TODO: For now, we're basically ignoring that extra ends can exist, and
-                    # we're only processing when we get to the primary conn
-                    if ((room == conn.r1 and direction == conn.dir1) or
-                            (room == conn.r2 and direction == conn.dir2)):
+                    drawn_conns.add(conn)
+                    (room2, dirs2) = conn.get_opposite(room)
 
-                        drawn_conns.append(conn)
-                        (room2, dirs2) = conn.get_opposite(room)
+                    # First up - draw the primary connection.  This has the chance of being
+                    # "adjacent", which will draw a simple line between the two rather than
+                    # our stubs w/ varying render types.  This will only be the case if
+                    # the primary conn directions are opposite of each other, and only if
+                    # the rooms are close enough.  In practice you can get away with one
+                    # room being offset vertically or horizontally, but not both.  Anything
+                    # else will get the full stub/etc treatment below
 
-                        # TODO: More finagling around our extra-ends.
-                        if room == conn.r1:
-                            end = conn.ends1[direction]
-                            dir2 = conn.dir2
-                        else:
-                            end = conn.ends2[direction]
-                            dir2 = conn.dir1
+                    # Vars to use while rendering the primary
+                    if room == conn.r1:
+                        end_close = conn.ends1[direction]
+                        end_far = conn.ends2[conn.dir2]
+                        dir2 = conn.dir2
+                    else:
+                        end_close = conn.ends2[direction]
+                        end_far = conn.ends1[conn.dir1]
+                        dir2 = conn.dir1
 
-                        #if (dir2 == DIR_OPP[direction]):
-                        if self.are_rooms_adjacent(conn):
-                            (conn_x, conn_y) = self.room_xy(room2)
-                            x1 = x+self.CONN_OFF[direction][0]
-                            y1 = y+self.CONN_OFF[direction][1]
-                            x2 = conn_x+self.CONN_OFF[dir2][0]
-                            y2 = conn_y+self.CONN_OFF[dir2][1]
-                            self.draw_conn_segment(ctx, x1, y1, x2, y2, end)
-                            if conn.is_oneway_a():
-                                if conn.r1 == room:
-                                    for coord in self.arrow_coords(x1, y1, x2, y2):
-                                        self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
+                    if self.is_primary_adjacent(conn):
+                        # TODO: adjacent rendering is remaining simplified a bit
+                        (conn_x, conn_y) = self.room_xy(room2)
+                        x1 = x+self.CONN_OFF[direction][0]
+                        y1 = y+self.CONN_OFF[direction][1]
+                        x2 = conn_x+self.CONN_OFF[dir2][0]
+                        y2 = conn_y+self.CONN_OFF[dir2][1]
+                        self.draw_conn_segment(ctx, x1, y1, x2, y2, end_close)
+                        if conn.is_oneway_a():
+                            if conn.r1 == room:
+                                for coord in self.arrow_coords(x1, y1, x2, y2):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end_close)
+                            else:
+                                for coord in self.arrow_coords(x2, y2, x1, y1):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_close)
+                        elif conn.is_oneway_b():
+                            if conn.r2 == room:
+                                for coord in self.arrow_coords(x1, y1, x2, y2):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end_close)
+                            else:
+                                for coord in self.arrow_coords(x2, y2, x1, y1):
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_close)
+
+                    else:
+                        stub1 = self.draw_stub_conn(ctx, room, direction, conn)
+                        stub2 = self.draw_stub_conn(ctx, room2, dir2, conn)
+                        if (stub1 and stub2):
+                            if end_close.is_render_midpoint_a():
+                                self.draw_conn_segment(ctx, stub1[0], stub2[1], stub1[0], stub1[1], end_close)
+                                self.draw_conn_segment(ctx, stub1[0], stub2[1], stub2[0], stub2[1], end_far)
+                            elif end_close.is_render_midpoint_b():
+                                self.draw_conn_segment(ctx, stub2[0], stub1[1], stub1[0], stub1[1], end_close)
+                                self.draw_conn_segment(ctx, stub2[0], stub1[1], stub2[0], stub2[1], end_far)
+                            else:
+                                if end_close.conn_type == end_far.conn_type:
+                                    self.draw_conn_segment(ctx, stub1[0], stub1[1], stub2[0], stub2[1], end_close)
                                 else:
-                                    for coord in self.arrow_coords(x2, y2, x1, y1):
-                                        self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end)
-                            elif conn.is_oneway_b():
-                                if conn.r2 == room:
-                                    for coord in self.arrow_coords(x1, y1, x2, y2):
-                                        self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
-                                else:
-                                    for coord in self.arrow_coords(x2, y2, x1, y1):
-                                        self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end)
-
-                        else:
-                            end1 = self.draw_stub_conn(ctx, room, direction, conn)
-                            end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
-                            if (end1 and end2):
-                                if end.is_render_midpoint_a():
-                                    self.draw_conn_segment(ctx, end1[0], end2[1], end1[0], end1[1], end)
-                                    self.draw_conn_segment(ctx, end1[0], end2[1], end2[0], end2[1], end)
-                                elif end.is_render_midpoint_b():
-                                    self.draw_conn_segment(ctx, end2[0], end1[1], end1[0], end1[1], end)
-                                    self.draw_conn_segment(ctx, end2[0], end1[1], end2[0], end2[1], end)
-                                else:
-                                    self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], end)
+                                    midpoint_x = (stub1[0] + stub2[0]) / 2
+                                    midpoint_y = (stub1[1] + stub2[1]) / 2
+                                    self.draw_conn_segment(ctx, stub1[0], stub1[1], midpoint_x, midpoint_y, end_close)
+                                    self.draw_conn_segment(ctx, midpoint_x, midpoint_y, stub2[0], stub2[1], end_far)
 
                 conn_hover = self.HOVER_CONN
             elif room.get_loopback(direction):
@@ -1426,7 +1439,7 @@ class GUI(object):
             self.cleanctx.fill()
 
         # Loop through and draw our rooms
-        drawn_conns = []
+        drawn_conns = set()
         for room in self.mapobj.roomlist():
             if room:
                 self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
@@ -1903,9 +1916,9 @@ class GUI(object):
                                 new_direction = self.new_to_dir_box.get_active()
                                 newconn = self.mapobj.connect(room, direction, newroom, new_direction)
                                 if self.new_conn_type_pass_oneway_in.get_active():
-                                    newconn.set_oneway_b(newroom, new_direction)
+                                    newconn.set_oneway_b()
                                 elif self.new_conn_type_pass_oneway_out.get_active():
-                                    newconn.set_oneway_a(newroom, new_direction)
+                                    newconn.set_oneway_a()
                                 if self.new_conn_style_ladder.get_active():
                                     newconn.set_ladder(newroom, new_direction)
                                 elif self.new_conn_style_dotted.get_active():
@@ -2230,7 +2243,13 @@ class GUI(object):
                             if room.get_loopback(self.curhover[1]):
                                 self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
                             else:
-                                self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
+                                connection = self.curhover[0].get_conn(self.curhover[1])
+                                if connection:
+                                    if connection.symmetric:
+                                        symtext = ' OFF'
+                                    else:
+                                        symtext = ' ON'
+                                self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length, L: toggle symmetric link%s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]], symtext))
                         else:
                             self.set_hover('(%d, %d) - New connection to the %s - right-click: loopback, middle-click: link to existing' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
@@ -2325,6 +2344,11 @@ class GUI(object):
                             conn.set_oneway_b()
                         else:
                             conn.set_twoway()
+                        self.trigger_redraw(False)
+                        self.reset_transient_operations()
+                    elif (key == 'l'):
+                        # TODO: update tooltext
+                        conn.toggle_symmetric()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
 

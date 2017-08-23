@@ -580,6 +580,12 @@ class Connection(object):
         else:
             self.symmetric = False
 
+    def toggle_symmetric(self):
+        """
+        Toggles symmetry of our connection.  Useful for calling from the GUI.
+        """
+        self.set_symmetric(not self.symmetric)
+
     def get_primary_ends_dict(self, room):
         """
         Given a room, return a tuple containing:
@@ -738,6 +744,9 @@ class Connection(object):
     def set_dotted(self, room, direction):
         for end in self.get_end_list(room, direction):
             end.set_dotted()
+
+    # TODO: I think render_type changes should probably always be symmetric
+    # for the primary.  It only makes sense to have them separate for extras
 
     def set_render_regular(self, room, direction):
         for end in self.get_end_list(room, direction):
