@@ -1908,13 +1908,6 @@ class GUI(object):
                                         existing.set_twoway()
                                         need_gfx_update = True
 
-                elif (self.hover == self.HOVER_CONN):
-                    # remove the connection
-                    room = self.curhover[0]
-                    direction = self.curhover[1]
-                    self.mapobj.detach(room, direction)
-                    need_gfx_update = True
-
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
                     room = self.curhover[0]
@@ -2034,6 +2027,24 @@ class GUI(object):
             if (event.type == gtk.gdk.BUTTON_PRESS):
                 need_gfx_update = False
 
+                if (self.hover == self.HOVER_CONN_NEW):
+                    # If we're hovering over a new connection, middle-click will
+                    # create a loopback
+                    room = self.curhover[0]
+                    direction = self.curhover[1]
+                    room.set_loopback(direction)
+                    need_gfx_update = True
+
+                if (need_gfx_update):
+                    self.trigger_redraw()
+
+        elif (event.button == 3):
+            # Processing a right click
+
+            if (event.type == gtk.gdk.BUTTON_PRESS):
+                need_gfx_update = False
+
+                # First check for a couple of "move" operations which we might be doing.
                 if self.move_room is not None and self.move_dir is not None:
                     # We've received a previous "move connection" click, so process it now,
                     # so long as we're hovering over a new connection area
@@ -2058,44 +2069,25 @@ class GUI(object):
                             self.mapobj.connect(self.link_conn_room, self.link_conn_dir, new_room, new_dir)
                             need_gfx_update = True
 
-                else:
-                    # We have no existing "move" commands, so figure out if we're moving a connection or
-                    # adding a new one.
+                # ... and at this point we're no longer looking for ongoing operations
 
-                    if (self.hover == self.HOVER_CONN):
-                        # We're moving an existing connection
-                        self.move_room = self.curhover[0]
-                        self.move_dir = self.curhover[1]
-                        saved_move_vars = True
-                        self.set_secondary_status('Middle-click to move connection')
-                        # TODO: it would probably be nice to have some different GUI highlighting
-                        # when this is active, as well.
+                if (self.hover == self.HOVER_CONN):
+                    # We're moving an existing connection
+                    self.move_room = self.curhover[0]
+                    self.move_dir = self.curhover[1]
+                    saved_move_vars = True
+                    self.set_secondary_status('Middle-click to move connection')
+                    # TODO: it would probably be nice to have some different GUI highlighting
+                    # when this is active, as well.
 
-                    elif (self.hover == self.HOVER_CONN_NEW):
-                        # We're adding a new connection in a free-form sort of way
-                        self.link_conn_room = self.curhover[0]
-                        self.link_conn_dir = self.curhover[1]
-                        saved_link_conn_vars = True
-                        self.set_secondary_status('Middle-click to link to existing room')
-                        # TODO: it would probably be nice to have some different GUI highlighting
-                        # when this is active, as well.
-
-                if (need_gfx_update):
-                    self.trigger_redraw()
-
-        elif (event.button == 3):
-            # Processing a right click
-
-            if (event.type == gtk.gdk.BUTTON_PRESS):
-                need_gfx_update = False
-
-                if (self.hover == self.HOVER_CONN_NEW):
-                    # If we're hovering over a new connection, right-click will
-                    # create a loopback
-                    room = self.curhover[0]
-                    direction = self.curhover[1]
-                    room.set_loopback(direction)
-                    need_gfx_update = True
+                elif (self.hover == self.HOVER_CONN_NEW):
+                    # We're adding a new connection in a free-form sort of way
+                    self.link_conn_room = self.curhover[0]
+                    self.link_conn_dir = self.curhover[1]
+                    saved_link_conn_vars = True
+                    self.set_secondary_status('Middle-click to link to existing room')
+                    # TODO: it would probably be nice to have some different GUI highlighting
+                    # when this is active, as well.
 
                 if (need_gfx_update):
                     self.trigger_redraw()
@@ -2280,10 +2272,10 @@ class GUI(object):
                 elif self.hover == self.HOVER_CONN:
                     if not readonly:
                         if self.hover_roomobj.get_loopback(self.curhover[1]):
-                            actions.append(('LMB', 'remove loopback'))
+                            actions.append(('X', 'remove loopback'))
                         else:
-                            actions.append(('LMB', 'remove connection'))
-                            actions.append(('MMB', 'move connection'))
+                            actions.append(('RMB', 'move connection'))
+                            actions.append(('X', 'remove connection'))
                             actions.append(('E', 'add extra'))
                             actions.append(('T', 'type'))
                             actions.append(('P', 'path'))
@@ -2301,9 +2293,9 @@ class GUI(object):
 
                 elif self.hover == self.HOVER_CONN_NEW:
                     if not readonly:
-                        actions.append(('LMB', 'new connection'))
-                        actions.append(('RMB', 'new loopback'))
-                        actions.append(('MMB', 'link to existing'))
+                        actions.append(('LMB', 'new room'))
+                        actions.append(('RMB', 'new connection'))
+                        actions.append(('MMB', 'new loopback'))
 
                 elif self.hover == self.HOVER_EDGE:
                     if not readonly:
@@ -2443,9 +2435,12 @@ class GUI(object):
                 room = self.curhover[0]
                 conn_dir = self.curhover[1]
                 conn = room.get_conn(conn_dir)
-                end = conn.get_end(room, conn_dir)
                 if conn:
-                    if (key == 'p'):
+                    end = conn.get_end(room, conn_dir)
+                    if (key == 'x'):
+                        self.mapobj.detach(room, conn_dir)
+                        self.trigger_redraw(True)
+                    elif (key == 'p'):
                         conn.cycle_render_type(room, conn_dir)
                         self.trigger_redraw(False)
                     elif (key == 'l'):
@@ -2474,6 +2469,12 @@ class GUI(object):
                             self.add_extra_dir = self.curhover[1]
                             saved_add_extra_vars = True
                             self.set_secondary_status('E to add an extra connection to the same room')
+                else:
+
+                    # Must be a loopback instead.
+                    if (key == 'x'):
+                        self.mapobj.detach(room, conn_dir)
+                        self.trigger_redraw(True)
 
             elif self.hover == self.HOVER_CONN_NEW:
                 room = self.curhover[0]
