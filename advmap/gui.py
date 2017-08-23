@@ -1184,7 +1184,7 @@ class GUI(object):
                         stub2 = self.draw_stub_conn(ctx, room2, dir2, conn)
                         if (stub1 and stub2):
                             if end_close.is_render_midpoint_a():
-                                secondary_percent = .5
+                                secondary_percent = .75
                                 secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
                                         stub1[0], stub2[1], secondary_percent)
                                 secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
@@ -1192,7 +1192,7 @@ class GUI(object):
                                 self.draw_conn_segment(ctx, stub1[0], stub2[1], stub1[0], stub1[1], end_close)
                                 self.draw_conn_segment(ctx, stub1[0], stub2[1], stub2[0], stub2[1], end_far)
                             elif end_close.is_render_midpoint_b():
-                                secondary_percent = .5
+                                secondary_percent = .75
                                 secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
                                         stub2[0], stub1[1], secondary_percent)
                                 secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
@@ -1200,7 +1200,7 @@ class GUI(object):
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub1[0], stub1[1], end_close)
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub2[0], stub2[1], end_far)
                             else:
-                                secondary_percent = .25
+                                secondary_percent = .40
                                 secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
                                         stub2[0], stub2[1], secondary_percent)
                                 secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
