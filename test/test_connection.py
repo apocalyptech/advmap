@@ -284,6 +284,27 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(ce3, endlist)
         self.assertIn(ce4, endlist)
 
+    def test_get_end_r1(self):
+        """
+        Tests getting a specific end on a Connection from the r1 side
+        """
+        end = self.c.get_end(self.r1, DIR_N)
+        self.assertEqual(end, self.c.ends1[DIR_N])
+
+    def test_get_end_r2(self):
+        """
+        Tests getting a specific end on a Connection from the r2 side
+        """
+        end = self.c.get_end(self.r2, DIR_S)
+        self.assertEqual(end, self.c.ends2[DIR_S])
+
+    def test_get_end_not_found(self):
+        """
+        Tests getting a specific end which doesn't actually exist
+        """
+        end = self.c.get_end(self.r2, DIR_E)
+        self.assertEqual(end, None)
+
     def test_get_end_list_symmetric_basic(self):
         """
         Tests getting our end list when we are set to symmetric, with just the two
@@ -498,6 +519,569 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_NE, self.c.ends1)
         self.assertIn(DIR_S, self.c.ends2)
         self.assertEqual(self.c.ends1[DIR_NE], True)
+
+    def test_move_end_to_same_room_r1(self):
+        """
+        Tests moving an end from one direction of a room to another, in the same
+        room, on the r1 side.
+        """
+        rv = self.c.move_end(self.r1, DIR_N, self.r1, DIR_NE)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_NE)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_NE], self.c)
+        self.assertEqual(self.c.ends1[DIR_NE].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_NE].direction, DIR_NE)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_to_same_room_r2(self):
+        """
+        Tests moving an end from one direction of a room to another, in the same
+        room, on the r2 side.
+        """
+        rv = self.c.move_end(self.r2, DIR_S, self.r2, DIR_SW)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_SW)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_SW], self.c)
+        self.assertEqual(self.c.ends2[DIR_SW].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_SW].direction, DIR_SW)
+
+    def test_move_end_to_different_room_r1(self):
+        """
+        Tests moving an end from one direction of a room to another, in a different
+        room, on the r1 side.
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        rv = self.c.move_end(self.r1, DIR_N, r3, DIR_E)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, r3)
+        self.assertEqual(self.c.dir1, DIR_E)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 0)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertEqual(len(r3.conns), 1)
+        self.assertIn(DIR_E, self.c.ends1)
+        self.assertIn(DIR_E, r3.conns)
+        self.assertEqual(r3.conns[DIR_E], self.c)
+        self.assertEqual(self.c.ends1[DIR_E].room, r3)
+        self.assertEqual(self.c.ends1[DIR_E].direction, DIR_E)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_to_different_room_r2(self):
+        """
+        Tests moving an end from one direction of a room to another, in a different
+        room, on the r2 side.
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        rv = self.c.move_end(self.r2, DIR_S, r3, DIR_W)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, r3)
+        self.assertEqual(self.c.dir2, DIR_W)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 0)
+        self.assertEqual(len(r3.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_W, self.c.ends2)
+        self.assertIn(DIR_W, r3.conns)
+        self.assertEqual(r3.conns[DIR_W], self.c)
+        self.assertEqual(self.c.ends2[DIR_W].room, r3)
+        self.assertEqual(self.c.ends2[DIR_W].direction, DIR_W)
+
+    def test_move_end_no_change(self):
+        """
+        Tests moving an end when no actual change is specified
+        """
+        rv = self.c.move_end(self.r2, DIR_S, self.r2, DIR_S)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_specify_invalid_room(self):
+        """
+        Tests attempting to move an end but specifying an invalid
+        source room which isn't part of the connection
+        """
+        r3 = Room(3, 3, 3)
+        self.r2.set_loopback(DIR_SW)
+        with self.assertRaises(Exception) as cm:
+            self.c.move_end(r3, DIR_S, self.r2, DIR_SW)
+        self.assertIn('Given from_room does not involve this connection', str(cm.exception))
+
+    def test_move_end_blocked_by_loopback(self):
+        """
+        Tests moving an end when the destination is blocked by a loopback
+        """
+        self.r2.set_loopback(DIR_SW)
+        rv = self.c.move_end(self.r2, DIR_S, self.r2, DIR_SW)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_blocked_by_connection(self):
+        """
+        Tests moving an end when the destination is blocked by a connection
+        """
+        self.r1.connect(DIR_NE, self.r2, DIR_SW)
+        rv = self.c.move_end(self.r2, DIR_S, self.r2, DIR_SW)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_attempted_loopback(self):
+        """
+        Tests moving an end when both sides would end up being the same room.
+        """
+        rv = self.c.move_end(self.r2, DIR_S, self.r1, DIR_E)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_move_primary_with_extras_r1_to_new_room(self):
+        """
+        Tests moving an end which has associated extras to a new room - this should
+        actually refuse to do anything, because we'd otherwise have to guess what
+        to do with the other ends.  Moving the primary, Extra/move is on the r1 side
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r1, DIR_NE)
+        rv = self.c.move_end(self.r1, DIR_N, r3, DIR_E)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertEqual(self.r1.conns[DIR_NE], self.c)
+        self.assertEqual(self.c.ends1[DIR_NE].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_NE].direction, DIR_NE)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_move_secondary_with_extras_r1_to_new_room(self):
+        """
+        Tests moving an end which has associated extras to a new room - this should
+        actually refuse to do anything, because we'd otherwise have to guess what
+        to do with the other ends.  Moving the extra, Extra/move is on the r1 side
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r1, DIR_NE)
+        rv = self.c.move_end(self.r1, DIR_NE, r3, DIR_E)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertEqual(self.r1.conns[DIR_NE], self.c)
+        self.assertEqual(self.c.ends1[DIR_NE].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_NE].direction, DIR_NE)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_move_primary_with_extras_r2_to_new_room(self):
+        """
+        Tests moving an end which has associated extras to a new room - this should
+        actually refuse to do anything, because we'd otherwise have to guess what
+        to do with the other ends.  Moving the primary, Extra/move is on the r2 side
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r2, DIR_SW)
+        rv = self.c.move_end(self.r2, DIR_S, r3, DIR_E)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+        self.assertEqual(self.r2.conns[DIR_SW], self.c)
+        self.assertEqual(self.c.ends2[DIR_SW].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_SW].direction, DIR_SW)
+
+    def test_move_end_move_extra_with_extras_r2_to_new_room(self):
+        """
+        Tests moving an end which has associated extras to a new room - this should
+        actually refuse to do anything, because we'd otherwise have to guess what
+        to do with the other ends.  Moving the extra, Extra/move is on the r2 side
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r2, DIR_SW)
+        rv = self.c.move_end(self.r2, DIR_SW, r3, DIR_E)
+        self.assertEqual(rv, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+        self.assertEqual(self.r2.conns[DIR_SW], self.c)
+        self.assertEqual(self.c.ends2[DIR_SW].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_SW].direction, DIR_SW)
+
+    def test_move_end_move_with_extras_on_r2_side(self):
+        """
+        Extra ConnectionEnds on the far side shouldn't prevent the operant
+        side from moving to a new room (extras on r2)
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r2, DIR_SW)
+        rv = self.c.move_end(self.r1, DIR_N, r3, DIR_E)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, r3)
+        self.assertEqual(self.c.dir1, DIR_E)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertEqual(len(self.r1.conns), 0)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertEqual(len(r3.conns), 1)
+        self.assertIn(DIR_E, self.c.ends1)
+        self.assertIn(DIR_E, r3.conns)
+        self.assertEqual(r3.conns[DIR_E], self.c)
+        self.assertEqual(self.c.ends1[DIR_E].room, r3)
+        self.assertEqual(self.c.ends1[DIR_E].direction, DIR_E)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+        self.assertEqual(self.r2.conns[DIR_SW], self.c)
+        self.assertEqual(self.c.ends2[DIR_SW].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_SW].direction, DIR_SW)
+
+    def test_move_end_move_with_extras_on_r1_side(self):
+        """
+        Extra ConnectionEnds on the far side shouldn't prevent the operant
+        side from moving to a new room (extras on r1)
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        self.c.connect_extra(self.r1, DIR_NE)
+        rv = self.c.move_end(self.r2, DIR_S, r3, DIR_E)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, r3)
+        self.assertEqual(self.c.dir2, DIR_E)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 0)
+        self.assertEqual(len(r3.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_NE], self.c)
+        self.assertEqual(self.c.ends1[DIR_NE].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_NE].direction, DIR_NE)
+        self.assertIn(DIR_E, self.c.ends2)
+        self.assertIn(DIR_E, r3.conns)
+        self.assertEqual(r3.conns[DIR_E], self.c)
+        self.assertEqual(self.c.ends2[DIR_E].room, r3)
+        self.assertEqual(self.c.ends2[DIR_E].direction, DIR_E)
+
+    def test_move_end_primary_to_same_room_r1(self):
+        """
+        Move the primary direction in r1 to another spot in the same room,
+        leaving any extras intact
+        """
+        self.c.connect_extra(self.r1, DIR_S)
+        rv = self.c.move_end(self.r1, DIR_N, self.r1, DIR_NE)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_NE)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_NE], self.c)
+        self.assertEqual(self.c.ends1[DIR_NE].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_NE].direction, DIR_NE)
+        self.assertIn(DIR_S, self.c.ends1)
+        self.assertIn(DIR_S, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends1[DIR_S].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_S].direction, DIR_S)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_primary_to_same_room_r2(self):
+        """
+        Move the primary direction in r2 to another spot in the same room,
+        leaving any extras intact
+        """
+        self.c.connect_extra(self.r2, DIR_E)
+        rv = self.c.move_end(self.r2, DIR_S, self.r2, DIR_SW)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_SW)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_SW, self.c.ends2)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_SW], self.c)
+        self.assertEqual(self.c.ends2[DIR_SW].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_SW].direction, DIR_SW)
+        self.assertIn(DIR_E, self.c.ends2)
+        self.assertIn(DIR_E, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_E], self.c)
+        self.assertEqual(self.c.ends2[DIR_E].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_E].direction, DIR_E)
+
+    def test_move_end_extra_to_same_room_r1(self):
+        """
+        Move an extra end in r1 to another spot in the same room,
+        leaving the primary intact
+        """
+        self.c.connect_extra(self.r1, DIR_S)
+        rv = self.c.move_end(self.r1, DIR_S, self.r1, DIR_W)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertEqual(len(self.r1.conns), 2)
+        self.assertEqual(len(self.r2.conns), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_W, self.c.ends1)
+        self.assertIn(DIR_W, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_W], self.c)
+        self.assertEqual(self.c.ends1[DIR_W].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_W].direction, DIR_W)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+
+    def test_move_end_extra_to_same_room_r2(self):
+        """
+        Move an extra end in r2 to another spot in the same room,
+        leaving the primary intact
+        """
+        self.c.connect_extra(self.r2, DIR_E)
+        rv = self.c.move_end(self.r2, DIR_E, self.r2, DIR_W)
+        self.assertEqual(rv, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertEqual(len(self.r1.conns), 1)
+        self.assertEqual(len(self.r2.conns), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertEqual(self.c.ends1[DIR_N].room, self.r1)
+        self.assertEqual(self.c.ends1[DIR_N].direction, DIR_N)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        self.assertEqual(self.c.ends2[DIR_S].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_S].direction, DIR_S)
+        self.assertIn(DIR_W, self.c.ends2)
+        self.assertIn(DIR_W, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_W], self.c)
+        self.assertEqual(self.c.ends2[DIR_W].room, self.r2)
+        self.assertEqual(self.c.ends2[DIR_W].direction, DIR_W)
 
     def test_set_regular_symmetric(self):
         """

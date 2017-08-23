@@ -268,22 +268,6 @@ class Room(object):
         if direction not in self.conns:
             self.loopbacks[direction] = True
 
-    def attach_conn(self, conn):
-        """
-        Attaches the given connection to our room, without
-        modifying the connection at all.  Useful when the GUI
-        is modifying connection parameters and we don't want
-        to build up a totally new Connection object.
-        """
-        if conn.r1 == self:
-            if conn.dir1 not in self.conns and conn.dir1 not in self.loopbacks:
-                self.conns[conn.dir1] = conn
-        elif conn.r2 == self:
-            if conn.dir2 not in self.conns and conn.dir2 not in self.loopbacks:
-                self.conns[conn.dir2] = conn
-        else:
-            raise Exception('Given connection does not involve this room')
-
     def connect(self, direction, other_room, direction2=None):
         """
         Connects ourself to another room.  Will default to the opposite
@@ -298,10 +282,7 @@ class Room(object):
             return None
         if direction2 in other_room.conns or direction2 in other_room.loopbacks:
             return None
-        conn = Connection(self, direction, other_room, direction2)
-        self.conns[direction] = conn
-        other_room.conns[direction2] = conn
-        return conn
+        return Connection(self, direction, other_room, direction2)
 
     def detach(self, direction):
         """
@@ -347,16 +328,6 @@ class Room(object):
 
         # And return
         return retval
-
-    def detach_single(self, direction):
-        """
-        Detaches ourselves from the given direction.  Will not
-        touch the opposite end.
-        """
-        if direction in self.conns:
-            del self.conns[direction]
-        if direction in self.loopbacks:
-            del self.loopbacks[direction]
 
     def get_loopback(self, direction):
         """
@@ -586,6 +557,10 @@ class Connection(object):
         self.passage = passage
         self.symmetric = True
 
+        # Update a couple of Room vars here, while we're at it.
+        self.r1.conns[self.dir1] = self
+        self.r2.conns[self.dir2] = self
+
     def set_symmetric(self, symmetric=True):
         """
         Sets our `symmetric` boolean which specifies whether the ConnectionEnd
@@ -624,6 +599,17 @@ class Connection(object):
         """
         return list(self.ends1.values()) + list(self.ends2.values())
 
+    def get_end(self, room, direction):
+        """
+        Given a room and a direction, return the ConnectionEnd matching it.
+        """
+        if room.idnum == self.r1.idnum and direction in self.ends1:
+            return self.ends1[direction]
+        elif room.idnum == self.r2.idnum and direction in self.ends2:
+            return self.ends2[direction]
+        else:
+            return None
+
     def get_end_list(self, room, direction):
         """
         Returns a list of ConnectionEnds to process, given both our internal
@@ -635,12 +621,11 @@ class Connection(object):
         if self.symmetric:
             return self.get_all_ends()
         else:
-            to_process = []
-            if room.idnum == self.r1.idnum and direction in self.ends1:
-                to_process = [self.ends1[direction]]
-            elif room.idnum == self.r2.idnum and direction in self.ends2:
-                to_process = [self.ends2[direction]]
-            return to_process
+            end = self.get_end(room, direction)
+            if end is None:
+                return []
+            else:
+                return [end]
 
     def connect_extra(self, room, direction):
         """
@@ -670,6 +655,77 @@ class Connection(object):
             return endsvar[direction]
         
         return None
+
+    def move_end(self, room_from, direction_from, room_to, direction_to):
+        """
+        Moves the specified end from one point on the existing room, to another
+        point (potentially on a completely different room).  If there's more
+        than one end connected to `room_from`, this will do nothing, rather
+        than trying to guess what to do with the non-moved ends.  Will also
+        refuse to do anything if there is already a connection or loopback at
+        the destination.  Another no-op possibility is trying to create a
+        connection which goes from a room back into itself.
+
+        Returns `True` if the end was moved, or `False` otherwise.
+        """
+
+        # First up: make sure that we've actually been told to change something
+        if room_from == room_to and direction_from == direction_to:
+            return False
+
+        # Make sure we've got a valid End to move
+        from_end = self.get_end(room_from, direction_from)
+        if not from_end:
+            raise Exception('Given from_room does not involve this connection')
+
+        # Make sure the destination is open
+        if room_to.get_loopback(direction_to) or room_to.get_conn(direction_to):
+            return False
+
+        # Figure out what side of the connection we're operating on
+        if room_from == self.r1:
+            ends = self.ends1
+            unchanged_room = self.r2
+            primary_dir = self.dir1
+        else:
+            ends = self.ends2
+            unchanged_room = self.r1
+            primary_dir = self.dir2
+
+        # Check to see if we've been told to link back to the other side
+        if room_to == unchanged_room:
+            return False
+
+        # If we're changing rooms, check to see if there's more than one
+        # End on the side we're dealing with.  Return False if so, because
+        # we don't want to have to guess what to do with the extra ends.
+        # If we're sticking within the same room, though, that's okay.
+        update_primary_dir = True
+        if room_to == room_from:
+            if primary_dir != direction_from:
+                update_primary_dir = False
+        else:
+            if len(ends) > 1:
+                return False
+
+        # So - if we got here, we're good to go!
+        del room_from.conns[direction_from]
+        if update_primary_dir:
+            if unchanged_room == self.r1:
+                self.r2 = room_to
+                self.dir2 = direction_to
+            else:
+                self.r1 = room_to
+                self.dir1 = direction_to
+        room_to.conns[direction_to] = self
+        if direction_from != direction_to:
+            ends[direction_to] = ends[direction_from]
+            del ends[direction_from]
+        ends[direction_to].room = room_to
+        ends[direction_to].direction = direction_to
+
+        # Aand if we got here, return True
+        return True
 
     def set_regular(self, room, direction):
         for end in self.get_end_list(room, direction):
