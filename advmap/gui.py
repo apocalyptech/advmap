@@ -1050,6 +1050,19 @@ class GUI(object):
         else:
             return None
 
+    def get_point_along_line(self, x1, y1, x2, y2, percent):
+        """
+        Given a line defined by (x1, y1) and (x2, y2), return
+        the point along that line which is `percent` percent of
+        the way between the first and second points.  `percent`
+        should be a float from 0.0 to 1.0.  Returns a tuple
+        of `(x, y)`
+        """
+        return (
+                x1 + int((x2 - x1) * percent),
+                y1 + int((y2 - y1) * percent),
+            )
+
     def draw_room(self, room, ctx, mmctx, drawn_conns):
         """
         Draws a room onto the given context (and mousemap ctx).  Will
@@ -1118,14 +1131,14 @@ class GUI(object):
 
                     # Vars to use while rendering the primary
                     if room == conn.r1:
-                        end_close = conn.ends1[direction]
+                        prim_direction = conn.dir1
+                        end_close = conn.ends1[prim_direction]
                         end_far = conn.ends2[conn.dir2]
-                        direction = conn.dir1
                         dir2 = conn.dir2
                     else:
-                        end_close = conn.ends2[direction]
+                        prim_direction = conn.dir2
+                        end_close = conn.ends2[prim_direction]
                         end_far = conn.ends1[conn.dir1]
-                        direction = conn.dir2
                         dir2 = conn.dir1
 
                     # Secondary midpoints which extra ends will draw towards
@@ -1135,8 +1148,8 @@ class GUI(object):
 
                         # Drawing our primary connection as a simple "adjacent" link
                         (conn_x, conn_y) = self.room_xy(room2)
-                        x1 = x+self.CONN_OFF[direction][0]
-                        y1 = y+self.CONN_OFF[direction][1]
+                        x1 = x+self.CONN_OFF[prim_direction][0]
+                        y1 = y+self.CONN_OFF[prim_direction][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
                         secondary_midpoints[room] = (x2, y2)
@@ -1167,25 +1180,31 @@ class GUI(object):
 
                         # Drawing our primary connection with stubs coming off the rooms and then
                         # based on its render_type
-                        stub1 = self.draw_stub_conn(ctx, room, direction, conn)
+                        stub1 = self.draw_stub_conn(ctx, room, prim_direction, conn)
                         stub2 = self.draw_stub_conn(ctx, room2, dir2, conn)
                         if (stub1 and stub2):
                             if end_close.is_render_midpoint_a():
+                                secondary_percent = .5
+                                secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
+                                        stub1[0], stub2[1], secondary_percent)
+                                secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                                        stub1[0], stub2[1], secondary_percent)
                                 self.draw_conn_segment(ctx, stub1[0], stub2[1], stub1[0], stub1[1], end_close)
                                 self.draw_conn_segment(ctx, stub1[0], stub2[1], stub2[0], stub2[1], end_far)
                             elif end_close.is_render_midpoint_b():
+                                secondary_percent = .5
+                                secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
+                                        stub2[0], stub1[1], secondary_percent)
+                                secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                                        stub2[0], stub1[1], secondary_percent)
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub1[0], stub1[1], end_close)
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub2[0], stub2[1], end_far)
                             else:
                                 secondary_percent = .25
-                                secondary_midpoints[room] = (
-                                            stub1[0] + int((stub2[0] - stub1[0]) * secondary_percent),
-                                            stub1[1] + int((stub2[1] - stub1[1]) * secondary_percent),
-                                        )
-                                secondary_midpoints[room2] = (
-                                            stub2[0] + int((stub1[0] - stub2[0]) * secondary_percent),
-                                            stub2[1] + int((stub1[1] - stub2[1]) * secondary_percent),
-                                        )
+                                secondary_midpoints[room] = self.get_point_along_line(stub1[0], stub1[1],
+                                        stub2[0], stub2[1], secondary_percent)
+                                secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                                        stub1[0], stub1[1], secondary_percent)
                                 if end_close.conn_type == end_far.conn_type:
                                     self.draw_conn_segment(ctx, stub1[0], stub1[1], stub2[0], stub2[1], end_close)
                                 else:
@@ -1205,9 +1224,17 @@ class GUI(object):
                         # And then the rest of the connection
                         if end.room in secondary_midpoints:
                             (mid_x, mid_y) = secondary_midpoints[end.room]
-                            self.draw_conn_segment(ctx, stub[0], stub[1], mid_x, mid_y, end)
+                            if end.is_render_midpoint_a():
+                                self.draw_conn_segment(ctx, stub[0], mid_y, stub[0], stub[1], end)
+                                self.draw_conn_segment(ctx, stub[0], mid_y, mid_x, mid_y, end)
+                            elif end.is_render_midpoint_b():
+                                self.draw_conn_segment(ctx, mid_x, stub[1], stub[0], stub[1], end)
+                                self.draw_conn_segment(ctx, mid_x, stub[1], mid_x, mid_y, end)
+                            else:
+                                self.draw_conn_segment(ctx, stub[0], stub[1], mid_x, mid_y, end)
 
                 conn_hover = self.HOVER_CONN
+
             elif room.get_loopback(direction):
                 conn_hover = self.HOVER_CONN
                 coord = self.get_conn_xy(room, direction)
