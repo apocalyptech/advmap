@@ -637,6 +637,18 @@ class Connection(object):
         """
         return list(self.ends1.values()) + list(self.ends2.values())
 
+    def get_all_extra_ends(self):
+        """
+        Returns a list of all non-primary ends in this Connection
+        """
+        retlist = []
+        for end in self.get_all_ends():
+            if ((end.room == self.r1 and end.direction == self.dir1) or
+                    (end.room == self.r2 and end.direction == self.dir2)):
+                continue
+            retlist.append(end)
+        return retlist
+
     def get_end(self, room, direction):
         """
         Given a room and a direction, return the ConnectionEnd matching it.
@@ -764,6 +776,26 @@ class Connection(object):
 
         # Aand if we got here, return True
         return True
+
+    def is_primary(self, room, direction):
+        """
+        Returns `True` if the given room/direction is one of the primary
+        Ends for this connection
+        """
+        return ((room == self.r1 and direction == self.dir1) or
+                (room == self.r2 and direction == self.dir2))
+
+    def set_primary(self, room, direction):
+        """
+        Sets the given ConnectionEnd to be the primary for the connection, if
+        it isn't already
+        """
+        end = self.get_end(room, direction)
+        if end:
+            if room == self.r1:
+                self.dir1 = direction
+            else:
+                self.dir2 = direction
 
     def set_regular(self, room, direction):
         for end in self.get_end_list(room, direction):

@@ -273,6 +273,8 @@ class GUI(object):
         self.move_dir = None
         self.link_conn_room = None
         self.link_conn_dir = None
+        self.add_extra_room = None
+        self.add_extra_dir = None
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
         self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
@@ -1125,6 +1127,8 @@ class GUI(object):
                         dir2 = conn.dir1
 
                     if self.is_primary_adjacent(conn):
+
+                        # Drawing our primary connection as a simple "adjacent" link
                         (conn_x, conn_y) = self.room_xy(room2)
                         x1 = x+self.CONN_OFF[direction][0]
                         y1 = y+self.CONN_OFF[direction][1]
@@ -1153,6 +1157,9 @@ class GUI(object):
                                     self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_far)
 
                     else:
+
+                        # Drawing our primary connection with stubs coming off the rooms and then
+                        # based on its render_type
                         stub1 = self.draw_stub_conn(ctx, room, direction, conn)
                         stub2 = self.draw_stub_conn(ctx, room2, dir2, conn)
                         if (stub1 and stub2):
@@ -1170,6 +1177,12 @@ class GUI(object):
                                     midpoint_y = (stub1[1] + stub2[1]) / 2
                                     self.draw_conn_segment(ctx, stub1[0], stub1[1], midpoint_x, midpoint_y, end_close)
                                     self.draw_conn_segment(ctx, midpoint_x, midpoint_y, stub2[0], stub2[1], end_far)
+
+                    # And now draw any additional ends which may exist.  These will
+                    # always have stubs coming off of them, and will have their own
+                    # render_type describing how to connect to the main connection
+                    for end in conn.get_all_extra_ends():
+                        stub = self.draw_stub_conn(ctx, end.room, end.direction, conn)
 
                 conn_hover = self.HOVER_CONN
             elif room.get_loopback(direction):
@@ -2039,11 +2052,11 @@ class GUI(object):
 
         self.reset_transient_operations(saved_move_vars, saved_link_conn_vars)
 
-    def reset_transient_operations(self, saved_move_vars=False, saved_link_conn_vars=False):
+    def reset_transient_operations(self, saved_move_vars=False, saved_link_conn_vars=False, saved_add_extra_vars=False):
         """
-        We have two "transient" operations: moving existing connections, and linking
-        two previously-unlinked directions between rooms.  This will reset all the
-        necessary vars.
+        We have three "transient" operations: moving existing connections, linking
+        two previously-unlinked directions between rooms, and adding an extra end
+        to a connection.  This will reset all the necessary vars.
         """
 
         if not saved_move_vars:
@@ -2052,7 +2065,10 @@ class GUI(object):
         if not saved_link_conn_vars:
             self.link_conn_room = None
             self.link_conn_dir = None
-        if not saved_move_vars and not saved_link_conn_vars:
+        if not saved_add_extra_vars:
+            self.add_extra_room = None
+            self.add_extra_dir = None
+        if not saved_move_vars and not saved_link_conn_vars and not saved_add_extra_vars:
             self.set_secondary_status('')
 
     def on_edit_room_notebook_page(self, widget, page, page_num):
@@ -2218,17 +2234,20 @@ class GUI(object):
                         else:
                             actions.append(('LMB', 'remove connection'))
                             actions.append(('MMB', 'move connection'))
-                            actions.append(('T', 'change type'))
-                            actions.append(('P', 'change path'))
-                            actions.append(('O', 'change orientation'))
-                            actions.append(('L', 'change stub length'))
+                            actions.append(('E', 'add extra'))
+                            actions.append(('T', 'type'))
+                            actions.append(('P', 'path'))
+                            actions.append(('O', 'orientation'))
+                            actions.append(('L', 'stub length'))
                             if self.hover_connobj:
                                 if self.hover_connobj.symmetric:
-                                    actions.append(('S', 'toggle symmetric OFF'))
+                                    actions.append(('S', 'symmetric OFF'))
                                 else:
-                                    actions.append(('S', 'toggle symmetric ON'))
+                                    actions.append(('S', 'symmetric ON'))
+                                if not self.hover_connobj.is_primary(self.hover_roomobj, self.curhover[1]):
+                                    actions.append(('R', 'set primary'))
                             else:
-                                actions.append(('S', 'toggle symmetric'))
+                                    actions.append(('S', 'symmetric'))
 
                 elif self.hover == self.HOVER_CONN_NEW:
                     if not readonly:
@@ -2339,18 +2358,22 @@ class GUI(object):
         if self.readonly_lock.get_active():
             return
 
+        # If these vars remain False, at the end of this function, we'll be
+        # clearing out any transient vars that exist (such as moving a connection,
+        # or doing a freeform link between rooms).  In practice this means that
+        # a transient operation is never going to "span" any number of clicks.
+        saved_add_extra_vars = False
+
         if (event.keyval < 256 and (event.state & self.keymask) == 0):
             key = chr(event.keyval).lower()
-            # Next two key handlers are just testing until we tie them into
-            # the actual menus, etc
-            if (self.hover == self.HOVER_ROOM):
+
+            if self.hover == self.HOVER_ROOM:
                 if (key == 'd'):
                     if (len(self.mapobj.rooms) < 2):
                         self.errordialog('You cannot remove the last room from a map', self.window)
                         return
                     self.mapobj.del_room(self.curhover)
                     self.trigger_redraw()
-                    self.reset_transient_operations()
                 elif (key == 'g'):
                     room = self.curhover
                     if room.group is not None:
@@ -2366,7 +2389,7 @@ class GUI(object):
                     self.curhover.increment_type()
                     self.trigger_redraw(False)
 
-            if (self.hover == self.HOVER_CONN):
+            elif self.hover == self.HOVER_CONN:
                 room = self.curhover[0]
                 conn_dir = self.curhover[1]
                 conn = room.get_conn(conn_dir)
@@ -2375,24 +2398,46 @@ class GUI(object):
                     if (key == 'p'):
                         conn.cycle_render_type(room, conn_dir)
                         self.trigger_redraw(False)
-                        self.reset_transient_operations()
                     elif (key == 'l'):
                         conn.increment_stub_length(room, conn_dir)
                         self.trigger_redraw(False)
-                        self.reset_transient_operations()
                     elif (key == 't'):
                         conn.cycle_conn_type(room, conn_dir)
                         self.trigger_redraw(False)
-                        self.reset_transient_operations()
                     elif (key == 'o'):
                         conn.cycle_passage()
                         self.trigger_redraw(False)
-                        self.reset_transient_operations()
                     elif (key == 's'):
                         conn.toggle_symmetric(room=room, direction=conn_dir)
                         self.update_hover_text()
                         self.trigger_redraw(False)
-                        self.reset_transient_operations()
+                    elif (key == 'r'):
+                        # Technically this option isn't displayed most of the time, but it
+                        # won't hurt anything if it's triggered whenever, since it'd generally
+                        # be a no-op.
+                        conn.set_primary(room, conn_dir)
+                        self.update_hover_text()
+                        self.trigger_redraw(False)
+                    elif (key == 'e'):
+                        if self.add_extra_room is None or self.add_extra_dir is None:
+                            self.add_extra_room = self.curhover[0]
+                            self.add_extra_dir = self.curhover[1]
+                            saved_add_extra_vars = True
+                            self.set_secondary_status('E to add an extra connection to the same room')
+
+            elif self.hover == self.HOVER_CONN_NEW:
+                room = self.curhover[0]
+                conn_dir = self.curhover[1]
+                if (key == 'e'):
+                    if self.add_extra_room is not None and self.add_extra_dir is not None:
+                        conn = self.add_extra_room.get_conn(self.add_extra_dir)
+                        try:
+                            conn.connect_extra(room, conn_dir)
+                        except:
+                            pass
+                        self.trigger_redraw(True)
+
+        self.reset_transient_operations(saved_add_extra_vars=saved_add_extra_vars)
 
     def nudge_lock_toggled(self, widget):
         """
