@@ -34,7 +34,7 @@ from advmap.file import *
 # (which is nice while saving/loading).
 #
 
-__all__ = [ 'Room', 'Connection', 'Map', 'Game', 'Group',
+__all__ = [ 'Room', 'Connection', 'ConnectionEnd', 'Map', 'Game', 'Group',
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
         'DIR_LIST', 'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 

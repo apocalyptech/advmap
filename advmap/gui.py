@@ -776,8 +776,8 @@ class GUI(object):
         self.curfile = None
         self.menu_revert.set_sensitive(False)
         self.game = Game('New Game')
-        self.map = self.create_new_map('Starting Map')
-        self.map_idx = self.game.add_map_obj(self.map)
+        self.mapobj = self.create_new_map('Starting Map')
+        self.map_idx = self.game.add_map_obj(self.mapobj)
         self.cancel_delayed_status()
         self.set_status('Editing a new game')
         if (self.initgfx):
@@ -794,7 +794,7 @@ class GUI(object):
         game = Game.load(filename)
         self.menu_revert.set_sensitive(True)
         self.game = game
-        self.map = self.game.maps[0]
+        self.mapobj = self.game.maps[0]
         self.map_idx = 0
         self.curfile = filename
         if (self.initgfx):
@@ -808,7 +808,7 @@ class GUI(object):
         """
         Updates our game/map name display
         """
-        self.titlelabel.set_markup('<b>%s</b> | %s' % (gobject.markup_escape_text(self.game.name), gobject.markup_escape_text(self.map.name)))
+        self.titlelabel.set_markup('<b>%s</b> | %s' % (gobject.markup_escape_text(self.game.name), gobject.markup_escape_text(self.mapobj.name)))
 
     def update_gameinfo(self):
         """
@@ -817,8 +817,8 @@ class GUI(object):
         self.updating_gameinfo = True
         self.update_title()
         self.map_combo.get_model().clear()
-        for map in self.game.maps:
-            self.map_combo.append_text(map.name)
+        for mapobj in self.game.maps:
+            self.map_combo.append_text(mapobj.name)
         self.map_combo.set_active(self.map_idx)
         self.updating_gameinfo = False
 
@@ -854,10 +854,10 @@ class GUI(object):
         """
         Creates our default new map, with a single room in the center
         """
-        map = Map(name)
-        room = map.add_room_at(4, 4, 'Starting Room')
+        mapobj = Map(name)
+        room = mapobj.add_room_at(4, 4, 'Starting Room')
         room.type = Room.TYPE_HI_GREEN
-        return map
+        return mapobj
 
     def arrow_coords(self, x1, y1, x2, y2):
         """
@@ -960,6 +960,7 @@ class GUI(object):
 
         # First off, if we're not connecting on opposite directions, we're
         # not considered adjacent
+        # TODO: it's possible this'll need some tweaking with our ConnectionEnd stuff...
         if conn.dir1 != DIR_OPP[conn.dir2]:
             return False
 
@@ -971,14 +972,15 @@ class GUI(object):
         # ... aaaand there we go.
         return (distance <= self.room_w and distance <= self.room_h)
 
-    def draw_conn_segment(self, ctx, x1, y1, x2, y2, conn):
+    def draw_conn_segment(self, ctx, x1, y1, x2, y2, end):
         """
-        Draws a connection segment from (x1, y1) to (x2, y2).  Ordinarily
+        Draws a connection segment from (x1, y1) to (x2, y2), using the
+        style provided by the passed in ConnectionEnd `end`.  Ordinarily
         this is just a single line, but if is_ladder is True, then it'll
         build a Ladder graphic between the two, instead.
         """
         ctx.save()
-        if conn.is_ladder():
+        if end.is_ladder():
             ladder_width=12
             rung_spacing=7
             coords = self.ladder_coords(x1, y1, x2, y2, ladder_width, rung_spacing)
@@ -991,34 +993,37 @@ class GUI(object):
         else:
             ctx.set_source_rgba(*self.c_borders)
             ctx.set_line_width(1)
-            if (conn.is_dotted()):
+            if (end.is_dotted()):
                 ctx.set_dash([3.0], 0)
             ctx.move_to(x1, y1)
             ctx.line_to(x2, y2)
             ctx.stroke()
         ctx.restore()
 
-    def draw_stub_conn(self, ctx, room, dir, conn):
+    def draw_stub_conn(self, ctx, room, direction, conn):
         """
         Draws a "stub" connection from the given room, in the given
         direction.  Returns the "remote" endpoint.  The stubs are used
         nonadjacent rooms.
         """
         (room_x, room_y) = self.room_xy(room)
-        dir_coord = self.map.dir_coord(room, dir, True)
+        dir_coord = self.mapobj.dir_coord(room, direction, True)
         if not dir_coord:
             return None
-        conn_coord = self.room_xy_coord(*self.map.dir_coord(room, dir, True))
+        end = conn.get_end(room, direction)
+        if not end:
+            return None
+        conn_coord = self.room_xy_coord(*self.mapobj.dir_coord(room, direction, True))
         if conn_coord:
             (conn_x, conn_y) = self.apply_xy_offset(conn_coord[0], conn_coord[1], room)
-            x1 = room_x+self.CONN_OFF[dir][0]
-            y1 = room_y+self.CONN_OFF[dir][1]
-            orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
-            orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
+            x1 = room_x+self.CONN_OFF[direction][0]
+            y1 = room_y+self.CONN_OFF[direction][1]
+            orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[direction]][0]
+            orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[direction]][1]
 
             # Factor in our varying stublength
-            orig_x2 = x1 - conn.stublength*(x1 - orig_x2)
-            orig_y2 = y1 - conn.stublength*(y1 - orig_y2)
+            orig_x2 = x1 - end.stub_length*(x1 - orig_x2)
+            orig_y2 = y1 - end.stub_length*(y1 - orig_y2)
 
             # We're actually going to pick a point halfway between the two,
             # to prevent stubs that appear to connect to rooms they don't
@@ -1028,13 +1033,13 @@ class GUI(object):
 
             if conn.is_oneway_a() and room == conn.r1:
                 for coord in self.arrow_coords(x1, y1, orig_x2, orig_y2):
-                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
             elif conn.is_oneway_b() and room == conn.r2:
                 for coord in self.arrow_coords(x1, y1, orig_x2, orig_y2):
-                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
 
 
-            self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
+            self.draw_conn_segment(ctx, x1, y1, x2, y2, end)
             return (x2, y2)
         else:
             return None
@@ -1084,72 +1089,87 @@ class GUI(object):
         ctx.restore()
 
         # Mousemap room box
-        mmctx.set_source_rgba(self.m_step*self.HOVER_ROOM, 0, self.m_step*room.id)
+        mmctx.set_source_rgba(self.m_step*self.HOVER_ROOM, 0, self.m_step*room.idnum)
         mmctx.rectangle(x, y, self.room_w, self.room_h)
         mmctx.fill()
 
         # Now also draw connections off of the room
-        for dir in DIR_LIST:
-            conn = room.get_conn(dir)
+        for direction in DIR_LIST:
+            conn = room.get_conn(direction)
             if (conn):
                 if conn not in drawn_conns:
-                    drawn_conns.append(conn)
-                    (room2, dir2) = conn.get_opposite(room)
-                    #if (dir2 == DIR_OPP[dir]):
-                    if self.are_rooms_adjacent(conn):
-                        (conn_x, conn_y) = self.room_xy(room2)
-                        x1 = x+self.CONN_OFF[dir][0]
-                        y1 = y+self.CONN_OFF[dir][1]
-                        x2 = conn_x+self.CONN_OFF[dir2][0]
-                        y2 = conn_y+self.CONN_OFF[dir2][1]
-                        self.draw_conn_segment(ctx, x1, y1, x2, y2, conn)
-                        if conn.is_oneway_a():
-                            if conn.r1 == room:
-                                for coord in self.arrow_coords(x1, y1, x2, y2):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
-                            else:
-                                for coord in self.arrow_coords(x2, y2, x1, y1):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
-                        elif conn.is_oneway_b():
-                            if conn.r2 == room:
-                                for coord in self.arrow_coords(x1, y1, x2, y2):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, conn)
-                            else:
-                                for coord in self.arrow_coords(x2, y2, x1, y1):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, conn)
 
-                    else:
-                        end1 = self.draw_stub_conn(ctx, room, dir, conn)
-                        end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
-                        if (end1 and end2):
-                            if conn.is_render_midpoint_a():
-                                self.draw_conn_segment(ctx, end1[0], end2[1], end1[0], end1[1], conn)
-                                self.draw_conn_segment(ctx, end1[0], end2[1], end2[0], end2[1], conn)
-                            elif conn.is_render_midpoint_b():
-                                self.draw_conn_segment(ctx, end2[0], end1[1], end1[0], end1[1], conn)
-                                self.draw_conn_segment(ctx, end2[0], end1[1], end2[0], end2[1], conn)
-                            else:
-                                self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], conn)
+                    # TODO: For now, we're basically ignoring that extra ends can exist, and
+                    # we're only processing when we get to the primary conn
+                    if ((room == conn.r1 and direction == conn.dir1) or
+                            (room == conn.r2 and direction == conn.dir2)):
+
+                        drawn_conns.append(conn)
+                        (room2, dirs2) = conn.get_opposite(room)
+
+                        # TODO: More finagling around our extra-ends.
+                        if room == conn.r1:
+                            end = conn.ends1[direction]
+                            dir2 = conn.dir2
+                        else:
+                            end = conn.ends2[direction]
+                            dir2 = conn.dir1
+
+                        #if (dir2 == DIR_OPP[direction]):
+                        if self.are_rooms_adjacent(conn):
+                            (conn_x, conn_y) = self.room_xy(room2)
+                            x1 = x+self.CONN_OFF[direction][0]
+                            y1 = y+self.CONN_OFF[direction][1]
+                            x2 = conn_x+self.CONN_OFF[dir2][0]
+                            y2 = conn_y+self.CONN_OFF[dir2][1]
+                            self.draw_conn_segment(ctx, x1, y1, x2, y2, end)
+                            if conn.is_oneway_a():
+                                if conn.r1 == room:
+                                    for coord in self.arrow_coords(x1, y1, x2, y2):
+                                        self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
+                                else:
+                                    for coord in self.arrow_coords(x2, y2, x1, y1):
+                                        self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end)
+                            elif conn.is_oneway_b():
+                                if conn.r2 == room:
+                                    for coord in self.arrow_coords(x1, y1, x2, y2):
+                                        self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end)
+                                else:
+                                    for coord in self.arrow_coords(x2, y2, x1, y1):
+                                        self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end)
+
+                        else:
+                            end1 = self.draw_stub_conn(ctx, room, direction, conn)
+                            end2 = self.draw_stub_conn(ctx, room2, dir2, conn)
+                            if (end1 and end2):
+                                if end.is_render_midpoint_a():
+                                    self.draw_conn_segment(ctx, end1[0], end2[1], end1[0], end1[1], end)
+                                    self.draw_conn_segment(ctx, end1[0], end2[1], end2[0], end2[1], end)
+                                elif end.is_render_midpoint_b():
+                                    self.draw_conn_segment(ctx, end2[0], end1[1], end1[0], end1[1], end)
+                                    self.draw_conn_segment(ctx, end2[0], end1[1], end2[0], end2[1], end)
+                                else:
+                                    self.draw_conn_segment(ctx, end1[0], end1[1], end2[0], end2[1], end)
 
                 conn_hover = self.HOVER_CONN
-            elif room.get_loopback(dir):
+            elif room.get_loopback(direction):
                 conn_hover = self.HOVER_CONN
-                coord = self.get_conn_xy(room, dir)
+                coord = self.get_conn_xy(room, direction)
                 # TODO: resizing the map so this gets to the edge will cause a TypeError
-                coord_far = self.room_xy_coord(*self.map.dir_coord(room, dir, True))
+                coord_far = self.room_xy_coord(*self.mapobj.dir_coord(room, direction, True))
                 if coord_far:
-                    fakeconn = Connection(None, None, None, None)
+                    fakeend = ConnectionEnd(None, None)
 
                     (conn_x, conn_y) = self.apply_xy_offset(coord_far[0], coord_far[1], room)
-                    orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[dir]][0]
-                    orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[dir]][1]
-                    if dir == DIR_NW or dir == DIR_NE or dir == DIR_SE or dir == DIR_SW:
+                    orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[direction]][0]
+                    orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[direction]][1]
+                    if direction == DIR_NW or direction == DIR_NE or direction == DIR_SE or direction == DIR_SW:
                         x2 = int((coord[0]*2+orig_x2)/3)
                         y2 = int((coord[1]*2+orig_y2)/3)
                     else:
                         x2 = int((coord[0]*3+orig_x2*2)/5)
                         y2 = int((coord[1]*3+orig_y2*2)/5)
-                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, fakeconn)
+                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, fakeend)
 
                     dx_orig = x2-coord[0]
                     dy_orig = y2-coord[1]
@@ -1159,43 +1179,43 @@ class GUI(object):
 
                     x3 = x2 + (dist*dy)
                     y3 = y2 - (dist*dx)
-                    self.draw_conn_segment(ctx, x2, y2, x3, y3, fakeconn)
+                    self.draw_conn_segment(ctx, x2, y2, x3, y3, fakeend)
 
                     x4 = coord[0] + (dist*dy)
                     y4 = coord[1] - (dist*dx)
-                    self.draw_conn_segment(ctx, x4, y4, x3, y3, fakeconn)
+                    self.draw_conn_segment(ctx, x4, y4, x3, y3, fakeend)
                     for coord_arrow in self.arrow_coords(x3, y3, x4, y4):
-                        self.draw_conn_segment(ctx, coord_arrow[0], coord_arrow[1], x4, y4, fakeconn)
+                        self.draw_conn_segment(ctx, coord_arrow[0], coord_arrow[1], x4, y4, fakeend)
 
             else:
-                if (len(self.map.rooms) == 256):
-                    coord = self.map.dir_coord(room, dir)
+                if (len(self.mapobj.rooms) == 256):
+                    coord = self.mapobj.dir_coord(room, direction)
                     if (not coord):
                         continue
-                    if (not self.map.get_room_at(*coord)):
+                    if (not self.mapobj.get_room_at(*coord)):
                         continue
                 conn_hover = self.HOVER_CONN_NEW
 
             # Draw the mousemap too, though only if we Should
             if not readonly:
-                if (not room.get_conn(dir) and not room.get_loopback(dir) and (
-                    (room.y == 0 and dir in [DIR_NW, DIR_N, DIR_NE]) or
-                    (room.y == self.map.h-1 and dir in [DIR_SW, DIR_S, DIR_SE]) or
-                    (room.x == 0 and dir in [DIR_NW, DIR_W, DIR_SW]) or
-                    (room.x == self.map.w-1 and dir in [DIR_NE, DIR_E, DIR_SE]))):
+                if (not room.get_conn(direction) and not room.get_loopback(direction) and (
+                    (room.y == 0 and direction in [DIR_NW, DIR_N, DIR_NE]) or
+                    (room.y == self.mapobj.h-1 and direction in [DIR_SW, DIR_S, DIR_SE]) or
+                    (room.x == 0 and direction in [DIR_NW, DIR_W, DIR_SW]) or
+                    (room.x == self.mapobj.w-1 and direction in [DIR_NE, DIR_E, DIR_SE]))):
                     continue
-                mmctx.set_source_rgba(self.m_step*conn_hover, self.m_step*dir, self.m_step*room.id)
-                mmctx.rectangle(x+self.CONN_H_OFF[dir][0], y+self.CONN_H_OFF[dir][1], self.room_spc, self.room_spc)
+                mmctx.set_source_rgba(self.m_step*conn_hover, self.m_step*direction, self.m_step*room.idnum)
+                mmctx.rectangle(x+self.CONN_H_OFF[direction][0], y+self.CONN_H_OFF[direction][1], self.room_spc, self.room_spc)
                 mmctx.fill()
 
         # Mousemap edges
         if (not readonly and self.nudge_lock.get_active()):
-            for (dir, junk) in enumerate(DIR_OPP):
-                coords = self.map.dir_coord(room, dir)
+            for (direction, junk) in enumerate(DIR_OPP):
+                coords = self.mapobj.dir_coord(room, direction)
                 if coords:
-                    if (not self.map.get_room_at(*coords)):
-                        mmctx.set_source_rgba(self.m_step*self.HOVER_EDGE, self.m_step*dir, self.m_step*room.id)
-                        mmctx.rectangle(x+self.EDGE_OFF[dir][0], y+self.EDGE_OFF[dir][1], self.room_spc, self.room_spc)
+                    if (not self.mapobj.get_room_at(*coords)):
+                        mmctx.set_source_rgba(self.m_step*self.HOVER_EDGE, self.m_step*direction, self.m_step*room.idnum)
+                        mmctx.rectangle(x+self.EDGE_OFF[direction][0], y+self.EDGE_OFF[direction][1], self.room_spc, self.room_spc)
                         mmctx.fill()
 
         if (is_label):
@@ -1298,8 +1318,8 @@ class GUI(object):
         Sets the size of our drawing areas, etc.  We need to call this from more
         than one place...
         """
-        self.area_x = self.room_w*self.map.w + self.room_spc*(self.map.w+1)
-        self.area_y = self.room_h*self.map.h + self.room_spc*(self.map.h+1)
+        self.area_x = self.room_w*self.mapobj.w + self.room_spc*(self.mapobj.w+1)
+        self.area_y = self.room_h*self.mapobj.h + self.room_spc*(self.mapobj.h+1)
         self.mainarea.set_size_request(self.area_x, self.area_y)
 
     def draw(self, widget=None):
@@ -1379,7 +1399,7 @@ class GUI(object):
         self.mmctx.paint()
 
         # Loop through any groups and draw them, too
-        for group in self.map.groups:
+        for group in self.mapobj.groups:
             max_x = 0
             max_y = 0
             min_x = 9999
@@ -1407,7 +1427,7 @@ class GUI(object):
 
         # Loop through and draw our rooms
         drawn_conns = []
-        for room in self.map.roomlist():
+        for room in self.mapobj.roomlist():
             if room:
                 self.draw_room(room, self.cleanctx, self.mmctx, drawn_conns)
 
@@ -1726,7 +1746,7 @@ class GUI(object):
                                     self.map.remove_room_from_group(room)
                                     need_gfx_update = True
                             else:
-                                if (self.map.add_room_to_group(room, self.map.get_room(group_roomid))):
+                                if (self.map.group_rooms(room, self.map.get_room(group_roomid))):
                                     need_gfx_update = True
 
                             # Temp, report
@@ -1760,13 +1780,13 @@ class GUI(object):
                                         need_gfx_update = True
                                     else:
                                         (cur_room, cur_dir) = existing.get_opposite(room)
-                                        if ((new_roomid != cur_room.id) or (new_dir != cur_dir)):
+                                        if ((new_roomid != cur_room.idnum) or (new_dir != cur_dir)):
                                             self.map.detach(room, dir)
-                                            existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                            existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
                                             need_gfx_update = True
                                 else:
                                     if new_roomid != -1:
-                                        existing = self.map.connect_id(room.id, dir, new_roomid, new_dir)
+                                        existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
                                         need_gfx_update = True
 
                                 # ... and the type flag, if we still have a connection
@@ -1806,23 +1826,21 @@ class GUI(object):
                 elif (self.hover == self.HOVER_CONN):
                     # remove the connection
                     room = self.curhover[0]
-                    dir = self.curhover[1]
-                    self.map.detach(room, dir)
+                    direction = self.curhover[1]
+                    self.mapobj.detach(room, direction)
                     need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
                     room = self.curhover[0]
-                    dir = self.curhover[1]
-                    coords = self.map.dir_coord(room, dir)
+                    direction = self.curhover[1]
+                    coords = self.mapobj.dir_coord(room, direction)
                     if coords:
-                        newroom = self.map.get_room_at(*coords)
+                        newroom = self.mapobj.get_room_at(*coords)
                         if newroom:
-                            if (DIR_OPP[dir] in newroom.conns):
-                                # Remove previous connection on other room
-                                self.map.detach(newroom, DIR_OPP[dir])
-                            self.map.connect(room, dir, newroom)
-                            need_gfx_update = True
+                            if (DIR_OPP[direction] not in newroom.conns):
+                                self.mapobj.connect(room, direction, newroom)
+                                need_gfx_update = True
                         else:
                             self.new_to_dir_label.show_all()
                             self.new_to_dir_align.show_all()
@@ -1833,7 +1851,7 @@ class GUI(object):
                             self.new_group_with_label.show_all()
                             self.new_group_with_align.show_all()
                             self.new_group_with_button.set_active(False)
-                            self.new_to_dir_box.set_active(DIR_OPP[dir])
+                            self.new_to_dir_box.set_active(DIR_OPP[direction])
                             self.new_conn_type_pass_twoway.set_active(True)
                             self.new_conn_style_regular.set_active(True)
                             self.edit_room_label.set_markup('<b>New Room</b>')
@@ -1852,7 +1870,7 @@ class GUI(object):
                             self.edit_room_dialog.hide()
                             if (result == gtk.RESPONSE_OK):
                                 try:
-                                    newroom = self.map.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
+                                    newroom = self.mapobj.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
                                 except Exception as e:
                                     self.errordialog("Couldn't add room: %s" % (e))
                                     return
@@ -1882,19 +1900,20 @@ class GUI(object):
                                 newroom.door_out = self.room_out_entry.get_text()
                                 buf = self.roomnotes_view.get_buffer()
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-                                newconn = self.map.connect(room, dir, newroom, self.new_to_dir_box.get_active())
+                                new_direction = self.new_to_dir_box.get_active()
+                                newconn = self.mapobj.connect(room, direction, newroom, new_direction)
                                 if self.new_conn_type_pass_oneway_in.get_active():
-                                    newconn.set_oneway_b()
+                                    newconn.set_oneway_b(newroom, new_direction)
                                 elif self.new_conn_type_pass_oneway_out.get_active():
-                                    newconn.set_oneway_a()
+                                    newconn.set_oneway_a(newroom, new_direction)
                                 if self.new_conn_style_ladder.get_active():
-                                    newconn.set_ladder()
+                                    newconn.set_ladder(newroom, new_direction)
                                 elif self.new_conn_style_dotted.get_active():
-                                    newconn.set_dotted()
+                                    newconn.set_dotted(newroom, new_direction)
 
                                 # Handle adding grouping if we've been told to, as well.
                                 if self.new_group_with_button.get_active():
-                                    self.map.add_room_to_group(newroom, room)
+                                    self.mapobj.group_rooms(newroom, room)
 
                                 # Temp, report
                                 #print('Existing Groups:')
@@ -1907,14 +1926,14 @@ class GUI(object):
                                 #print('')
 
                                 need_gfx_update = True
-                                if (len(self.map.rooms) == 256):
+                                if (len(self.mapobj.rooms) == 256):
                                     self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
 
                 elif (self.hover == self.HOVER_EDGE):
                     # move the room, if possible
                     room = self.curhover[0]
-                    dir = self.curhover[1]
-                    if (self.map.move_room(room, dir)):
+                    direction = self.curhover[1]
+                    if (self.mapobj.move_room(room, direction)):
                         need_gfx_update = True
 
                 else:
@@ -1933,31 +1952,15 @@ class GUI(object):
                 if self.move_room is not None and self.move_dir is not None:
                     # We've received a previous "move connection" click, so process it now,
                     # so long as we're hovering over a new connection area
-                    if (self.hover == self.HOVER_CONN or self.hover == self.HOVER_CONN_NEW):
+                    if self.hover == self.HOVER_CONN_NEW:
                         new_room = self.curhover[0]
                         new_dir = self.curhover[1]
 
-                        # If we click again on the same connection spot, do nothing:
-                        if self.move_room != new_room or self.move_dir != new_dir:
-                            cur_conn = self.move_room.get_conn(self.move_dir)
-                            (orig_room, orig_dir) = cur_conn.get_opposite(self.move_room)
-                            if orig_room != new_room:
-
-                                if self.hover == self.HOVER_CONN:
-                                    self.map.detach(new_room, new_dir)
-
-                                if cur_conn.r1 == self.move_room:
-                                    cur_conn.r1.detach_single(self.move_dir)
-                                    cur_conn.r1 = new_room
-                                    cur_conn.dir1 = new_dir
-                                    cur_conn.r1.attach_conn(cur_conn)
-                                else:
-                                    cur_conn.r2.detach_single(self.move_dir)
-                                    cur_conn.r2 = new_room
-                                    cur_conn.dir2 = new_dir
-                                    cur_conn.r2.attach_conn(cur_conn)
-
-                                need_gfx_update = True
+                        # The logic for what's valid and what's not, here, was all moved into
+                        # the actual data classes, in Connection.move_end().  Yay!
+                        conn = self.move_room.get_conn(self.move_dir)
+                        if conn.move_end(self.move_room, self.move_dir, new_room, new_dir):
+                            need_gfx_update = True
 
                 elif self.link_conn_room is not None and self.link_conn_dir is not None:
                     # We've received a previous "new connection" click, so process it now,
@@ -1967,7 +1970,7 @@ class GUI(object):
                         new_dir = self.curhover[1]
 
                         if new_room != self.link_conn_room:
-                            self.map.connect(self.link_conn_room, self.link_conn_dir, new_room, new_dir)
+                            self.mapobj.connect(self.link_conn_room, self.link_conn_dir, new_room, new_dir)
                             need_gfx_update = True
 
                 else:
@@ -2005,8 +2008,8 @@ class GUI(object):
                     # If we're hovering over a new connection, right-click will
                     # create a loopback
                     room = self.curhover[0]
-                    dir = self.curhover[1]
-                    room.set_loopback(dir)
+                    direction = self.curhover[1]
+                    room.set_loopback(direction)
                     need_gfx_update = True
 
                 if (need_gfx_update):
@@ -2067,16 +2070,16 @@ class GUI(object):
                 for iterroom in rooms:
                     if (room != iterroom):
                         currow += 1
-                        rowmap[iterroom.id] = currow
+                        rowmap[iterroom.idnum] = currow
                         iter = self.room_mapstore.append()
                         self.room_mapstore.set(iter,
                                 self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
-                                self.ROOM_COL_IDX, iterroom.id)
+                                self.ROOM_COL_IDX, iterroom.idnum)
                         if (not have_group and room.in_group_with(iterroom)):
                             self.room_group_box.set_active(currow)
                             have_group = True
                     else:
-                        rowmap[iterroom.id] = 0
+                        rowmap[iterroom.idnum] = 0
 
                 # ... and then set the currently-active dropdown values
                 # (and ladders, incidentally)
@@ -2196,7 +2199,7 @@ class GUI(object):
         if (hoverpixel[2] != 0):
             # TODO: Visualization for mouseovers on these
             typeidx = hoverpixel[2]
-            room = self.map.get_room(hoverpixel[0])
+            room = self.mapobj.get_room(hoverpixel[0])
             if (typeidx == self.HOVER_ROOM):
                 if (self.hover != self.HOVER_ROOM or self.curhover != room):
                     self.clean_hover()
@@ -2262,10 +2265,10 @@ class GUI(object):
             # the actual menus, etc
             if (self.hover == self.HOVER_ROOM):
                 if (key == 'd'):
-                    if (len(self.map.rooms) < 2):
+                    if (len(self.mapobj.rooms) < 2):
                         self.errordialog('You cannot remove the last room from a map', self.window)
                         return
-                    self.map.del_room(self.curhover)
+                    self.mapobj.del_room(self.curhover)
                     self.trigger_redraw()
                     self.reset_transient_operations()
                 elif (key == 'g'):
@@ -2287,30 +2290,32 @@ class GUI(object):
                 room = self.curhover[0]
                 conn_dir = self.curhover[1]
                 conn = room.get_conn(conn_dir)
+                end = conn.get_end(room, conn_dir)
                 if conn:
                     if (key == 'p'):
-                        if conn.is_render_regular():
-                            conn.set_render_midpoint_a()
-                        elif conn.is_render_midpoint_a():
-                            conn.set_render_midpoint_b()
+                        if end.is_render_regular():
+                            conn.set_render_midpoint_a(room, conn_dir)
+                        elif end.is_render_midpoint_a():
+                            conn.set_render_midpoint_b(room, conn_dir)
                         else:
-                            conn.set_render_regular()
+                            conn.set_render_regular(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 's'):
-                        cur_length = conn.stublength
-                        conn.set_stublength(cur_length+1)
-                        if conn.stublength == cur_length:
-                            conn.set_stublength(1)
+                        cur_length = end.stub_length
+                        conn.set_stub_length(room, conn_dir, cur_length+1)
+                        # TODO: Wouldn't it make more sense to have an incrementor?
+                        if end.stub_length == cur_length:
+                            conn.set_stub_length(room, conn_dir, 1)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 't'):
-                        if conn.is_regular():
-                            conn.set_ladder()
-                        elif conn.is_ladder():
-                            conn.set_dotted()
+                        if end.is_regular():
+                            conn.set_ladder(room, conn_dir)
+                        elif end.is_ladder():
+                            conn.set_dotted(room, conn_dir)
                         else:
-                            conn.set_regular()
+                            conn.set_regular(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 'o'):
@@ -2375,8 +2380,8 @@ class GUI(object):
         Handles getting a signal to nudge the map in a given direction
         """
         (nudge, dir_txt) = widget.name.split('_', 2)
-        dir = TXT_2_DIR[dir_txt]
-        if (self.map.nudge(dir)):
+        direction = TXT_2_DIR[dir_txt]
+        if (self.mapobj.nudge(direction)):
             self.trigger_redraw()
 
     def edit_room_activate(self, widget):
@@ -2403,7 +2408,7 @@ class GUI(object):
         """
         if (self.initgfx and not self.updating_gameinfo):
             self.map_idx = self.map_combo.get_active()
-            self.map = self.game.maps[self.map_idx]
+            self.mapobj = self.game.maps[self.map_idx]
             self.update_title()
             self.trigger_redraw()
 
@@ -2415,13 +2420,13 @@ class GUI(object):
         self.gamename_entry.set_text(self.game.name)
 
         self.mapstore.clear()
-        for (idx, map) in enumerate(self.game.maps):
-            iter = self.mapstore.append()
-            self.mapstore.set(iter,
-                    self.MAP_COL_TEXT, map.name,
+        for (idx, mapobj) in enumerate(self.game.maps):
+            iterator = self.mapstore.append()
+            self.mapstore.set(iterator,
+                    self.MAP_COL_TEXT, mapobj.name,
                     self.MAP_COL_EDIT, True,
                     self.MAP_COL_CURIDX, idx,
-                    self.MAP_COL_ROOMS, len(map.rooms),
+                    self.MAP_COL_ROOMS, len(mapobj.rooms),
                     self.MAP_COL_ROOMEDIT, False)
 
         # ... and update GUI components as needed
@@ -2436,12 +2441,12 @@ class GUI(object):
 
             # Now process any changes to the map list
             newmaps = []
-            iter = self.mapstore.get_iter_first()
+            iterator = self.mapstore.get_iter_first()
             new_map_idx = 0
             found_cur_map = False
-            while (iter):
-                mapname = self.mapstore.get_value(iter, self.MAP_COL_TEXT)
-                curidx = self.mapstore.get_value(iter, self.MAP_COL_CURIDX)
+            while (iterator):
+                mapname = self.mapstore.get_value(iterator, self.MAP_COL_TEXT)
+                curidx = self.mapstore.get_value(iterator, self.MAP_COL_CURIDX)
                 if (curidx == -1):
                     newmaps.append(self.create_new_map(mapname))
                 else:
@@ -2450,12 +2455,12 @@ class GUI(object):
                         found_cur_map = True
                     self.game.maps[curidx].name = mapname
                     newmaps.append(self.game.maps[curidx])
-                iter = self.mapstore.iter_next(iter)
+                iterator = self.mapstore.iter_next(iterator)
             self.game.replace_maps(newmaps)
 
             # Update our currently-selected map
             self.map_idx = new_map_idx
-            self.map = self.game.maps[self.map_idx]
+            self.mapobj = self.game.maps[self.map_idx]
 
             # And now update our map dropdown
             self.update_gameinfo()
@@ -2485,8 +2490,8 @@ class GUI(object):
             if (self.new_map_entry.get_text() == ''):
                 self.errordialog('You must specify a name for the new map', self.edit_game_dialog)
                 return
-            iter = self.mapstore.append()
-            self.mapstore.set(iter,
+            iterator = self.mapstore.append()
+            self.mapstore.set(iterator,
                     self.MAP_COL_TEXT, self.new_map_entry.get_text(),
                     self.MAP_COL_EDIT, True,
                     self.MAP_COL_CURIDX, -1,
@@ -2502,16 +2507,16 @@ class GUI(object):
             self.errordialog('You cannot delete the last map', self.edit_game_dialog)
             return
         sel = self.map_treeview.get_selection()
-        model, iter = sel.get_selected()
+        model, iterator = sel.get_selected()
 
-        if iter:
-            roomcount = model.get_value(iter, self.MAP_COL_ROOMS)
+        if iterator:
+            roomcount = model.get_value(iterator, self.MAP_COL_ROOMS)
             if (roomcount > 0):
                 res = self.confirmdialog('If you delete this map, all rooms will be removed with it.  Are you sure you want to continue?', self.edit_game_dialog)
                 if (res != gtk.RESPONSE_YES):
                     return
-            idx = model.get_path(iter)[0]
-            model.remove(iter)
+            idx = model.get_path(iterator)[0]
+            model.remove(iterator)
             self.update_mapremove_button()
 
     def on_mapname_edited(self, cell, path_string, new_text, model):
@@ -2521,52 +2526,52 @@ class GUI(object):
         if (new_text == ''):
             self.errordialog('Map must have a name', self.edit_game_dialog)
             return
-        iter = model.get_iter_from_string(path_string)
-        path = model.get_path(iter)[0]
+        iterator = model.get_iter_from_string(path_string)
+        path = model.get_path(iterator)[0]
         column = cell.get_data('column')
 
         if (column == 0):
-            model.set(iter, column, new_text)
+            model.set(iterator, column, new_text)
 
-    def open_notes(self, widget, all=False):
+    def open_notes(self, widget, allmaps=False):
         """
         Open up our notes window
         """
-        if all:
+        if allmaps:
             maplist = self.game.maps
             self.notes_window.set_title('Room Notes (for all maps)')
         else:
-            maplist = [self.map]
-            self.notes_window.set_title('Room Notes (for %s)' % (self.map.name))
+            maplist = [self.mapobj]
+            self.notes_window.set_title('Room Notes (for %s)' % (self.mapobj.name))
 
         # First loop through to find out what notes we have
         notes = {}
-        for (idx, map) in enumerate(maplist):
+        for (idx, mapobj) in enumerate(maplist):
             notes[idx] = {}
-            for room in map.roomlist():
+            for room in mapobj.roomlist():
                 if (room and room.notes and room.notes != ''):
-                    notes[idx][room.id] = room.notes
+                    notes[idx][room.idnum] = room.notes
 
         # ... and now report
-        buffer = self.global_notes_view.get_buffer()
-        buffer.set_text('')
+        buff = self.global_notes_view.get_buffer()
+        buff.set_text('')
         have_notes = False
-        end = buffer.get_end_iter()
-        buffer.insert(end, "\n")
+        end = buff.get_end_iter()
+        buff.insert(end, "\n")
         for (idx, rooms) in notes.items():
             if (len(rooms) > 0):
                 have_notes = True
-                buffer.insert_with_tags_by_name(end, 'Notes for %s' % (maplist[idx].name), 'mapheader')
-                buffer.insert(end, "\n\n")
-                for (id, notes) in rooms.items():
-                    room = maplist[idx].get_room(id)
-                    buffer.insert_with_tags_by_name(end, room.name, 'roomheader')
-                    buffer.insert_with_tags_by_name(end, ' at (%d, %d)' % (room.x+1, room.y+1), 'coords')
-                    buffer.insert(end, "\n")
-                    buffer.insert_with_tags_by_name(end, notes, 'notes')
-                    buffer.insert(end, "\n\n")
+                buff.insert_with_tags_by_name(end, 'Notes for %s' % (maplist[idx].name), 'mapheader')
+                buff.insert(end, "\n\n")
+                for (idnum, notes) in rooms.items():
+                    room = maplist[idx].get_room(idnum)
+                    buff.insert_with_tags_by_name(end, room.name, 'roomheader')
+                    buff.insert_with_tags_by_name(end, ' at (%d, %d)' % (room.x+1, room.y+1), 'coords')
+                    buff.insert(end, "\n")
+                    buff.insert_with_tags_by_name(end, notes, 'notes')
+                    buff.insert(end, "\n\n")
         if not have_notes:
-            buffer.insert_with_tags_by_name(end, "\n\n\n(no notes)", 'nonotes')
+            buff.insert_with_tags_by_name(end, "\n\n\n(no notes)", 'nonotes')
 
         self.notes_window.show()
     
@@ -2588,8 +2593,8 @@ class GUI(object):
         Resizes the map, if possible
         """
         (resize, dir_txt) = widget.name.split('_', 2)
-        dir = TXT_2_DIR[dir_txt]
-        if (self.map.resize(dir)):
+        direction = TXT_2_DIR[dir_txt]
+        if (self.mapobj.resize(direction)):
             self.trigger_redraw()
 
     def draw_offset_toggle(self, widget):
@@ -2605,7 +2610,7 @@ class GUI(object):
         self.new_map_dialog_title.set_markup('<b>Duplicate Map</b>')
         transbak = self.new_map_dialog.get_transient_for()
         self.new_map_dialog.set_transient_for(self.window)
-        self.new_map_entry.set_text('%s (copy)' % self.map.name)
+        self.new_map_entry.set_text('%s (copy)' % self.mapobj.name)
         self.new_map_entry.grab_focus()
         result = self.new_map_dialog.run()
         self.new_map_dialog.hide()
@@ -2615,7 +2620,7 @@ class GUI(object):
             if (self.new_map_entry.get_text() == ''):
                 self.errordialog('You must specify a name for the new map', self.window)
                 return
-            newmap = self.map.duplicate(self.new_map_entry.get_text())
+            newmap = self.mapobj.duplicate(self.new_map_entry.get_text())
             self.game.add_map_obj(newmap)
             self.update_gameinfo()
 
@@ -2644,10 +2649,10 @@ class GUI(object):
             if (path != ''):
                 dialog.set_current_folder(path)
 
-        filter = gtk.FileFilter()
-        filter.set_name("PNG Files")
-        filter.add_pattern("*.png")
-        dialog.add_filter(filter)
+        fil = gtk.FileFilter()
+        fil.set_name("PNG Files")
+        fil.add_pattern("*.png")
+        dialog.add_filter(fil)
 
         # Run the dialog and process its return values
         response = dialog.run()
