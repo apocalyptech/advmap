@@ -496,6 +496,15 @@ class ConnectionEnd(object):
             stub_length = self.STUB_MAX
         self.stub_length = stub_length
 
+    def increment_stub_length(self):
+        """
+        stub_length doesn't go to zero, which is why we're not just using
+        the % operator here.
+        """
+        self.stub_length += 1
+        if self.stub_length > self.STUB_MAX:
+            self.stub_length = self.STUB_REGULAR
+
     def save(self, df):
         """
         Saves ourself to a filehandle
@@ -561,30 +570,53 @@ class Connection(object):
         self.r1.conns[self.dir1] = self
         self.r2.conns[self.dir2] = self
 
-    def set_symmetric(self, symmetric=True):
+    def set_symmetric(self, symmetric=True, room=None, direction=None):
         """
         Sets our `symmetric` boolean which specifies whether the ConnectionEnd
         objects are allowed to drift from each other.  When specifying `False`,
         the only internal change is to update our `symmetric` boolean.  When
         specifying `True` (the default), all ConnectionEnd attributes will be
-        updated to match the attributes of the primary ConnectionEnd on r1's side.
+        updated to match the attributes of one of the Ends in the connection.
+        If `room` and `direction` are not specified, this will always be the
+        primary ConnectionEnd on r1's side.  If just `room` is specified, it'll
+        be the primary ConnectionEnd on that room's side.  if both `room` and
+        `direction` are specified, we'll chose that particular End.
         """
         if symmetric:
-            self.symmetric = True
-            main_ce = self.ends1[self.dir1]
-            for end in self.get_end_list(self.r1, self.dir1):
-                if end != main_ce:
-                    end.conn_type = main_ce.conn_type
-                    end.render_type = main_ce.render_type
-                    end.stub_length = main_ce.stub_length
+
+            # Don't do any work if we're already set True
+            if not self.symmetric:
+
+                self.symmetric = True
+
+                # Choose a source End
+                main_ce = None
+                if room and direction:
+                    main_ce = self.get_end(room, direction)
+                if not main_ce and room:
+                    if room == self.r1:
+                        main_ce = self.ends1[self.dir1]
+                    elif room == self.r2:
+                        main_ce = self.ends1[self.dir1]
+                if not main_ce:
+                    main_ce = self.ends1[self.dir1]
+
+                # Apply changes based on that End
+                for end in self.get_all_ends():
+                    if end != main_ce:
+                        end.conn_type = main_ce.conn_type
+                        end.stub_length = main_ce.stub_length
         else:
             self.symmetric = False
 
-    def toggle_symmetric(self):
+    def toggle_symmetric(self, room=None, direction=None):
         """
-        Toggles symmetry of our connection.  Useful for calling from the GUI.
+        Toggles symmetry of our connection.  Optionally pass in room and direction
+        to specify which End should be considered the source for all Connection
+        attributes, if it's going from nonsymmetric to symmetric.  This function
+        useful for calling from the GUI, as opposed to `set_symmetric`
         """
-        self.set_symmetric(not self.symmetric)
+        self.set_symmetric(not self.symmetric, room, direction)
 
     def get_primary_ends_dict(self, room):
         """
@@ -745,24 +777,68 @@ class Connection(object):
         for end in self.get_end_list(room, direction):
             end.set_dotted()
 
-    # TODO: I think render_type changes should probably always be symmetric
-    # for the primary.  It only makes sense to have them separate for extras
+    def cycle_conn_type(self, room, direction):
+        """
+        Cycle through our available conn_types
+        """
+        end = self.get_end(room, direction)
+        if end:
+            if end.is_regular():
+                self.set_ladder(room, direction)
+            elif end.is_ladder():
+                self.set_dotted(room, direction)
+            else:
+                self.set_regular(room, direction)
+
+    def get_render_type_change_endlist(self, room, direction):
+        """
+        Unlike other attributes stored in ConnectionEnd, render_type
+        does NOT follow our symmetry attribute, since it doesn't
+        really make sense for this attribute.  The primary Ends will
+        always remain synced, though.
+        """
+        if ((room == self.r1 and direction == self.dir1) or
+                (room == self.r2 and direction == self.dir2)):
+            return [self.ends1[self.dir1], self.ends2[self.dir2]]
+        else:
+            end = self.get_end(room, direction)
+            if end:
+                return [end]
+            else:
+                return []
 
     def set_render_regular(self, room, direction):
-        for end in self.get_end_list(room, direction):
+        for end in self.get_render_type_change_endlist(room, direction):
             end.set_render_regular()
 
     def set_render_midpoint_a(self, room, direction):
-        for end in self.get_end_list(room, direction):
+        for end in self.get_render_type_change_endlist(room, direction):
             end.set_render_midpoint_a()
 
     def set_render_midpoint_b(self, room, direction):
-        for end in self.get_end_list(room, direction):
+        for end in self.get_render_type_change_endlist(room, direction):
             end.set_render_midpoint_b()
+
+    def cycle_render_type(self, room, direction):
+        """
+        Cycles through all available render types
+        """
+        end = self.get_end(room, direction)
+        if end:
+            if end.is_render_regular():
+                self.set_render_midpoint_a(room, direction)
+            elif end.is_render_midpoint_a():
+                self.set_render_midpoint_b(room, direction)
+            else:
+                self.set_render_regular(room, direction)
 
     def set_stub_length(self, room, direction, stub_length=ConnectionEnd.STUB_REGULAR):
         for end in self.get_end_list(room, direction):
             end.set_stub_length(stub_length)
+
+    def increment_stub_length(self, room, direction):
+        for end in self.get_end_list(room, direction):
+            end.increment_stub_length()
 
     def set_twoway(self):
         self.passage = self.PASS_TWOWAY
@@ -772,6 +848,17 @@ class Connection(object):
 
     def set_oneway_b(self):
         self.passage = self.PASS_ONEWAY_B
+
+    def cycle_passage(self):
+        """
+        Cycles through all available `passage` values
+        """
+        if self.is_twoway():
+            self.set_oneway_a()
+        elif self.is_oneway_a():
+            self.set_oneway_b()
+        else:
+            self.set_twoway()
 
     def is_twoway(self):
         return (self.passage == self.PASS_TWOWAY)

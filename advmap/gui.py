@@ -2312,43 +2312,24 @@ class GUI(object):
                 end = conn.get_end(room, conn_dir)
                 if conn:
                     if (key == 'p'):
-                        if end.is_render_regular():
-                            conn.set_render_midpoint_a(room, conn_dir)
-                        elif end.is_render_midpoint_a():
-                            conn.set_render_midpoint_b(room, conn_dir)
-                        else:
-                            conn.set_render_regular(room, conn_dir)
+                        conn.cycle_render_type(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 's'):
-                        cur_length = end.stub_length
-                        conn.set_stub_length(room, conn_dir, cur_length+1)
-                        # TODO: Wouldn't it make more sense to have an incrementor?
-                        if end.stub_length == cur_length:
-                            conn.set_stub_length(room, conn_dir, 1)
+                        conn.increment_stub_length(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 't'):
-                        if end.is_regular():
-                            conn.set_ladder(room, conn_dir)
-                        elif end.is_ladder():
-                            conn.set_dotted(room, conn_dir)
-                        else:
-                            conn.set_regular(room, conn_dir)
+                        conn.cycle_conn_type(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 'o'):
-                        if conn.is_twoway():
-                            conn.set_oneway_a()
-                        elif conn.is_oneway_a():
-                            conn.set_oneway_b()
-                        else:
-                            conn.set_twoway()
+                        conn.cycle_passage()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
                     elif (key == 'l'):
                         # TODO: update tooltext
-                        conn.toggle_symmetric()
+                        conn.toggle_symmetric(room=room, direction=conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
 
