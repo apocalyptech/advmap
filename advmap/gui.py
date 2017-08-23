@@ -267,6 +267,8 @@ class GUI(object):
         self.dragging = False
         self.hover = self.HOVER_NONE
         self.curhover = None
+        self.hover_roomobj = None
+        self.hover_connobj = None
         self.move_room = None
         self.move_dir = None
         self.link_conn_room = None
@@ -1556,6 +1558,8 @@ class GUI(object):
             self.mapctx.restore()
             self.hover = self.HOVER_NONE
             self.curhover = None
+            self.hover_roomobj = None
+            self.hover_connobj = None
 
     def room_sort(self, room1, room2):
         """
@@ -2170,6 +2174,74 @@ class GUI(object):
         elif self.hover == self.HOVER_EDGE:
             self.hover_edge()
 
+    def update_hover_text(self):
+        """
+        Updates our hover text which tells the user what actions are available.
+        """
+
+        # Look to see if we're in readonly mode
+        readonly = self.readonly_lock.get_active()
+
+        hover_text = ''
+
+        if self.hover == self.HOVER_NONE:
+
+            hover_text = 'LMB: click-and-drag'
+
+        else:
+
+            if self.hover_roomobj:
+
+                prefix = '(%d, %d)' % (self.hover_roomobj.x+1, self.hover_roomobj.y+1)
+                actions = []
+
+                if self.hover == self.HOVER_ROOM:
+                    if readonly:
+                        actions.append(('LMB', 'view details'))
+                    else:
+                        actions.append(('LMB', 'edit room'))
+                        actions.append(('D', 'delete'))
+                        actions.append(('H/V', 'toggle horiz/vert offset'))
+                        actions.append(('T', 'change type'))
+                        if self.hover_roomobj.group:
+                            actions.append(('G', 'change group render'))
+
+                elif self.hover == self.HOVER_CONN:
+                    if not readonly:
+                        if self.hover_roomobj.get_loopback(self.curhover[1]):
+                            actions.append(('LMB', 'remove loopback'))
+                        else:
+                            actions.append(('LMB', 'remove connection'))
+                            actions.append(('MMB', 'move connection'))
+                            actions.append(('T', 'change type'))
+                            actions.append(('P', 'change path'))
+                            actions.append(('O', 'change orientation'))
+                            actions.append(('L', 'change stub length'))
+                            if self.hover_connobj:
+                                if self.hover_connobj.symmetric:
+                                    actions.append(('S', 'toggle symmetric OFF'))
+                                else:
+                                    actions.append(('S', 'toggle symmetric ON'))
+                            else:
+                                actions.append(('S', 'toggle symmetric'))
+
+                elif self.hover == self.HOVER_CONN_NEW:
+                    if not readonly:
+                        actions.append(('LMB', 'new connection'))
+                        actions.append(('RMB', 'new loopback'))
+                        actions.append(('MMB', 'link to existing'))
+
+                elif self.hover == self.HOVER_EDGE:
+                    if not readonly:
+                        actions.append(('LMB', 'nudge room'))
+
+                if len(actions) == 0:
+                    hover_text = prefix
+                else:
+                    hover_text = '%s - %s' % (prefix, ', '.join(['%s: %s' % (key, action) for (key, action) in actions]))
+
+        self.set_hover(hover_text)
+
     def on_mouse_changed(self, widget, event):
         """
         Track mouse changes
@@ -2218,15 +2290,9 @@ class GUI(object):
                     self.clean_hover()
                     self.hover = self.HOVER_ROOM
                     self.curhover = room
+                    self.hover_roomobj = room
                     self.hover_room()
                     self.mainarea.queue_draw()
-                    if readonly:
-                        self.set_hover('(%d, %d) - View Details' % (room.x+1, room.y+1))
-                    else:
-                        if room.group is not None:
-                            self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type, G: change group render style' % (room.x+1, room.y+1))
-                        else:
-                            self.set_hover('(%d, %d) - Edit Room - D: Delete, H/V: toggle Horiz/Vert offset, T: change type' % (room.x+1, room.y+1))
             elif (typeidx == self.HOVER_CONN or typeidx == self.HOVER_CONN_NEW):
                 if not readonly:
                     conn = (room, hoverpixel[1])
@@ -2234,24 +2300,13 @@ class GUI(object):
                         self.clean_hover()
                         self.hover = typeidx
                         self.curhover = conn
+                        self.hover_roomobj = room
+                        self.hover_connobj = self.curhover[0].get_conn(self.curhover[1])
                         if (self.hover == self.HOVER_CONN_NEW):
                             self.hover_conn()
                         else:
                             self.hover_conn(self.c_highlight_del)
                         self.mainarea.queue_draw()
-                        if (self.hover == self.HOVER_CONN):
-                            if room.get_loopback(self.curhover[1]):
-                                self.set_hover('(%d, %d) - Remove %s loopback' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
-                            else:
-                                connection = self.curhover[0].get_conn(self.curhover[1])
-                                if connection:
-                                    if connection.symmetric:
-                                        symtext = ' OFF'
-                                    else:
-                                        symtext = ' ON'
-                                self.set_hover('(%d, %d) - Remove %s connection - middle-click: move connection, T: change type, P: change path, O: change orientation, S: change stub length, L: toggle symmetric link%s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]], symtext))
-                        else:
-                            self.set_hover('(%d, %d) - New connection to the %s - right-click: loopback, middle-click: link to existing' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             elif (typeidx == self.HOVER_EDGE):
                 if not readonly:
                     edge = (room, hoverpixel[1])
@@ -2259,15 +2314,16 @@ class GUI(object):
                         self.clean_hover()
                         self.hover = self.HOVER_EDGE
                         self.curhover = edge
+                        self.hover_roomobj = room
                         self.hover_edge()
                         self.mainarea.queue_draw()
-                        self.set_hover('(%d, %d) - Nudge Room to %s' % (room.x+1, room.y+1, DIR_2_TXT[self.curhover[1]]))
             else:
                 raise Exception("Invalid R code in bit mousemap")
         else:
             self.clean_hover()
             self.mainarea.queue_draw()
-            self.set_hover('')
+
+        self.update_hover_text()
 
     def key_handler(self, widget, event):
         """
@@ -2315,7 +2371,7 @@ class GUI(object):
                         conn.cycle_render_type(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
-                    elif (key == 's'):
+                    elif (key == 'l'):
                         conn.increment_stub_length(room, conn_dir)
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
@@ -2327,9 +2383,9 @@ class GUI(object):
                         conn.cycle_passage()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
-                    elif (key == 'l'):
-                        # TODO: update tooltext
+                    elif (key == 's'):
                         conn.toggle_symmetric(room=room, direction=conn_dir)
+                        self.update_hover_text()
                         self.trigger_redraw(False)
                         self.reset_transient_operations()
 
