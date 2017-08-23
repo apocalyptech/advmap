@@ -1125,27 +1125,32 @@ class GUI(object):
                         dir2 = conn.dir1
 
                     if self.is_primary_adjacent(conn):
-                        # TODO: adjacent rendering is remaining simplified a bit
                         (conn_x, conn_y) = self.room_xy(room2)
                         x1 = x+self.CONN_OFF[direction][0]
                         y1 = y+self.CONN_OFF[direction][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
-                        self.draw_conn_segment(ctx, x1, y1, x2, y2, end_close)
+                        if end_close.conn_type == end_far.conn_type:
+                            self.draw_conn_segment(ctx, x1, y1, x2, y2, end_close)
+                        else:
+                            midpoint_x = (x1 + x2) / 2
+                            midpoint_y = (y1 + y2) / 2
+                            self.draw_conn_segment(ctx, x1, y1, midpoint_x, midpoint_y, end_close)
+                            self.draw_conn_segment(ctx, midpoint_x, midpoint_y, x2, y2, end_far)
                         if conn.is_oneway_a():
                             if conn.r1 == room:
                                 for coord in self.arrow_coords(x1, y1, x2, y2):
                                     self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end_close)
                             else:
                                 for coord in self.arrow_coords(x2, y2, x1, y1):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_close)
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_far)
                         elif conn.is_oneway_b():
                             if conn.r2 == room:
                                 for coord in self.arrow_coords(x1, y1, x2, y2):
                                     self.draw_conn_segment(ctx, coord[0], coord[1], x1, y1, end_close)
                             else:
                                 for coord in self.arrow_coords(x2, y2, x1, y1):
-                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_close)
+                                    self.draw_conn_segment(ctx, coord[0], coord[1], x2, y2, end_far)
 
                     else:
                         stub1 = self.draw_stub_conn(ctx, room, direction, conn)
