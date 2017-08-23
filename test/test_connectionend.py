@@ -248,6 +248,22 @@ class ConnectionEndTests(unittest.TestCase):
         ce.set_stub_length(4)
         self.assertEqual(ce.stub_length, 3)
 
+    def test_increment_stub_length(self):
+        """
+        Tests incrementing our stub length
+        """
+        r = Room(1, 1, 1)
+        ce = ConnectionEnd(r, DIR_N)
+        # Alas for no unittest.subTest in Py2
+        for (before, after) in [
+                (1, 2),
+                (2, 3),
+                (3, 1),
+                ]:
+            self.assertEqual(ce.stub_length, before)
+            ce.increment_stub_length()
+            self.assertEqual(ce.stub_length, after)
+
     def test_save(self):
         """
         Test to make sure our save method works

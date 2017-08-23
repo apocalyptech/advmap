@@ -244,6 +244,247 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
         self.assertEqual(ce3.stub_length, ConnectionEnd.STUB_REGULAR)
 
+    def test_set_symmetric_to_true_specify_particular_source(self):
+        """
+        Test setting symmetric to True when there are multiple ends, and we specify
+        a source End from which to normalize everything.
+        Note that render_type is exempt from our symmetry.
+        """
+        self.c.set_symmetric(False)
+        self.c.ends2[DIR_S].conn_type = ConnectionEnd.CONN_LADDER
+        self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends2[DIR_S].stub_length = 2
+        new_ce = self.c.connect_extra(self.r1, DIR_NE)
+        new_ce.conn_type = ConnectionEnd.CONN_DOTTED
+        new_ce.render_type = ConnectionEnd.RENDER_MIDPOINT_B
+        new_ce.stub_length = 3
+
+        self.assertEqual(self.c.symmetric, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertIn(DIR_S, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, 3)
+
+        self.c.set_symmetric(symmetric=True, room=self.r1, direction=DIR_NE)
+
+        self.assertEqual(self.c.symmetric, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertIn(DIR_S, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, 3)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 3)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, 3)
+
+    def test_set_symmetric_to_true_specify_r1(self):
+        """
+        Test setting symmetric to True when there are multiple ends, and we specify
+        a source room (r1) from whose primary end we'll normalize everything.
+        Note that render_type is exempt from our symmetry.
+        """
+        self.c.set_symmetric(False)
+        self.c.ends2[DIR_S].conn_type = ConnectionEnd.CONN_LADDER
+        self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends2[DIR_S].stub_length = 2
+        new_ce = self.c.connect_extra(self.r1, DIR_NE)
+        new_ce.conn_type = ConnectionEnd.CONN_DOTTED
+        new_ce.render_type = ConnectionEnd.RENDER_MIDPOINT_B
+        new_ce.stub_length = 3
+        new_ce2 = self.c.connect_extra(self.r2, DIR_SW)
+        new_ce2.conn_type = ConnectionEnd.CONN_DOTTED
+        new_ce2.render_type = ConnectionEnd.RENDER_MIDPOINT_B
+        new_ce2.stub_length = 3
+
+        self.assertEqual(self.c.symmetric, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        ce4 = self.c.ends2[DIR_SW]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, 3)
+        self.assertEqual(ce4.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce4.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce4.stub_length, 3)
+
+        self.c.set_symmetric(symmetric=True, room=self.r1)
+
+        self.assertEqual(self.c.symmetric, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        ce4 = self.c.ends2[DIR_SW]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce4.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce4.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce4.stub_length, ConnectionEnd.STUB_REGULAR)
+
+    def test_set_symmetric_to_true_specify_r2(self):
+        """
+        Test setting symmetric to True when there are multiple ends, and we specify
+        a source room (r2) from whose primary end we'll normalize everything.
+        Note that render_type is exempt from our symmetry.
+        """
+        self.c.set_symmetric(False)
+        self.c.ends2[DIR_S].conn_type = ConnectionEnd.CONN_LADDER
+        self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends2[DIR_S].stub_length = 2
+        new_ce = self.c.connect_extra(self.r1, DIR_NE)
+        new_ce.conn_type = ConnectionEnd.CONN_DOTTED
+        new_ce.render_type = ConnectionEnd.RENDER_MIDPOINT_B
+        new_ce.stub_length = 3
+        new_ce2 = self.c.connect_extra(self.r2, DIR_SW)
+        new_ce2.conn_type = ConnectionEnd.CONN_DOTTED
+        new_ce2.render_type = ConnectionEnd.RENDER_MIDPOINT_B
+        new_ce2.stub_length = 3
+
+        self.assertEqual(self.c.symmetric, False)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        ce4 = self.c.ends2[DIR_SW]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, 3)
+        self.assertEqual(ce4.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce4.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce4.stub_length, 3)
+
+        self.c.set_symmetric(symmetric=True, room=self.r2)
+
+        self.assertEqual(self.c.symmetric, True)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(len(self.c.ends1), 2)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertIn(DIR_NE, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 2)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_SW, self.c.ends2)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        ce3 = self.c.ends1[DIR_NE]
+        ce4 = self.c.ends2[DIR_SW]
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, 2)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, 2)
+        self.assertEqual(ce4.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce4.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce4.stub_length, 2)
+
+    def test_toggle_symmetric_to_false(self):
+        """
+        Tests toggling symmetric to false
+        """
+        self.c.toggle_symmetric()
+        self.assertEqual(self.c.symmetric, False)
+
+    def test_toggle_symmetric_to_true(self):
+        """
+        Tests toggling symmetric to false
+        """
+        self.c.toggle_symmetric()
+        self.c.set_ladder(self.r1, DIR_N)
+        self.assertEqual(self.c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_REGULAR)
+        self.c.toggle_symmetric()
+        self.assertEqual(self.c.symmetric, True)
+        self.assertEqual(self.c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_LADDER)
+
     def test_get_primary_ends_dict_r1(self):
         """
         Test `get_primary_ends_dict` when it should match `r1`
@@ -290,6 +531,35 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(self.c.ends2[DIR_S], endlist)
         self.assertIn(ce3, endlist)
         self.assertIn(ce4, endlist)
+
+    def test_get_all_extra_ends_no_results(self):
+        """
+        Tests getting all our extra (non-primary) ends from a Connection
+        without any.
+        """
+        self.assertEqual(self.c.get_all_extra_ends(), [])
+
+    def test_get_all_extra_ends_one_result(self):
+        """
+        Tests getting all our extra (non-primary) ends from a Connection
+        with one.
+        """
+        ce = self.c.connect_extra(self.r1, DIR_NE)
+        self.assertEqual(self.c.get_all_extra_ends(), [ce])
+
+    def test_get_all_extra_ends_three_result(self):
+        """
+        Tests getting all our extra (non-primary) ends from a Connection
+        with three results.
+        """
+        ce1 = self.c.connect_extra(self.r1, DIR_NE)
+        ce2 = self.c.connect_extra(self.r1, DIR_NW)
+        ce3 = self.c.connect_extra(self.r2, DIR_E)
+        ends = self.c.get_all_extra_ends()
+        self.assertEqual(len(ends), 3)
+        self.assertIn(ce1, ends)
+        self.assertIn(ce2, ends)
+        self.assertIn(ce3, ends)
 
     def test_get_end_r1(self):
         """
@@ -1090,6 +1360,118 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(self.c.ends2[DIR_W].room, self.r2)
         self.assertEqual(self.c.ends2[DIR_W].direction, DIR_W)
 
+    def test_is_primary_true_r1(self):
+        """
+        Tests `is_primary` when it's true on the r1 side
+        """
+        self.assertEqual(self.c.is_primary(self.r1, DIR_N), True)
+
+    def test_is_primary_true_r2(self):
+        """
+        Tests `is_primary` when it's true on the r2 side
+        """
+        self.assertEqual(self.c.is_primary(self.r2, DIR_S), True)
+
+    def test_is_primary_false_invalid_dir(self):
+        """
+        Tests `is_primary` when it's false because of an invalid dir
+        """
+        self.assertEqual(self.c.is_primary(self.r1, DIR_W), False)
+
+    def test_is_primary_false_invalid_room(self):
+        """
+        Tests `is_primary` when it's false because of an invalid room
+        """
+        r3 = Room(3, 3, 3)
+        self.assertEqual(self.c.is_primary(r3, DIR_N), False)
+
+    def test_is_primary_false_extra_end(self):
+        """
+        Tests `is_primary` when it's false because an extra End was
+        specified
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.assertEqual(self.c.is_primary(self.r1, DIR_NE), False)
+
+    def test_set_primary_noop_already_primary_r1(self):
+        """
+        Tests setting primary when the given room/dir is already r1 primary
+        """
+        self.c.set_primary(self.r1, DIR_N)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.dir2, DIR_S)
+
+    def test_set_primary_noop_already_primary_r2(self):
+        """
+        Tests setting primary when the given room/dir is already r2 primary
+        """
+        self.c.set_primary(self.r2, DIR_S)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.dir2, DIR_S)
+
+    def test_set_primary_noop_invalid_dir(self):
+        """
+        Tests setting primary when the given room/dir is invalid by the dir
+        """
+        self.c.set_primary(self.r1, DIR_E)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.dir2, DIR_S)
+
+    def test_set_primary_noop_invalid_room(self):
+        """
+        Tests setting primary when the given room/dir is invalid by the room
+        """
+        r3 = Room(3, 3, 3)
+        self.c.set_primary(r3, DIR_W)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.dir2, DIR_S)
+
+    def test_set_primary_change_on_r1(self):
+        """
+        Tests setting primary to an extra End on the r1 side
+        """
+        ce3 = self.c.connect_extra(self.r1, DIR_NE)
+        ce4 = self.c.connect_extra(self.r2, DIR_SW)
+        self.c.set_symmetric(False)
+        self.c.set_render_midpoint_a(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+
+        self.c.set_primary(self.r1, DIR_NE)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_NE)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+
+    def test_set_primary_change_on_r2(self):
+        """
+        Tests setting primary to an extra End on the r1 side
+        """
+        ce3 = self.c.connect_extra(self.r1, DIR_NE)
+        ce4 = self.c.connect_extra(self.r2, DIR_SW)
+        self.c.set_symmetric(False)
+        self.c.set_render_midpoint_a(self.r2, DIR_SW)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends2[DIR_SW].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+
+        self.c.set_primary(self.r2, DIR_SW)
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.dir2, DIR_SW)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_SW].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+
     def test_set_regular_symmetric(self):
         """
         Test set_regular when we are symmetric
@@ -1144,6 +1526,53 @@ class ConnectionTests(unittest.TestCase):
         self.c.set_dotted(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].conn_type, ConnectionEnd.CONN_DOTTED)
         self.assertEqual(self.c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_REGULAR)
+
+    def test_cycle_conn_type(self):
+        """
+        Tests our cycle_conn_type method
+        """
+        # Alas for no unittest.subTest in Py2
+        for (current, result) in [
+                (ConnectionEnd.CONN_REGULAR, ConnectionEnd.CONN_LADDER),
+                (ConnectionEnd.CONN_LADDER, ConnectionEnd.CONN_DOTTED),
+                (ConnectionEnd.CONN_DOTTED, ConnectionEnd.CONN_REGULAR),
+                ]:
+            self.assertEqual(self.c.ends1[DIR_N].conn_type, current)
+            self.c.cycle_conn_type(self.r1, DIR_N)
+            self.assertEqual(self.c.ends1[DIR_N].conn_type, result)
+
+    def test_get_render_type_change_endlist_primary_r1(self):
+        """
+        Getting the render_type list based on r1
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        ends = self.c.get_render_type_change_endlist(self.r1, DIR_N)
+        self.assertEqual(ends, [self.c.ends1[DIR_N], self.c.ends2[DIR_S]])
+
+    def test_get_render_type_change_endlist_primary_r2(self):
+        """
+        Getting the render_type list based on r2
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        ends = self.c.get_render_type_change_endlist(self.r2, DIR_S)
+        self.assertEqual(ends, [self.c.ends1[DIR_N], self.c.ends2[DIR_S]])
+
+    def test_get_render_type_change_single_extra(self):
+        """
+        Getting the render_type list based on a single extra - should
+        just be the single End.
+        """
+        ce3 = self.c.connect_extra(self.r1, DIR_NE)
+        ce4 = self.c.connect_extra(self.r2, DIR_SW)
+        ends = self.c.get_render_type_change_endlist(self.r1, DIR_NE)
+        self.assertEqual(ends, [ce3])
+
+    def test_get_render_type_change_no_results(self):
+        """
+        Getting the render_type list based on dir/room which doesn't exist.
+        """
+        ends = self.c.get_render_type_change_endlist(self.r1, DIR_NE)
+        self.assertEqual(ends, [])
 
     def test_set_render_regular_symmetric_primary(self):
         """
@@ -1293,6 +1722,20 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
         self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
 
+    def test_cycle_render_type(self):
+        """
+        Tests our cycle_render_type method
+        """
+        # Alas for no unittest.subTest in Py2
+        for (current, result) in [
+                (ConnectionEnd.RENDER_REGULAR, ConnectionEnd.RENDER_MIDPOINT_A),
+                (ConnectionEnd.RENDER_MIDPOINT_A, ConnectionEnd.RENDER_MIDPOINT_B),
+                (ConnectionEnd.RENDER_MIDPOINT_B, ConnectionEnd.RENDER_REGULAR),
+                ]:
+            self.assertEqual(self.c.ends1[DIR_N].render_type, current)
+            self.c.cycle_render_type(self.r1, DIR_N)
+            self.assertEqual(self.c.ends1[DIR_N].render_type, result)
+
     def test_set_stub_length_symmetric(self):
         """
         Test set_stub_length when we are symmetric
@@ -1309,6 +1752,20 @@ class ConnectionTests(unittest.TestCase):
         self.c.set_stub_length(self.r1, DIR_N, 2)
         self.assertEqual(self.c.ends1[DIR_N].stub_length, 2)
         self.assertEqual(self.c.ends2[DIR_S].stub_length, 1)
+
+    def test_increment_stub_length(self):
+        """
+        Tests our increment_stub_length method
+        """
+        # Alas for no unittest.subTest in Py2
+        for (current, result) in [
+                (1, 2),
+                (2, 3),
+                (3, 1),
+                ]:
+            self.assertEqual(self.c.ends1[DIR_N].stub_length, current)
+            self.c.increment_stub_length(self.r1, DIR_N)
+            self.assertEqual(self.c.ends1[DIR_N].stub_length, result)
 
     def test_set_twoway(self):
         """
@@ -1331,6 +1788,20 @@ class ConnectionTests(unittest.TestCase):
         """
         self.c.set_oneway_b()
         self.assertEqual(self.c.passage, Connection.PASS_ONEWAY_B)
+
+    def test_cycle_passage(self):
+        """
+        Tests our cycle_passage method
+        """
+        # Alas for no unittest.subTest in Py2
+        for (current, result) in [
+                (Connection.PASS_TWOWAY, Connection.PASS_ONEWAY_A),
+                (Connection.PASS_ONEWAY_A, Connection.PASS_ONEWAY_B),
+                (Connection.PASS_ONEWAY_B, Connection.PASS_TWOWAY),
+                ]:
+            self.assertEqual(self.c.passage, current)
+            self.c.cycle_passage()
+            self.assertEqual(self.c.passage, result)
 
     def test_is_twoway_true(self):
         """

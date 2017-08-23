@@ -597,7 +597,7 @@ class Connection(object):
                     if room == self.r1:
                         main_ce = self.ends1[self.dir1]
                     elif room == self.r2:
-                        main_ce = self.ends1[self.dir1]
+                        main_ce = self.ends2[self.dir2]
                 if not main_ce:
                     main_ce = self.ends1[self.dir1]
 
@@ -788,14 +788,17 @@ class Connection(object):
     def set_primary(self, room, direction):
         """
         Sets the given ConnectionEnd to be the primary for the connection, if
-        it isn't already
+        it isn't already.  Will update the `render_type` of the far end if need
+        be, since those should remain locked together.
         """
         end = self.get_end(room, direction)
         if end:
             if room == self.r1:
                 self.dir1 = direction
+                self.ends2[self.dir2].render_type = self.ends1[self.dir1].render_type
             else:
                 self.dir2 = direction
+                self.ends1[self.dir1].render_type = self.ends2[self.dir2].render_type
 
     def set_regular(self, room, direction):
         for end in self.get_end_list(room, direction):
