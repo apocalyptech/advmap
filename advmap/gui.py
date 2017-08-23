@@ -1120,11 +1120,16 @@ class GUI(object):
                     if room == conn.r1:
                         end_close = conn.ends1[direction]
                         end_far = conn.ends2[conn.dir2]
+                        direction = conn.dir1
                         dir2 = conn.dir2
                     else:
                         end_close = conn.ends2[direction]
                         end_far = conn.ends1[conn.dir1]
+                        direction = conn.dir2
                         dir2 = conn.dir1
+
+                    # Secondary midpoints which extra ends will draw towards
+                    secondary_midpoints = {}
 
                     if self.is_primary_adjacent(conn):
 
@@ -1134,6 +1139,8 @@ class GUI(object):
                         y1 = y+self.CONN_OFF[direction][1]
                         x2 = conn_x+self.CONN_OFF[dir2][0]
                         y2 = conn_y+self.CONN_OFF[dir2][1]
+                        secondary_midpoints[room] = (x2, y2)
+                        secondary_midpoints[room2] = (x1, y1)
                         if end_close.conn_type == end_far.conn_type:
                             self.draw_conn_segment(ctx, x1, y1, x2, y2, end_close)
                         else:
@@ -1170,6 +1177,15 @@ class GUI(object):
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub1[0], stub1[1], end_close)
                                 self.draw_conn_segment(ctx, stub2[0], stub1[1], stub2[0], stub2[1], end_far)
                             else:
+                                secondary_percent = .25
+                                secondary_midpoints[room] = (
+                                            stub1[0] + int((stub2[0] - stub1[0]) * secondary_percent),
+                                            stub1[1] + int((stub2[1] - stub1[1]) * secondary_percent),
+                                        )
+                                secondary_midpoints[room2] = (
+                                            stub2[0] + int((stub1[0] - stub2[0]) * secondary_percent),
+                                            stub2[1] + int((stub1[1] - stub2[1]) * secondary_percent),
+                                        )
                                 if end_close.conn_type == end_far.conn_type:
                                     self.draw_conn_segment(ctx, stub1[0], stub1[1], stub2[0], stub2[1], end_close)
                                 else:
@@ -1182,7 +1198,14 @@ class GUI(object):
                     # always have stubs coming off of them, and will have their own
                     # render_type describing how to connect to the main connection
                     for end in conn.get_all_extra_ends():
+
+                        # First the stub
                         stub = self.draw_stub_conn(ctx, end.room, end.direction, conn)
+
+                        # And then the rest of the connection
+                        if end.room in secondary_midpoints:
+                            (mid_x, mid_y) = secondary_midpoints[end.room]
+                            self.draw_conn_segment(ctx, stub[0], stub[1], mid_x, mid_y, end)
 
                 conn_hover = self.HOVER_CONN
             elif room.get_loopback(direction):
@@ -2433,7 +2456,7 @@ class GUI(object):
                         conn = self.add_extra_room.get_conn(self.add_extra_dir)
                         try:
                             conn.connect_extra(room, conn_dir)
-                        except:
+                        except Exception as e:
                             pass
                         self.trigger_redraw(True)
 
