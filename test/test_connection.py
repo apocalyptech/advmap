@@ -132,7 +132,8 @@ class ConnectionTests(unittest.TestCase):
 
     def test_set_symmetric_to_true_change_other_side(self):
         """
-        Test setting symmetric to True when changes are made to the other side
+        Test setting symmetric to True when changes are made to the other side.
+        Note that render_type is exempt from our symmetry.
         """
         self.c.set_symmetric(False)
         self.c.ends2[DIR_S].conn_type = ConnectionEnd.CONN_LADDER
@@ -172,15 +173,17 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_S, self.c.ends2)
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
-        # Alas, no unittest.subTest in Py2
-        for end in [ce1, ce2]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
-            self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, ConnectionEnd.STUB_REGULAR)
 
     def test_set_symmetric_to_true_change_multiple_ends(self):
         """
-        Test setting symmetric to True when changes are made to multiple ends
+        Test setting symmetric to True when changes are made to multiple ends.
+        Note that render_type is exempt from our symmetry
         """
         self.c.set_symmetric(False)
         self.c.ends2[DIR_S].conn_type = ConnectionEnd.CONN_LADDER
@@ -231,11 +234,15 @@ class ConnectionTests(unittest.TestCase):
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
         ce3 = self.c.ends1[DIR_NE]
-        # Alas, no unittest.subTest in Py2
-        for end in [ce1, ce2, ce3]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
-            self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(ce1.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, ConnectionEnd.STUB_REGULAR)
+        self.assertEqual(ce3.conn_type, ConnectionEnd.CONN_REGULAR)
+        self.assertEqual(ce3.render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(ce3.stub_length, ConnectionEnd.STUB_REGULAR)
 
     def test_get_primary_ends_dict_r1(self):
         """
@@ -1138,9 +1145,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(self.c.ends1[DIR_N].conn_type, ConnectionEnd.CONN_DOTTED)
         self.assertEqual(self.c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_REGULAR)
 
-    def test_set_render_regular_symmetric(self):
+    def test_set_render_regular_symmetric_primary(self):
         """
-        Test set_render_regular when we are symmetric
+        Test set_render_regular when we are symmetric.
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.ends1[DIR_N].render_type = ConnectionEnd.RENDER_MIDPOINT_A
         self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
@@ -1148,49 +1157,140 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
         self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
 
-    def test_set_render_regular_nonsymmetric(self):
+    def test_set_render_regular_nonsymmetric_primary(self):
         """
         Test set_render_regular when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.ends1[DIR_N].render_type = ConnectionEnd.RENDER_MIDPOINT_A
         self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
         self.c.set_symmetric(False)
         self.c.set_render_regular(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
-        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
 
-    def test_set_render_midpoint_a_symmetric(self):
+    def test_set_render_midpoint_a_symmetric_primary(self):
         """
         Test set_render_midpoint_a when we are symmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.set_render_midpoint_a(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
         self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
 
-    def test_set_render_midpoint_a_nonsymmetric(self):
+    def test_set_render_midpoint_a_nonsymmetric_primary(self):
         """
         Test set_render_midpoint_a when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.set_symmetric(False)
         self.c.set_render_midpoint_a(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
-        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
 
-    def test_set_render_midpoint_b_symmetric(self):
+    def test_set_render_midpoint_b_symmetric_primary(self):
         """
         Test set_render_midpoint_b when we are symmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.set_render_midpoint_b(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
         self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
 
-    def test_set_render_midpoint_b_nonsymmetric(self):
+    def test_set_render_midpoint_b_nonsymmetric_primary(self):
         """
         Test set_render_midpoint_b when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
         """
         self.c.set_symmetric(False)
         self.c.set_render_midpoint_b(self.r1, DIR_N)
         self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+
+    def test_set_render_regular_symmetric_extra(self):
+        """
+        Test set_render_regular on an extra end, when we are symmetric.
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.ends1[DIR_NE].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends1[DIR_N].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.set_render_regular(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+
+    def test_set_render_regular_nonsymmetric_extra(self):
+        """
+        Test set_render_regular on an exstra end, when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.ends1[DIR_NE].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends1[DIR_N].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.ends2[DIR_S].render_type = ConnectionEnd.RENDER_MIDPOINT_A
+        self.c.set_symmetric(False)
+        self.c.set_render_regular(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+
+    def test_set_render_midpoint_a_symmetric_extra(self):
+        """
+        Test set_render_midpoint_a on an extra end, when we are symmetric.
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.set_render_midpoint_a(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+
+    def test_set_render_midpoint_a_nonsymmetric_extra(self):
+        """
+        Test set_render_regular on an exstra end, when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.set_symmetric(False)
+        self.c.set_render_midpoint_a(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+
+    def test_set_render_midpoint_b_symmetric_extra(self):
+        """
+        Test set_render_midpoint_b on an extra end, when we are symmetric.
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.set_render_midpoint_b(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+
+    def test_set_render_midpoint_b_nonsymmetric_extra(self):
+        """
+        Test set_render_regular on an exstra end, when we are nonsymmetric
+        Note that the render_* functions operate differently than the other endpoint
+        vars.  The primaries will always stay synchronized, and the extras will never.
+        """
+        self.c.connect_extra(self.r1, DIR_NE)
+        self.c.set_symmetric(False)
+        self.c.set_render_midpoint_b(self.r1, DIR_NE)
+        self.assertEqual(self.c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
+        self.assertEqual(self.c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
         self.assertEqual(self.c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
 
     def test_set_stub_length_symmetric(self):
@@ -1399,7 +1499,7 @@ class ConnectionTests(unittest.TestCase):
         self.assertEqual(df.readuchar(), 1)
         self.assertEqual(df.readuchar(), DIR_N)
         self.assertEqual(df.readuchar(), ConnectionEnd.CONN_REGULAR)
-        self.assertEqual(df.readuchar(), ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(df.readuchar(), ConnectionEnd.RENDER_MIDPOINT_A)
         self.assertEqual(df.readuchar(), ConnectionEnd.STUB_REGULAR)
         self.assertEqual(df.readuchar(), 1)
         self.assertEqual(df.readuchar(), DIR_S)

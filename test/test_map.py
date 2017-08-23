@@ -205,7 +205,7 @@ class MapTests(unittest.TestCase):
         self.assertEqual(new_c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
         self.assertEqual(new_c.ends1[DIR_N].stub_length, 3)
         self.assertEqual(new_c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_REGULAR)
-        self.assertEqual(new_c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(new_c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
         self.assertEqual(new_c.ends2[DIR_S].stub_length, ConnectionEnd.STUB_REGULAR)
 
     def test_duplicate_one_connection_nonsymmetric_r2_changed(self):
@@ -235,7 +235,7 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(new_c.ends1), 1)
         self.assertEqual(len(new_c.ends2), 1)
         self.assertEqual(new_c.ends1[DIR_N].conn_type, ConnectionEnd.CONN_REGULAR)
-        self.assertEqual(new_c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(new_c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
         self.assertEqual(new_c.ends1[DIR_N].stub_length, ConnectionEnd.STUB_REGULAR)
         self.assertEqual(new_c.ends2[DIR_S].conn_type, ConnectionEnd.CONN_LADDER)
         self.assertEqual(new_c.ends2[DIR_S].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
@@ -302,7 +302,7 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(new_c.ends1), 2)
         self.assertEqual(len(new_c.ends2), 1)
         self.assertEqual(new_c.ends1[DIR_N].conn_type, ConnectionEnd.CONN_REGULAR)
-        self.assertEqual(new_c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_REGULAR)
+        self.assertEqual(new_c.ends1[DIR_N].render_type, ConnectionEnd.RENDER_MIDPOINT_B)
         self.assertEqual(new_c.ends1[DIR_N].stub_length, ConnectionEnd.STUB_REGULAR)
         self.assertEqual(new_c.ends1[DIR_NE].conn_type, ConnectionEnd.CONN_LADDER)
         self.assertEqual(new_c.ends1[DIR_NE].render_type, ConnectionEnd.RENDER_MIDPOINT_A)
@@ -1360,7 +1360,8 @@ class MapTests(unittest.TestCase):
         self.assertEqual(r1.group, mapobj.groups[0])
         self.assertEqual(r2.group, mapobj.groups[0])
 
-        mapobj.remove_room_from_group(r1)
+        rv = mapobj.remove_room_from_group(r1)
+        self.assertEqual(rv, True)
         self.assertEqual(len(mapobj.groups), 0)
         self.assertEqual(r1.group, None)
         self.assertEqual(r2.group, None)
@@ -1380,11 +1381,23 @@ class MapTests(unittest.TestCase):
         self.assertEqual(r2.group, mapobj.groups[0])
         self.assertEqual(r3.group, mapobj.groups[0])
 
-        mapobj.remove_room_from_group(r1)
+        rv = mapobj.remove_room_from_group(r1)
+        self.assertEqual(rv, True)
         self.assertEqual(len(mapobj.groups), 1)
         self.assertEqual(r1.group, None)
         self.assertEqual(r2.group, mapobj.groups[0])
         self.assertEqual(r3.group, mapobj.groups[0])
+
+    def test_remove_room_from_group_when_room_is_not_in_group(self):
+        """
+        Tests removing a group from a room, when the room isn't actually
+        in a group.
+        """
+        mapobj = Map('Map')
+        r1 = mapobj.add_room_at(1, 1, 'Room 1')
+        rv = mapobj.remove_room_from_group(r1)
+        self.assertEqual(rv, False)
+        self.assertEqual(len(mapobj.groups), 0)
 
     def test_group_rooms_new_group(self):
         """
