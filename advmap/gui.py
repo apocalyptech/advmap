@@ -156,7 +156,8 @@ class GUI(object):
         self.room_offset_y = self.builder.get_object('room_offset_y')
         self.room_group_box = self.builder.get_object('room_group_box')
         self.edit_room_adv_table = self.builder.get_object('edit_room_adv_table')
-        self.setup_advanced_links()
+        # TODO: migrate to a link-edit dialog
+        #self.setup_advanced_links()
 
         # Edit Game dialog
         self.edit_game_dialog = self.builder.get_object('edit_game_dialog')
@@ -388,7 +389,10 @@ class GUI(object):
         renderer = gtk.CellRendererText()
         renderer.set_data('column', self.ROOM_COL_NAME)
         column = gtk.TreeViewColumn('Name', renderer, text=self.ROOM_COL_NAME)
-        for widget in self.room_box.values() + [self.room_group_box]:
+        # TODO: changed when ripping out connection stuff, will likely be back
+        # in its own dialog...
+        #for widget in self.room_box.values() + [self.room_group_box]:
+        for widget in [self.room_group_box]:
             widget.set_model(self.room_mapstore)
             widget.clear()
             widget.pack_start(renderer, True)
@@ -454,6 +458,7 @@ class GUI(object):
         # ... and prepare for our mainloop
         gobject.idle_add(self.draw)
 
+    # TODO: Not called anymore; reuse some of this for edit-conn dialog
     def setup_advanced_links(self):
         """
         Sets up our form elements on the Advanced Room Edit screen.  We do
@@ -1761,11 +1766,39 @@ class GUI(object):
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
 
-                    # The 'Advanced' tab can take a noticeably-long time to populate
-                    # if there's a lot of rooms; rather than loading it by default,
-                    # we'll only populate those areas if the user actually clicks on
-                    # it.
-                    self.editroom_advanced_populated = False
+                    # Populate the Advanced tab (which I may just pull into
+                    # the main tab eventually)
+                    self.editroom_advanced_populated = True
+
+                    # Advanced offsets
+                    self.room_offset_x.set_active(room.offset_x)
+                    self.room_offset_y.set_active(room.offset_y)
+
+                    # Room dropdown for group membership
+                    self.room_mapstore.clear()
+                    iterator = self.room_mapstore.append()
+                    rowmap = {}
+                    self.room_mapstore.set(iterator,
+                            self.ROOM_COL_NAME, '-',
+                            self.ROOM_COL_IDX, -1)
+                    currow = 0
+                    self.room_group_box.set_active(0)
+                    have_group = False
+                    rooms = list(self.mapobj.roomlist())
+                    rooms.sort(self.room_sort)
+                    for iterroom in rooms:
+                        if (room != iterroom):
+                            currow += 1
+                            rowmap[iterroom.idnum] = currow
+                            iterator = self.room_mapstore.append()
+                            self.room_mapstore.set(iterator,
+                                    self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
+                                    self.ROOM_COL_IDX, iterroom.idnum)
+                            if (not have_group and room.in_group_with(iterroom)):
+                                self.room_group_box.set_active(currow)
+                                have_group = True
+                        else:
+                            rowmap[iterroom.idnum] = 0
 
                     # TODO: should we poke around with scroll/cursor here?
                     result = self.edit_room_dialog.run()
@@ -1825,14 +1858,14 @@ class GUI(object):
                                 room.offset_y = self.room_offset_y.get_active()
 
                             # Grouping
-                            iter = self.room_group_box.get_active_iter()
-                            group_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+                            iterator = self.room_group_box.get_active_iter()
+                            group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
                             if (group_roomid == -1):
                                 if room.group:
-                                    self.map.remove_room_from_group(room)
+                                    self.mapobj.remove_room_from_group(room)
                                     need_gfx_update = True
                             else:
-                                if (self.map.group_rooms(room, self.map.get_room(group_roomid))):
+                                if (self.mapobj.group_rooms(room, self.mapobj.get_room(group_roomid))):
                                     need_gfx_update = True
 
                             # Temp, report
@@ -1845,69 +1878,70 @@ class GUI(object):
                             #    print('')
                             #print('')
 
+                            # TODO: commented pending moving link dialog into its own thing
                             # ... advanced links ...
-                            for dir in range(len(DIR_OPP)):
-                                widget_room = self.room_box[dir]
-                                widget_dir = self.room_dir[dir]
-                                widget_regular = self.room_regular[dir]
-                                widget_ladder = self.room_ladder[dir]
-                                widget_dotted = self.room_dotted[dir]
-                                widget_pass_twoway = self.room_pass_twoway[dir]
-                                widget_pass_oneway_in = self.room_pass_oneway_in[dir]
-                                widget_pass_oneway_out = self.room_pass_oneway_out[dir]
-                                existing = room.get_conn(dir)
-                                iter = widget_room.get_active_iter()
-                                new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
-                                new_dir = widget_dir.get_active()
-                                if existing:
-                                    if (new_roomid == -1):
-                                        self.map.detach(room, dir)
-                                        existing = None
-                                        need_gfx_update = True
-                                    else:
-                                        (cur_room, cur_dir) = existing.get_opposite(room)
-                                        if ((new_roomid != cur_room.idnum) or (new_dir != cur_dir)):
-                                            self.map.detach(room, dir)
-                                            existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
-                                            need_gfx_update = True
-                                else:
-                                    if new_roomid != -1:
-                                        existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
-                                        need_gfx_update = True
-
-                                # ... and the type flag, if we still have a connection
-                                if existing:
-                                    if (widget_ladder.get_active() and not existing.is_ladder()):
-                                        existing.set_ladder()
-                                        need_gfx_update = True
-                                    elif (widget_dotted.get_active() and not existing.is_dotted()):
-                                        existing.set_dotted()
-                                        need_gfx_update = True
-                                    elif (widget_regular.get_active() and not existing.is_regular()):
-                                        existing.set_regular()
-                                        need_gfx_update = True
-
-                                    if (widget_pass_oneway_in.get_active()):
-                                        if (existing.r1 == room):
-                                            if not existing.is_oneway_a():
-                                                existing.set_oneway_a()
-                                                need_gfx_update = True
-                                        else:
-                                            if not existing.is_oneway_b():
-                                                existing.set_oneway_b()
-                                                need_gfx_update = True
-                                    elif (widget_pass_oneway_out.get_active()):
-                                        if (existing.r1 == room):
-                                            if not existing.is_oneway_b():
-                                                existing.set_oneway_b()
-                                                need_gfx_update = True
-                                        else:
-                                            if not existing.is_oneway_a():
-                                                existing.set_oneway_a()
-                                                need_gfx_update = True
-                                    elif (widget_pass_twoway.get_active() and not existing.is_twoway()):
-                                        existing.set_twoway()
-                                        need_gfx_update = True
+                            #for dir in range(len(DIR_OPP)):
+                            #    widget_room = self.room_box[dir]
+                            #    widget_dir = self.room_dir[dir]
+                            #    widget_regular = self.room_regular[dir]
+                            #    widget_ladder = self.room_ladder[dir]
+                            #    widget_dotted = self.room_dotted[dir]
+                            #    widget_pass_twoway = self.room_pass_twoway[dir]
+                            #    widget_pass_oneway_in = self.room_pass_oneway_in[dir]
+                            #    widget_pass_oneway_out = self.room_pass_oneway_out[dir]
+                            #    existing = room.get_conn(dir)
+                            #    iter = widget_room.get_active_iter()
+                            #    new_roomid = self.room_mapstore.get_value(iter, self.ROOM_COL_IDX)
+                            #    new_dir = widget_dir.get_active()
+                            #    if existing:
+                            #        if (new_roomid == -1):
+                            #            self.map.detach(room, dir)
+                            #            existing = None
+                            #            need_gfx_update = True
+                            #        else:
+                            #            (cur_room, cur_dir) = existing.get_opposite(room)
+                            #            if ((new_roomid != cur_room.idnum) or (new_dir != cur_dir)):
+                            #                self.map.detach(room, dir)
+                            #                existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
+                            #                need_gfx_update = True
+                            #    else:
+                            #        if new_roomid != -1:
+                            #            existing = self.map.connect_id(room.idnum, dir, new_roomid, new_dir)
+                            #            need_gfx_update = True
+                            #
+                            #    # ... and the type flag, if we still have a connection
+                            #    if existing:
+                            #        if (widget_ladder.get_active() and not existing.is_ladder()):
+                            #            existing.set_ladder()
+                            #            need_gfx_update = True
+                            #        elif (widget_dotted.get_active() and not existing.is_dotted()):
+                            #            existing.set_dotted()
+                            #            need_gfx_update = True
+                            #        elif (widget_regular.get_active() and not existing.is_regular()):
+                            #            existing.set_regular()
+                            #            need_gfx_update = True
+                            #
+                            #        if (widget_pass_oneway_in.get_active()):
+                            #            if (existing.r1 == room):
+                            #                if not existing.is_oneway_a():
+                            #                    existing.set_oneway_a()
+                            #                    need_gfx_update = True
+                            #            else:
+                            #                if not existing.is_oneway_b():
+                            #                    existing.set_oneway_b()
+                            #                    need_gfx_update = True
+                            #        elif (widget_pass_oneway_out.get_active()):
+                            #            if (existing.r1 == room):
+                            #                if not existing.is_oneway_b():
+                            #                    existing.set_oneway_b()
+                            #                    need_gfx_update = True
+                            #            else:
+                            #                if not existing.is_oneway_a():
+                            #                    existing.set_oneway_a()
+                            #                    need_gfx_update = True
+                            #        elif (widget_pass_twoway.get_active() and not existing.is_twoway()):
+                            #            existing.set_twoway()
+                            #            need_gfx_update = True
 
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
@@ -2123,6 +2157,8 @@ class GUI(object):
                 not saved_add_extra_vars and not saved_grouping_vars):
             self.set_secondary_status('')
 
+    # TODO: This has been disabled but some bits may be useful when
+    # constructing a connection-edit dialog...
     def on_edit_room_notebook_page(self, widget, page, page_num):
         """
         What to do when our Edit Room notebook page changes...  Used
@@ -2130,6 +2166,7 @@ class GUI(object):
         process can take a few seconds if there are a lot of rooms.
         TODO: um, does it?  Seems to be pretty instantaneous to me, now...
         """
+        return True
         if (page_num == 1):
             if not self.editroom_advanced_populated:
 
