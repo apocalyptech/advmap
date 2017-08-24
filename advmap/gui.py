@@ -2091,7 +2091,7 @@ class GUI(object):
                 elif self.hover == self.HOVER_CONN:
                     if not readonly:
                         if self.hover_roomobj.get_loopback(self.curhover[1]):
-                            actions.append(('X', 'remove loopback'))
+                            actions.append(('C', 'remove loopback'))
                         else:
                             actions.append(('RMB', 'move connection'))
                             actions.append(('C', 'remove connection'))
@@ -2316,7 +2316,7 @@ class GUI(object):
                 else:
 
                     # Must be a loopback instead.
-                    if (key == 'x'):
+                    if (key == 'c'):
                         self.mapobj.detach(room, conn_dir)
                         self.trigger_redraw(True)
 
