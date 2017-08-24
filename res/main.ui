@@ -346,7 +346,6 @@
               <object class="GtkNotebook" id="edit_room_notebook">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <signal name="switch-page" handler="on_edit_room_notebook_page" swapped="no"/>
                 <child>
                   <object class="GtkScrolledWindow" id="scrolledwindow1">
                     <property name="visible">True</property>
