@@ -37,6 +37,14 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(self.r1.group, self.g)
         self.assertEqual(self.r2.group, self.g)
 
+    def test_initialization_with_one_group(self):
+        """
+        Tests initializing with only one room
+        """
+        with self.assertRaises(Exception) as cm:
+            g = Group(self.r1, self.r1)
+        self.assertIn('Cannot create a group with only one room', str(cm.exception))
+
     def test_get_rooms(self):
         """
         Make sure our `get_rooms` func returns rooms

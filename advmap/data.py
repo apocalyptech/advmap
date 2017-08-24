@@ -105,6 +105,8 @@ class Group(object):
         ) = range(STYLE_MAX)
 
     def __init__(self, room1, room2):
+        if room1 == room2:
+            raise Exception('Cannot create a group with only one room')
         self.rooms = []
         self.add_room(room1)
         self.add_room(room2)
@@ -1308,8 +1310,11 @@ class Map(object):
         if room1.group and room2.group:
             return False
         elif not room1.group and not room2.group:
-            self.groups.append(Group(room1, room2))
-            return True
+            if room1 != room2:
+                self.groups.append(Group(room1, room2))
+                return True
+            else:
+                return False
         else:
             if room1.group:
                 room1.group.add_room(room2)

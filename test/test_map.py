@@ -1544,6 +1544,16 @@ class MapTests(unittest.TestCase):
         self.assertEqual(r2.group, g)
         self.assertEqual(r3.group, g)
 
+    def test_group_rooms_attempt_same_room(self):
+        """
+        Attempt adding the same room into its own group; should fail.
+        """
+        mapobj = Map('Map')
+        r1 = mapobj.add_room_at(1, 1, 'Room 1')
+        rv = mapobj.group_rooms(r1, r1)
+        self.assertEqual(rv, False)
+        self.assertEqual(len(mapobj.groups), 0)
+
     def test_save(self):
         """
         Tests saving a file.  Will have three rooms, two connections, and one group.
