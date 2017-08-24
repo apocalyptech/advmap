@@ -21,6 +21,8 @@ GUI stuffs:
    more manageable than our previous Advanced tab on Room Edit)
  * Get rid of the Advanced tab - migrate offsets and group membership to
    the main area and get rid of those tabs entirely.
+ * Better one-way arrows for ladder connections.  What we do right now
+   is technically Good Enough, but it doesn't really look great.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap
