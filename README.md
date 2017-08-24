@@ -45,7 +45,7 @@ via a dropdown and button in the upper right.  Due to a limitation of the way
 we're handling the graphics, each individual map can have a maximum of 256
 rooms, which is kind of lame, but so far that's not been a problem.
 
-![Game Editing](screenshot-gameedit.png)
+![Game Editing](screenshots/screenshot-gameedit.png)
 
 Rooms can be highlighted in a number of colors, including a "dark" setting
 that I'm fond of using for dark rooms in the Zork series.  A number of text
@@ -53,7 +53,7 @@ labels can be attached to rooms, and will be rendered with appropriate
 icons: up/down/in/out.  A "notes" field exists for more general gameplay
 notes, and is useful for mapping things like the Zork I maze.
 
-![Room Styling](screenshot-roomstyles.png)
+![Room Styling](screenshots/screenshot-roomstyles.png)
 
 Connections between rooms are pretty flexible - you can specify regular,
 "ladder", or dotted lines for the connection, and optionally have different
@@ -65,7 +65,7 @@ they can only support going between two rooms - no more.  For a situation like
 the bank puzzle in Zork II, you're best off with a "label" type room in an
 intermediate space.
 
-![Connection Styling](screenshot-connectionstyles.png)
+![Connection Styling](screenshots/screenshot-connectionstyles.png)
 
 Rooms can be "grouped" together, which mostly just means that there'll be
 a highlighted background bounding the selected rooms.  I mostly end up using
@@ -127,9 +127,9 @@ Controls while highlighting an existing connection:
 * `S` - Toggle symmetry within the link *(so one half of the connection can be ladder and the other dotted, for instance)*
 * `R` - Sets the primary direction when a connection with multiple ends is being used (via the `E` key).  The "primary" direction is rendered more directly than any extra end.
 
-Screenshots
-===========
+More Screenshots
+================
 
-![Main Screen](screenshot-main.png)
+![Main Screen](screenshots/screenshot-main.png)
 
-![Basic Room Edit](screenshot-edit-basic.png)
+![Basic Room Edit](screenshots/screenshot-edit-basic.png)
