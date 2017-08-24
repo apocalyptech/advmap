@@ -1973,7 +1973,7 @@ class GUI(object):
                     self.move_room = self.curhover[0]
                     self.move_dir = self.curhover[1]
                     saved_move_vars = True
-                    self.set_secondary_status('Middle-click to move connection')
+                    self.set_secondary_status('Right-click to move connection')
                     # TODO: it would probably be nice to have some different GUI highlighting
                     # when this is active, as well.
 
@@ -1982,7 +1982,7 @@ class GUI(object):
                     self.link_conn_room = self.curhover[0]
                     self.link_conn_dir = self.curhover[1]
                     saved_link_conn_vars = True
-                    self.set_secondary_status('Middle-click to link to existing room')
+                    self.set_secondary_status('Right-click to link to existing room')
                     # TODO: it would probably be nice to have some different GUI highlighting
                     # when this is active, as well.
 
