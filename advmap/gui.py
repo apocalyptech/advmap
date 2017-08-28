@@ -1034,6 +1034,9 @@ class GUI(object):
         # Draw the room
         ctx.save()
         if (is_label):
+            ctx.set_source_rgba(*self.c_background)
+            ctx.rectangle(x, y, self.room_w, self.room_h)
+            ctx.fill()
             ctx.set_source_rgba(*self.c_label)
             ctx.set_dash([9.0], 0)
         else:
