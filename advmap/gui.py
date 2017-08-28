@@ -63,6 +63,7 @@ class GUI(object):
         self.hoverlabel = self.builder.get_object('hoverlabel')
         self.map_combo = self.builder.get_object('map_combo')
         self.nudge_lock = self.builder.get_object('nudge_lock')
+        self.grid_display = self.builder.get_object('grid_display')
         self.readonly_lock = self.builder.get_object('readonly_lock')
         self.menu_revert = self.builder.get_object('menu_revert')
         self.show_offset_check = self.builder.get_object('show_offset_check')
@@ -209,6 +210,7 @@ class GUI(object):
         self.nudge_w.set_tooltip_text('Shift map to the west')
         self.nudge_nw.set_tooltip_text('Shift map to the northwest')
         self.nudge_lock.set_tooltip_text('Toggle in-map room nudging')
+        self.grid_display.set_tooltip_text('Toggle map grid')
         self.readonly_lock.set_tooltip_text('Toggle readonly')
         self.resize_n.set_tooltip_text('Cut off bottom row of map')
         self.resize_s.set_tooltip_text('Add row to bottom of map')
@@ -243,6 +245,7 @@ class GUI(object):
                 'key_handler': self.key_handler,
                 'nudge_map': self.nudge_map,
                 'nudge_lock_toggled': self.nudge_lock_toggled,
+                'grid_display_toggled': self.grid_display_toggled,
                 'readonly_toggled': self.readonly_toggled,
                 'map_resize': self.map_resize,
                 'edit_room_activate': self.edit_room_activate,
@@ -1365,6 +1368,7 @@ class GUI(object):
         self.c_highlight_nudge = (.7, .7, .7, .2)
         self.c_highlight_del = (1, .5, .5, .2)
         self.c_highlight_new = (.5, .5, 1, .2)
+        self.c_grid = (.9, .9, .9, 1)
 
         self.c_group_map = {
                 Group.STYLE_NORMAL: (.85, .85, .85, 1),
@@ -1416,6 +1420,19 @@ class GUI(object):
         self.cleanctx.paint()
         self.mmctx.set_source_rgba(0, 0, 0, 1)
         self.mmctx.paint()
+
+        # Draw our grid, if we've been told to
+        if self.grid_display.get_active():
+            self.cleanctx.set_source_rgba(*self.c_grid)
+            self.cleanctx.set_line_width(1)
+            for x in [self.room_spc_h + i*(self.room_w + self.room_spc) for i in range(self.mapobj.w+1)]:
+                self.cleanctx.move_to(x, 0)
+                self.cleanctx.line_to(x, self.area_y)
+                self.cleanctx.stroke()
+            for y in [self.room_spc_h + i*(self.room_h + self.room_spc) for i in range(self.mapobj.h+1)]:
+                self.cleanctx.move_to(0, y)
+                self.cleanctx.line_to(self.area_x, y)
+                self.cleanctx.stroke()
 
         # Loop through any groups and draw them, too
         for group in self.mapobj.groups:
@@ -2349,6 +2366,13 @@ class GUI(object):
         # Trigger a redraw if we have to
         if (not self.readonly_lock.get_active()):
             self.trigger_redraw()
+
+    def grid_display_toggled(self, widget):
+        """
+        Tasks to perform when we've toggled our map grid.  (Just trigger a redraw
+        is all.)
+        """
+        self.trigger_redraw()
 
     def readonly_toggled(self, widget):
         """
