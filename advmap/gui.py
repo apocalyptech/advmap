@@ -109,6 +109,14 @@ class GUI(object):
         self.roomnotes_view = self.builder.get_object('roomnotes_view')
         self.edit_room_ok = self.builder.get_object('edit_room_ok')
         self.edit_room_cancel = self.builder.get_object('edit_room_cancel')
+        self.room_offset_x = self.builder.get_object('room_offset_x')
+        self.room_offset_y = self.builder.get_object('room_offset_y')
+
+        # Existing room group dropdown elements (will be hidden when the dialog is
+        # setting up a new room, as opposed to editing existing)
+        self.room_group_label = self.builder.get_object('room_group_label')
+        self.room_group_box = self.builder.get_object('room_group_box')
+        self.room_group_align = self.builder.get_object('room_group_align')
 
         # Form elements unique to creating a new connection
         self.new_to_dir_label = self.builder.get_object('new_to_dir_label')
@@ -150,12 +158,6 @@ class GUI(object):
         self.new_conn_type_box.pack_start(self.new_conn_type_pass_oneway_in, False, True)
         self.new_conn_type_box.pack_start(self.new_conn_type_pass_oneway_out, False, True)
         self.new_conn_type_align.add(self.new_conn_type_box)
-
-        # New Room / Edit Room dialog, Advanced tab
-        self.room_offset_x = self.builder.get_object('room_offset_x')
-        self.room_offset_y = self.builder.get_object('room_offset_y')
-        self.room_group_box = self.builder.get_object('room_group_box')
-        self.edit_room_adv_table = self.builder.get_object('edit_room_adv_table')
 
         # Edit Game dialog
         self.edit_game_dialog = self.builder.get_object('edit_game_dialog')
@@ -1611,6 +1613,8 @@ class GUI(object):
                     self.new_conn_type_align.hide()
                     self.new_group_with_label.hide()
                     self.new_group_with_align.hide()
+                    self.room_group_label.show_all()
+                    self.room_group_align.show_all()
                     room = self.curhover
                     if (self.readonly_lock.get_active()):
                         self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
@@ -1655,7 +1659,6 @@ class GUI(object):
                         return
                     self.edit_room_label.set_markup('<b>Edit Room</b>')
                     self.edit_room_notebook.set_current_page(0)
-                    self.edit_room_notebook.get_nth_page(1).show()
                     self.roomname_entry.set_text(room.name)
                     self.roomnotes_view.get_buffer().set_text(room.notes)
                     if (room.type == Room.TYPE_HI_GREEN):
@@ -1825,13 +1828,14 @@ class GUI(object):
                             self.new_conn_type_align.show_all()
                             self.new_group_with_label.show_all()
                             self.new_group_with_align.show_all()
+                            self.room_group_label.hide()
+                            self.room_group_align.hide()
                             self.new_group_with_button.set_active(False)
                             self.new_to_dir_box.set_active(DIR_OPP[direction])
                             self.new_conn_type_pass_twoway.set_active(True)
                             self.new_conn_style_regular.set_active(True)
                             self.edit_room_label.set_markup('<b>New Room</b>')
                             self.edit_room_notebook.set_current_page(0)
-                            self.edit_room_notebook.get_nth_page(1).hide()
                             self.editroom_advanced_populated = False
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
@@ -1840,6 +1844,8 @@ class GUI(object):
                             self.room_down_entry.set_text('')
                             self.room_in_entry.set_text('')
                             self.room_out_entry.set_text('')
+                            self.room_offset_x.set_active(room.offset_x)
+                            self.room_offset_y.set_active(room.offset_y)
                             self.roomname_entry.grab_focus()
                             result = self.edit_room_dialog.run()
                             self.edit_room_dialog.hide()
@@ -1889,6 +1895,12 @@ class GUI(object):
                                 # Handle adding grouping if we've been told to, as well.
                                 if self.new_group_with_button.get_active():
                                     self.mapobj.group_rooms(newroom, room)
+
+                                # Handle offsets
+                                if self.room_offset_x.get_active():
+                                    newroom.offset_x = True
+                                if self.room_offset_y.get_active():
+                                    newroom.offset_y = True
 
                                 # Temp, report
                                 #print('Existing Groups:')
