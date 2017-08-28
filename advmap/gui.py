@@ -379,8 +379,7 @@ class GUI(object):
         column.set_cell_data_func(renderer, self.cellformat_rooms)
         self.map_treeview.append_column(column)
 
-        # Some similar vars for the room dropdowns in the Advanced tab in "Edit Room"
-        self.editroom_advanced_populated = False
+        # Some similar vars for the room dropdown in "Edit Room"
         self.ROOM_COL_NAME = 0
         self.ROOM_COL_IDX = 1
         self.room_mapstore = gtk.ListStore( gobject.TYPE_STRING,
@@ -1696,10 +1695,6 @@ class GUI(object):
                     buf = self.roomnotes_view.get_buffer()
                     buf.place_cursor(buf.get_start_iter())
 
-                    # Populate the Advanced tab (which I may just pull into
-                    # the main tab eventually)
-                    self.editroom_advanced_populated = True
-
                     # Advanced offsets
                     self.room_offset_x.set_active(room.offset_x)
                     self.room_offset_y.set_active(room.offset_y)
@@ -1777,36 +1772,33 @@ class GUI(object):
                             need_gfx_update = True
                             room.notes = buftxt
 
-                        # Now handle the Advanced tab
-                        if (self.editroom_advanced_populated):
+                        if (self.room_offset_x.get_active() != room.offset_x):
+                            need_gfx_update = True
+                            room.offset_x = self.room_offset_x.get_active()
+                        if (self.room_offset_y.get_active() != room.offset_y):
+                            need_gfx_update = True
+                            room.offset_y = self.room_offset_y.get_active()
 
-                            if (self.room_offset_x.get_active() != room.offset_x):
+                        # Grouping
+                        iterator = self.room_group_box.get_active_iter()
+                        group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
+                        if (group_roomid == -1):
+                            if room.group:
+                                self.mapobj.remove_room_from_group(room)
                                 need_gfx_update = True
-                                room.offset_x = self.room_offset_x.get_active()
-                            if (self.room_offset_y.get_active() != room.offset_y):
+                        else:
+                            if (self.mapobj.group_rooms(room, self.mapobj.get_room(group_roomid))):
                                 need_gfx_update = True
-                                room.offset_y = self.room_offset_y.get_active()
 
-                            # Grouping
-                            iterator = self.room_group_box.get_active_iter()
-                            group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
-                            if (group_roomid == -1):
-                                if room.group:
-                                    self.mapobj.remove_room_from_group(room)
-                                    need_gfx_update = True
-                            else:
-                                if (self.mapobj.group_rooms(room, self.mapobj.get_room(group_roomid))):
-                                    need_gfx_update = True
-
-                            # Temp, report
-                            #print('Existing Groups:')
-                            #print('')
-                            #for (idx, group) in enumerate(self.map.groups):
-                            #    print('Group %d:' % (idx+1))
-                            #    for room_view in group.rooms:
-                            #        print(' * %s' % room_view.name)
-                            #    print('')
-                            #print('')
+                        # Temp, report
+                        #print('Existing Groups:')
+                        #print('')
+                        #for (idx, group) in enumerate(self.map.groups):
+                        #    print('Group %d:' % (idx+1))
+                        #    for room_view in group.rooms:
+                        #        print(' * %s' % room_view.name)
+                        #    print('')
+                        #print('')
 
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
@@ -1836,7 +1828,6 @@ class GUI(object):
                             self.new_conn_style_regular.set_active(True)
                             self.edit_room_label.set_markup('<b>New Room</b>')
                             self.edit_room_notebook.set_current_page(0)
-                            self.editroom_advanced_populated = False
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
                             self.roomtype_radio_normal.set_active(True)
