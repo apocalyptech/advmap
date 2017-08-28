@@ -133,3 +133,50 @@ More Screenshots
 ![Main Screen](screenshots/screenshot-main.png)
 
 ![Basic Room Edit](screenshots/screenshot-edit-basic.png)
+
+Savegame Format Reference
+=========================
+
+Just for my own purposes, here's a list of what's changed in each savegame
+format revision.  The app can load any savegame version (so long as it's
+current, of course) but will always save in the most recent:
+
+**v1**
+
+* Initial Savefile format
+  * Room attributes:
+    * Name
+    * Style/coloration
+    * Up/Down/In/Out/Notes text labels
+    * Horizontal/Vertical offsets
+  * Supports grouping of rooms (only w/ grey color)
+  * Connection styles: regular, dotted, ladder
+
+**v2**
+
+* Added one-way connections
+
+**v3**
+
+* Added loopback connections
+
+**v4**
+
+* Added path selection choice for connections (direct vs. "bent")
+
+**v5**
+
+* Added ability to set "stub length" on connections
+
+**v6**
+
+* Added group coloration styles
+
+**v7**
+
+* Major overhaul of connections:
+  * Connections can have more than one end connected to each of the
+    two rooms
+  * Nonsymmetric connections: can have stub length, style, and path
+    selection defined on a per-end basis *(the "primary" connection
+    between two rooms will share a path selection)*
