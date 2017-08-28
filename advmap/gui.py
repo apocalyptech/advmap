@@ -140,10 +140,13 @@ class GUI(object):
         self.new_conn_style_ladder.set_name('new_conn_style_ladder')
         self.new_conn_style_dotted = gtk.RadioButton(self.new_conn_style_regular, 'Dotted', False)
         self.new_conn_style_dotted.set_name('new_conn_style_dotted')
+        self.new_conn_style_none = gtk.RadioButton(self.new_conn_style_regular, 'None', False)
+        self.new_conn_style_none.set_name('new_conn_style_none')
         self.new_conn_style_box = gtk.HBox()
         self.new_conn_style_box.pack_start(self.new_conn_style_regular, False, True)
         self.new_conn_style_box.pack_start(self.new_conn_style_ladder, False, True)
         self.new_conn_style_box.pack_start(self.new_conn_style_dotted, False, True)
+        self.new_conn_style_box.pack_start(self.new_conn_style_none, False, True)
         self.new_conn_style_align.add(self.new_conn_style_box)
 
         self.new_conn_type_pass_twoway = gtk.RadioButton(None, 'Two-Way', False)
@@ -1869,16 +1872,19 @@ class GUI(object):
                                 newroom.door_out = self.room_out_entry.get_text()
                                 buf = self.roomnotes_view.get_buffer()
                                 newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-                                new_direction = self.new_to_dir_box.get_active()
-                                newconn = self.mapobj.connect(room, direction, newroom, new_direction)
-                                if self.new_conn_type_pass_oneway_in.get_active():
-                                    newconn.set_oneway_b()
-                                elif self.new_conn_type_pass_oneway_out.get_active():
-                                    newconn.set_oneway_a()
-                                if self.new_conn_style_ladder.get_active():
-                                    newconn.set_ladder(newroom, new_direction)
-                                elif self.new_conn_style_dotted.get_active():
-                                    newconn.set_dotted(newroom, new_direction)
+
+                                # Connect the new room to the first room, if we haven't been told not to.
+                                if not self.new_conn_style_none.get_active():
+                                    new_direction = self.new_to_dir_box.get_active()
+                                    newconn = self.mapobj.connect(room, direction, newroom, new_direction)
+                                    if self.new_conn_type_pass_oneway_in.get_active():
+                                        newconn.set_oneway_b()
+                                    elif self.new_conn_type_pass_oneway_out.get_active():
+                                        newconn.set_oneway_a()
+                                    if self.new_conn_style_ladder.get_active():
+                                        newconn.set_ladder(newroom, new_direction)
+                                    elif self.new_conn_style_dotted.get_active():
+                                        newconn.set_dotted(newroom, new_direction)
 
                                 # Handle adding grouping if we've been told to, as well.
                                 if self.new_group_with_button.get_active():
