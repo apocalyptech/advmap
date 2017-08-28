@@ -90,7 +90,6 @@ class GUI(object):
         # New Room / Edit Room dialog
         self.edit_room_dialog = self.builder.get_object('edit_room_dialog')
         self.edit_room_label = self.builder.get_object('edit_room_label')
-        self.edit_room_notebook = self.builder.get_object('edit_room_notebook')
         self.roomtype_radio_normal = self.builder.get_object('roomtype_radio_normal')
         self.roomtype_radio_hi_green = self.builder.get_object('roomtype_radio_hi_green')
         self.roomtype_radio_hi_red = self.builder.get_object('roomtype_radio_hi_red')
@@ -1657,7 +1656,6 @@ class GUI(object):
                         self.view_room_dialog.hide()
                         return
                     self.edit_room_label.set_markup('<b>Edit Room</b>')
-                    self.edit_room_notebook.set_current_page(0)
                     self.roomname_entry.set_text(room.name)
                     self.roomnotes_view.get_buffer().set_text(room.notes)
                     if (room.type == Room.TYPE_HI_GREEN):
@@ -1827,7 +1825,6 @@ class GUI(object):
                             self.new_conn_type_pass_twoway.set_active(True)
                             self.new_conn_style_regular.set_active(True)
                             self.edit_room_label.set_markup('<b>New Room</b>')
-                            self.edit_room_notebook.set_current_page(0)
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
                             self.roomtype_radio_normal.set_active(True)
