@@ -1,5 +1,5 @@
 Adventure Game Mapper
----------------------
+=====================
 
 This is an experimental mapping program for adventure games, such as the old
 Sierra adventures, and interactive fiction (such as from Infocom, etc).
@@ -17,7 +17,7 @@ Anyway, inside `data` there's a bunch of sample ones that I had created and
 played around with.  Perhaps this'll be of use to someone.
 
 Running
-=======
+-------
 
 This is written in Python 2, using PyGTK2/PyCairo, and is therefore a gtk+-2
 application.  As far as I know, PyGTK2 doesn't work with Python 3 (you've
@@ -33,7 +33,7 @@ This doesn't have a `setup.py`, alas - just run it from this directory and
 load up a file in the `data` directory, or start making your own.
 
 Abilities
-=========
+---------
 
 This app should be able to serve for most mapping needs, though it's sometimes
 a bit clumsy.  Mapping out the maze from Zork I, for instance, is an
@@ -77,7 +77,7 @@ below for a map of the opening area of Space Quest I, with grouping.)
 Right now the only actual export format is PNG.
 
 Usage
-=====
+-----
 
 Links between rooms can most easily be placed in the main GUI area, by clicking
 on the borders of the rooms.  If two rooms are next to each other, clicking the
@@ -128,14 +128,14 @@ Controls while highlighting an existing connection:
 * `R` - Sets the primary direction when a connection with multiple ends is being used (via the `E` key).  The "primary" direction is rendered more directly than any extra end.
 
 More Screenshots
-================
+----------------
 
 ![Main Screen](screenshots/screenshot-main.png)
 
 ![Basic Room Edit](screenshots/screenshot-edit-basic.png)
 
 Savegame Format Reference
-=========================
+-------------------------
 
 Just for my own purposes, here's a list of what's changed in each savegame
 format revision.  The app can load any savegame version (so long as it's
