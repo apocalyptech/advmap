@@ -1215,23 +1215,42 @@ class Map(object):
         self.roomxy[room.y][room.x] = room
         return True
 
-    def nudge(self, direction):
+    def nudge(self, direction, roomset=None):
         """
-        Attempts to "nudge" a map in the given direction.  Will return
+        Attempts to "nudge" a map in the given direction, optionally
+        only acting on a set of passed-in rooms.  Will return
         True/False depending on success
         """
-        for room in self.roomlist():
-            if not self.dir_coord(room, direction):
+
+        # Operate on all rooms if we weren't told otherwise
+        if roomset is None:
+            roomset = set(self.roomlist())
+
+        # Sanity check
+        if len(roomset) == 0:
+            return False
+
+        # Loop through and make sure that we're capable of nudging
+        # the specified rooms.  If the edge of the map or another
+        # room not in our passed-in set is blocking, return False
+        # right away.
+        for room in roomset:
+            adj_dir = self.dir_coord(room, direction)
+            if not adj_dir:
                 return False
+            adj_room = self.get_room_at(*adj_dir)
+            if adj_room and adj_room not in roomset:
+                return False
+
         if (direction in [DIR_W, DIR_NW, DIR_N, DIR_NE]):
             for y in range(len(self.roomxy)):
                 for x in range(len(self.roomxy[y])):
-                    if self.roomxy[y][x]:
+                    if self.roomxy[y][x] and self.roomxy[y][x] in roomset:
                         self.move_room(self.roomxy[y][x], direction)
         else:
             for y in range(len(self.roomxy)-1, -1, -1):
                 for x in range(len(self.roomxy[y])-1, -1, -1):
-                    if self.roomxy[y][x]:
+                    if self.roomxy[y][x] and self.roomxy[y][x] in roomset:
                         self.move_room(self.roomxy[y][x], direction)
         return True
 

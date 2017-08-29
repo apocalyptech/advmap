@@ -1200,6 +1200,7 @@ class MapTests(unittest.TestCase):
             r4 = mapobj.add_room_at(5, 5, 'Room 4')
 
             rv = mapobj.nudge(direction)
+            self.assertEqual(rv, True)
             self.assertEqual(r1.x, 4+dir_mods[direction][0])
             self.assertEqual(r1.y, 4+dir_mods[direction][1])
             self.assertEqual(r2.x, 5+dir_mods[direction][0])
@@ -1212,6 +1213,133 @@ class MapTests(unittest.TestCase):
             self.assertEqual(mapobj.roomxy[4+dir_mods[direction][1]][5+dir_mods[direction][0]], r2)
             self.assertEqual(mapobj.roomxy[5+dir_mods[direction][1]][4+dir_mods[direction][0]], r3)
             self.assertEqual(mapobj.roomxy[5+dir_mods[direction][1]][5+dir_mods[direction][0]], r4)
+
+    def test_nudge_subset_blocked(self):
+        """
+        Tests attempting to nudge a subset of a map, but having
+        it blocked in all directions by other rooms which aren't part of the
+        set.
+        """
+        mapobj = Map('Map')
+        r1 = mapobj.add_room_at(1, 1, 'NW corner')
+        r2 = mapobj.add_room_at(7, 7, 'SE corner')
+        r3 = mapobj.add_room_at(1, 7, 'SW corner')
+        r4 = mapobj.add_room_at(7, 1, 'NE corner')
+        r5 = mapobj.add_room_at(4, 4, 'Middle')
+        subset = set([r1, r2, r3, r4, r5])
+
+        blockers = []
+        for (idx, (x, y)) in enumerate([(3, 3), (4, 3), (5, 3), (3, 4), (5, 4),
+                (3, 5), (4, 5), (5, 5)]):
+            blockers.append((idx, x, y, mapobj.add_room_at(x, y, 'Blocker %d' % (idx+1))))
+
+        # Alas @ not having unittest.subTest in py2
+        for direction in [DIR_NW, DIR_N, DIR_NE, DIR_E,
+                DIR_SE, DIR_S, DIR_SW, DIR_W]:
+            rv = mapobj.nudge(direction, subset)
+            self.assertEqual(rv, False)
+            self.assertEqual(r1.x, 1)
+            self.assertEqual(r1.y, 1)
+            self.assertEqual(r2.x, 7)
+            self.assertEqual(r2.y, 7)
+            self.assertEqual(r3.x, 1)
+            self.assertEqual(r3.y, 7)
+            self.assertEqual(r4.x, 7)
+            self.assertEqual(r4.y, 1)
+            self.assertEqual(r5.x, 4)
+            self.assertEqual(r5.y, 4)
+            self.assertEqual(mapobj.roomxy[1][1], r1)
+            self.assertEqual(mapobj.roomxy[7][7], r2)
+            self.assertEqual(mapobj.roomxy[7][1], r3)
+            self.assertEqual(mapobj.roomxy[1][7], r4)
+            self.assertEqual(mapobj.roomxy[4][4], r5)
+            for (idx, x, y, blocker) in blockers:
+                self.assertEqual(blocker.x, x)
+                self.assertEqual(blocker.y, y)
+                self.assertEqual(mapobj.roomxy[y][x], blocker)
+
+    def test_nudge_subset_worked(self):
+        """
+        Tests nudging a subset of a map and having it work.
+        """
+        dir_mods = {
+                DIR_NW: (-1, -1),
+                DIR_N: (0, -1),
+                DIR_NE: (1, -1),
+                DIR_E: (1, 0),
+                DIR_SE: (1, 1),
+                DIR_S: (0, 1),
+                DIR_SW: (-1, 1),
+                DIR_W: (-1, 0),
+            }
+
+        # Alas @ not having unittest.subTest in py2
+        for direction in [DIR_NW, DIR_N, DIR_NE, DIR_E,
+                DIR_SE, DIR_S, DIR_SW, DIR_W]:
+
+            mapobj = Map('Map')
+            r1 = mapobj.add_room_at(4, 4, 'Room 1')
+            r2 = mapobj.add_room_at(5, 4, 'Room 2')
+            r3 = mapobj.add_room_at(4, 5, 'Room 3')
+            r4 = mapobj.add_room_at(5, 5, 'Room 4')
+            subset = set([r1, r2, r3, r4])
+
+            blockers = []
+            for (idx, (x, y)) in enumerate([(1, 1), (7, 7), (1, 7), (7, 1)]):
+                blockers.append((idx, x, y, mapobj.add_room_at(x, y, 'Blocker %d' % (idx+1))))
+
+            rv = mapobj.nudge(direction, subset)
+            self.assertEqual(rv, True)
+            self.assertEqual(r1.x, 4+dir_mods[direction][0])
+            self.assertEqual(r1.y, 4+dir_mods[direction][1])
+            self.assertEqual(r2.x, 5+dir_mods[direction][0])
+            self.assertEqual(r2.y, 4+dir_mods[direction][1])
+            self.assertEqual(r3.x, 4+dir_mods[direction][0])
+            self.assertEqual(r3.y, 5+dir_mods[direction][1])
+            self.assertEqual(r4.x, 5+dir_mods[direction][0])
+            self.assertEqual(r4.y, 5+dir_mods[direction][1])
+            self.assertEqual(mapobj.roomxy[4+dir_mods[direction][1]][4+dir_mods[direction][0]], r1)
+            self.assertEqual(mapobj.roomxy[4+dir_mods[direction][1]][5+dir_mods[direction][0]], r2)
+            self.assertEqual(mapobj.roomxy[5+dir_mods[direction][1]][4+dir_mods[direction][0]], r3)
+            self.assertEqual(mapobj.roomxy[5+dir_mods[direction][1]][5+dir_mods[direction][0]], r4)
+            for (idx, x, y, blocker) in blockers:
+                self.assertEqual(blocker.x, x)
+                self.assertEqual(blocker.y, y)
+                self.assertEqual(mapobj.roomxy[y][x], blocker)
+
+    def test_nudge_subset_empty(self):
+        """
+        Tests attempting to nudge an empty subset of a map.  Nothing should
+        happen.
+        """
+        mapobj = Map('Map')
+        r1 = mapobj.add_room_at(1, 1, 'NW corner')
+        r2 = mapobj.add_room_at(7, 7, 'SE corner')
+        r3 = mapobj.add_room_at(1, 7, 'SW corner')
+        r4 = mapobj.add_room_at(7, 1, 'NE corner')
+        r5 = mapobj.add_room_at(4, 4, 'Middle')
+        subset = set()
+
+        # Alas @ not having unittest.subTest in py2
+        for direction in [DIR_NW, DIR_N, DIR_NE, DIR_E,
+                DIR_SE, DIR_S, DIR_SW, DIR_W]:
+            rv = mapobj.nudge(direction, subset)
+            self.assertEqual(rv, False)
+            self.assertEqual(r1.x, 1)
+            self.assertEqual(r1.y, 1)
+            self.assertEqual(r2.x, 7)
+            self.assertEqual(r2.y, 7)
+            self.assertEqual(r3.x, 1)
+            self.assertEqual(r3.y, 7)
+            self.assertEqual(r4.x, 7)
+            self.assertEqual(r4.y, 1)
+            self.assertEqual(r5.x, 4)
+            self.assertEqual(r5.y, 4)
+            self.assertEqual(mapobj.roomxy[1][1], r1)
+            self.assertEqual(mapobj.roomxy[7][7], r2)
+            self.assertEqual(mapobj.roomxy[7][1], r3)
+            self.assertEqual(mapobj.roomxy[1][7], r4)
+            self.assertEqual(mapobj.roomxy[4][4], r5)
 
     def test_resize_invalid_direction(self):
         """

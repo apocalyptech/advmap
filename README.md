@@ -92,12 +92,14 @@ the inside of the room itself (again, text at the bottom of the window will alwa
 tell you what actions are possible with what keys).  Clicking on the main room
 itself will allow you to edit the room, add notes, etc.  Currently the room-edit
 dialog does *not* support editing the room connections; this may return eventually.
+Shift-clicking on rooms will let you select more than one room at once.
 
-Controls while highlighting a room:
+Controls while highlighting a room or rooms:
 
 * `Left Mouse` - Edit room details (Room Name, type, up/down/in/out labels, notes, vert/horiz offsets, room grouping)
+* `Shift-Click` *(left mouse)* - Select room *(shift-click on more rooms to multi-select)*
 * `W`/`A`/`S`/`D` - Nudge room North/West/South/East
-* `X` - Delete the room
+* `X` - Delete the room *(unavailable while selecting more than one room)*
 * `H` - Toggle horizontal offset (useful in some circumstances to make maps look prettier)
 * `V` - Toggle vertical offset (useful in some circumstances to make maps look prettier)
 * `T` - Change room type

@@ -281,6 +281,7 @@ class GUI(object):
         self.add_extra_room = None
         self.add_extra_dir = None
         self.grouping_room = None
+        self.multi_select = set()
         self.cursor_move_drag = gtk.gdk.Cursor(gtk.gdk.DOT)
         self.cursor_wait = gtk.gdk.Cursor(gtk.gdk.WATCH)
 
@@ -1021,8 +1022,15 @@ class GUI(object):
         else:
             is_label = False
 
+        # Find out if we're part of a multi-select
+        is_selected = (room in self.multi_select)
+
         # Figure out our colors
-        if (not is_label and room.type in self.c_type_map):
+        if is_label:
+            border = self.c_label
+            background = self.c_background
+            textcolor = self.c_type_default[2]
+        elif room.type in self.c_type_map:
             border = self.c_type_map[room.type][0]
             background = self.c_type_map[room.type][1]
             textcolor = self.c_type_map[room.type][2]
@@ -1033,18 +1041,32 @@ class GUI(object):
 
         # Draw the room
         ctx.save()
-        if (is_label):
-            ctx.set_source_rgba(*self.c_background)
-            ctx.rectangle(x, y, self.room_w, self.room_h)
-            ctx.fill()
-            ctx.set_source_rgba(*self.c_label)
-            ctx.set_dash([9.0], 0)
+        if is_selected:
+            if room.type == Room.TYPE_DARK:
+                ctx.set_source_rgba(
+                        background[0]*1.5,
+                        background[1]*1.5,
+                        background[2]*1.5,
+                        background[3],
+                        )
+            else:
+                ctx.set_source_rgba(
+                        background[0]*.92,
+                        background[1]*.92,
+                        background[2]*.92,
+                        background[3],
+                        )
         else:
             ctx.set_source_rgba(*background)
-            ctx.rectangle(x, y, self.room_w, self.room_h)
-            ctx.fill()
-            ctx.set_source_rgba(*border)
-        ctx.set_line_width(1)
+        ctx.rectangle(x, y, self.room_w, self.room_h)
+        ctx.fill()
+        ctx.set_source_rgba(*border)
+        if is_label:
+            ctx.set_dash([9.0], 0)
+        if is_selected:
+            ctx.set_line_width(3)
+        else:
+            ctx.set_line_width(1)
         ctx.rectangle(x, y, self.room_w, self.room_h)
         ctx.stroke()
         ctx.restore()
@@ -1607,13 +1629,20 @@ class GUI(object):
         # a transient operation is never going to "span" any number of clicks.
         saved_move_vars = False
         saved_link_conn_vars = False
+        saved_multiple_selections = False
+
+        # Find out if we'll need to do a graphics redraw at the end
+        need_gfx_update = False
+        need_clean_hover = False
 
         # Left-click
         if (event.button == 1):
 
             if (self.hover == self.HOVER_NONE):
                 # If we don't have anything selected, we'll drag the canvas
+                saved_multiple_selections = True
                 self.dragging = True
+                self.dragged = False
                 self.hold_x = event.x_root
                 self.hold_y = event.y_root
                 self.diff_x = 0
@@ -1621,205 +1650,219 @@ class GUI(object):
                 self.mainarea.window.set_cursor(self.cursor_move_drag)
 
             elif (event.type == gtk.gdk.BUTTON_PRESS):
-                # Presumably this check was put here for a reason, though I don't recall why
-                need_gfx_update = False
 
                 if (self.hover == self.HOVER_ROOM):
-                    # edit/view room details
-                    self.new_to_dir_label.hide()
-                    self.new_to_dir_align.hide()
-                    self.new_conn_style_label.hide()
-                    self.new_conn_style_align.hide()
-                    self.new_conn_type_label.hide()
-                    self.new_conn_type_align.hide()
-                    self.new_group_with_label.hide()
-                    self.new_group_with_align.hide()
-                    self.room_group_label.show_all()
-                    self.room_group_align.show_all()
+
                     room = self.curhover
-                    if (self.readonly_lock.get_active()):
-                        self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
-                        self.view_room_roomtype_label.set_text(room.TYPE_TXT[room.type])
-                        if (room.up and room.up != ''):
-                            self.view_room_up_label.set_text(room.up)
-                            self.view_room_up_label.show()
-                            self.view_room_up_hdr.show()
+
+                    if event.get_state() & gtk.gdk.SHIFT_MASK:
+
+                        # Update our multi-select variables
+                        need_gfx_update = True
+                        need_clean_hover = True
+                        saved_multiple_selections = True
+                        if room in self.multi_select:
+                            self.multi_select.discard(room)
                         else:
-                            self.view_room_up_label.hide()
-                            self.view_room_up_hdr.hide()
-                        if (room.down and room.down != ''):
-                            self.view_room_down_label.set_text(room.down)
-                            self.view_room_down_label.show()
-                            self.view_room_down_hdr.show()
-                        else:
-                            self.view_room_down_label.hide()
-                            self.view_room_down_hdr.hide()
-                        if (room.door_in and room.door_in != ''):
-                            self.view_room_in_label.set_text(room.door_in)
-                            self.view_room_in_label.show()
-                            self.view_room_in_hdr.show()
-                        else:
-                            self.view_room_in_label.hide()
-                            self.view_room_in_hdr.hide()
-                        if (room.door_out and room.door_out != ''):
-                            self.view_room_out_label.set_text(room.door_out)
-                            self.view_room_out_label.show()
-                            self.view_room_out_hdr.show()
-                        else:
-                            self.view_room_out_label.hide()
-                            self.view_room_out_hdr.hide()
-                        if (room.notes and room.notes != ''):
-                            self.view_room_notes_view.get_buffer().set_text(room.notes)
-                            self.view_room_scroll.show()
-                            self.view_room_notes_hdr.show()
-                        else:
-                            self.view_room_scroll.hide()
-                            self.view_room_notes_hdr.hide()
-                        self.view_room_dialog.run()
-                        self.view_room_dialog.hide()
-                        return
-                    self.edit_room_label.set_markup('<b>Edit Room</b>')
-                    self.roomname_entry.set_text(room.name)
-                    self.roomnotes_view.get_buffer().set_text(room.notes)
-                    if (room.type == Room.TYPE_HI_GREEN):
-                        self.roomtype_radio_hi_green.set_active(True)
-                    elif (room.type == Room.TYPE_HI_BLUE):
-                        self.roomtype_radio_hi_blue.set_active(True)
-                    elif (room.type == Room.TYPE_HI_RED):
-                        self.roomtype_radio_hi_red.set_active(True)
-                    elif (room.type == Room.TYPE_HI_YELLOW):
-                        self.roomtype_radio_hi_yellow.set_active(True)
-                    elif (room.type == Room.TYPE_HI_PURPLE):
-                        self.roomtype_radio_hi_purple.set_active(True)
-                    elif (room.type == Room.TYPE_HI_CYAN):
-                        self.roomtype_radio_hi_cyan.set_active(True)
-                    elif (room.type == Room.TYPE_LABEL):
-                        self.roomtype_radio_label.set_active(True)
-                    elif (room.type == Room.TYPE_FAINT):
-                        self.roomtype_radio_faint.set_active(True)
-                    elif (room.type == Room.TYPE_DARK):
-                        self.roomtype_radio_dark.set_active(True)
+                            self.multi_select.add(room)
+                        self.update_hover_text()
+
                     else:
-                        self.roomtype_radio_normal.set_active(True)
-                    self.room_up_entry.set_text(room.up)
-                    self.room_up_entry.set_position(0)
-                    self.room_down_entry.set_text(room.down)
-                    self.room_down_entry.set_position(0)
-                    self.room_in_entry.set_text(room.door_in)
-                    self.room_in_entry.set_position(0)
-                    self.room_out_entry.set_text(room.door_out)
-                    self.room_out_entry.set_position(0)
-                    if (room.unexplored()):
-                        self.roomname_entry.grab_focus()
-                    else:
-                        self.roomnotes_view.grab_focus()
-                    buf = self.roomnotes_view.get_buffer()
-                    buf.place_cursor(buf.get_start_iter())
 
-                    # Advanced offsets
-                    self.room_offset_x.set_active(room.offset_x)
-                    self.room_offset_y.set_active(room.offset_y)
-
-                    # Room dropdown for group membership
-                    self.room_mapstore.clear()
-                    iterator = self.room_mapstore.append()
-                    rowmap = {}
-                    self.room_mapstore.set(iterator,
-                            self.ROOM_COL_NAME, '-',
-                            self.ROOM_COL_IDX, -1)
-                    currow = 0
-                    self.room_group_box.set_active(0)
-                    have_group = False
-                    rooms = list(self.mapobj.roomlist())
-                    rooms.sort(self.room_sort)
-                    for iterroom in rooms:
-                        if (room != iterroom):
-                            currow += 1
-                            rowmap[iterroom.idnum] = currow
-                            iterator = self.room_mapstore.append()
-                            self.room_mapstore.set(iterator,
-                                    self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
-                                    self.ROOM_COL_IDX, iterroom.idnum)
-                            if (not have_group and room.in_group_with(iterroom)):
-                                self.room_group_box.set_active(currow)
-                                have_group = True
+                        # edit/view room details
+                        self.new_to_dir_label.hide()
+                        self.new_to_dir_align.hide()
+                        self.new_conn_style_label.hide()
+                        self.new_conn_style_align.hide()
+                        self.new_conn_type_label.hide()
+                        self.new_conn_type_align.hide()
+                        self.new_group_with_label.hide()
+                        self.new_group_with_align.hide()
+                        self.room_group_label.show_all()
+                        self.room_group_align.show_all()
+                        if (self.readonly_lock.get_active()):
+                            self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
+                            self.view_room_roomtype_label.set_text(room.TYPE_TXT[room.type])
+                            if (room.up and room.up != ''):
+                                self.view_room_up_label.set_text(room.up)
+                                self.view_room_up_label.show()
+                                self.view_room_up_hdr.show()
+                            else:
+                                self.view_room_up_label.hide()
+                                self.view_room_up_hdr.hide()
+                            if (room.down and room.down != ''):
+                                self.view_room_down_label.set_text(room.down)
+                                self.view_room_down_label.show()
+                                self.view_room_down_hdr.show()
+                            else:
+                                self.view_room_down_label.hide()
+                                self.view_room_down_hdr.hide()
+                            if (room.door_in and room.door_in != ''):
+                                self.view_room_in_label.set_text(room.door_in)
+                                self.view_room_in_label.show()
+                                self.view_room_in_hdr.show()
+                            else:
+                                self.view_room_in_label.hide()
+                                self.view_room_in_hdr.hide()
+                            if (room.door_out and room.door_out != ''):
+                                self.view_room_out_label.set_text(room.door_out)
+                                self.view_room_out_label.show()
+                                self.view_room_out_hdr.show()
+                            else:
+                                self.view_room_out_label.hide()
+                                self.view_room_out_hdr.hide()
+                            if (room.notes and room.notes != ''):
+                                self.view_room_notes_view.get_buffer().set_text(room.notes)
+                                self.view_room_scroll.show()
+                                self.view_room_notes_hdr.show()
+                            else:
+                                self.view_room_scroll.hide()
+                                self.view_room_notes_hdr.hide()
+                            self.view_room_dialog.run()
+                            self.view_room_dialog.hide()
+                            return
+                        self.edit_room_label.set_markup('<b>Edit Room</b>')
+                        self.roomname_entry.set_text(room.name)
+                        self.roomnotes_view.get_buffer().set_text(room.notes)
+                        if (room.type == Room.TYPE_HI_GREEN):
+                            self.roomtype_radio_hi_green.set_active(True)
+                        elif (room.type == Room.TYPE_HI_BLUE):
+                            self.roomtype_radio_hi_blue.set_active(True)
+                        elif (room.type == Room.TYPE_HI_RED):
+                            self.roomtype_radio_hi_red.set_active(True)
+                        elif (room.type == Room.TYPE_HI_YELLOW):
+                            self.roomtype_radio_hi_yellow.set_active(True)
+                        elif (room.type == Room.TYPE_HI_PURPLE):
+                            self.roomtype_radio_hi_purple.set_active(True)
+                        elif (room.type == Room.TYPE_HI_CYAN):
+                            self.roomtype_radio_hi_cyan.set_active(True)
+                        elif (room.type == Room.TYPE_LABEL):
+                            self.roomtype_radio_label.set_active(True)
+                        elif (room.type == Room.TYPE_FAINT):
+                            self.roomtype_radio_faint.set_active(True)
+                        elif (room.type == Room.TYPE_DARK):
+                            self.roomtype_radio_dark.set_active(True)
                         else:
-                            rowmap[iterroom.idnum] = 0
-
-                    # TODO: should we poke around with scroll/cursor here?
-                    result = self.edit_room_dialog.run()
-                    self.edit_room_dialog.hide()
-                    if (result == gtk.RESPONSE_OK):
-                        if (room.name != self.roomname_entry.get_text()):
-                            need_gfx_update = True
-                            room.name = self.roomname_entry.get_text()
-                        if (self.roomtype_radio_hi_green.get_active()):
-                            new_type = Room.TYPE_HI_GREEN
-                        elif (self.roomtype_radio_hi_red.get_active()):
-                            new_type = Room.TYPE_HI_RED
-                        elif (self.roomtype_radio_hi_blue.get_active()):
-                            new_type = Room.TYPE_HI_BLUE
-                        elif (self.roomtype_radio_hi_yellow.get_active()):
-                            new_type = Room.TYPE_HI_YELLOW
-                        elif (self.roomtype_radio_hi_purple.get_active()):
-                            new_type = Room.TYPE_HI_PURPLE
-                        elif (self.roomtype_radio_hi_cyan.get_active()):
-                            new_type = Room.TYPE_HI_CYAN
-                        elif (self.roomtype_radio_label.get_active()):
-                            new_type = Room.TYPE_LABEL
-                        elif (self.roomtype_radio_faint.get_active()):
-                            new_type = Room.TYPE_FAINT
-                        elif (self.roomtype_radio_dark.get_active()):
-                            new_type = Room.TYPE_DARK
+                            self.roomtype_radio_normal.set_active(True)
+                        self.room_up_entry.set_text(room.up)
+                        self.room_up_entry.set_position(0)
+                        self.room_down_entry.set_text(room.down)
+                        self.room_down_entry.set_position(0)
+                        self.room_in_entry.set_text(room.door_in)
+                        self.room_in_entry.set_position(0)
+                        self.room_out_entry.set_text(room.door_out)
+                        self.room_out_entry.set_position(0)
+                        if (room.unexplored()):
+                            self.roomname_entry.grab_focus()
                         else:
-                            new_type = Room.TYPE_NORMAL
-                        if (room.type != new_type):
-                            need_gfx_update = True
-                            room.type = new_type
-                        if (room.up != self.room_up_entry.get_text()):
-                            need_gfx_update = True
-                            room.up = self.room_up_entry.get_text()
-                        if (room.down != self.room_down_entry.get_text()):
-                            need_gfx_update = True
-                            room.down = self.room_down_entry.get_text()
-                        if (room.door_in != self.room_in_entry.get_text()):
-                            need_gfx_update = True
-                            room.door_in = self.room_in_entry.get_text()
-                        if (room.door_out != self.room_out_entry.get_text()):
-                            need_gfx_update = True
-                            room.door_out = self.room_out_entry.get_text()
-                        buftxt = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-                        if (room.notes != buftxt):
-                            need_gfx_update = True
-                            room.notes = buftxt
+                            self.roomnotes_view.grab_focus()
+                        buf = self.roomnotes_view.get_buffer()
+                        buf.place_cursor(buf.get_start_iter())
 
-                        if (self.room_offset_x.get_active() != room.offset_x):
-                            need_gfx_update = True
-                            room.offset_x = self.room_offset_x.get_active()
-                        if (self.room_offset_y.get_active() != room.offset_y):
-                            need_gfx_update = True
-                            room.offset_y = self.room_offset_y.get_active()
+                        # Advanced offsets
+                        self.room_offset_x.set_active(room.offset_x)
+                        self.room_offset_y.set_active(room.offset_y)
 
-                        # Grouping
-                        iterator = self.room_group_box.get_active_iter()
-                        group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
-                        if (group_roomid == -1):
-                            if room.group:
-                                self.mapobj.remove_room_from_group(room)
+                        # Room dropdown for group membership
+                        self.room_mapstore.clear()
+                        iterator = self.room_mapstore.append()
+                        rowmap = {}
+                        self.room_mapstore.set(iterator,
+                                self.ROOM_COL_NAME, '-',
+                                self.ROOM_COL_IDX, -1)
+                        currow = 0
+                        self.room_group_box.set_active(0)
+                        have_group = False
+                        rooms = list(self.mapobj.roomlist())
+                        rooms.sort(self.room_sort)
+                        for iterroom in rooms:
+                            if (room != iterroom):
+                                currow += 1
+                                rowmap[iterroom.idnum] = currow
+                                iterator = self.room_mapstore.append()
+                                self.room_mapstore.set(iterator,
+                                        self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
+                                        self.ROOM_COL_IDX, iterroom.idnum)
+                                if (not have_group and room.in_group_with(iterroom)):
+                                    self.room_group_box.set_active(currow)
+                                    have_group = True
+                            else:
+                                rowmap[iterroom.idnum] = 0
+
+                        # TODO: should we poke around with scroll/cursor here?
+                        result = self.edit_room_dialog.run()
+                        self.edit_room_dialog.hide()
+                        if (result == gtk.RESPONSE_OK):
+                            if (room.name != self.roomname_entry.get_text()):
                                 need_gfx_update = True
-                        else:
-                            if (self.mapobj.group_rooms(room, self.mapobj.get_room(group_roomid))):
+                                room.name = self.roomname_entry.get_text()
+                            if (self.roomtype_radio_hi_green.get_active()):
+                                new_type = Room.TYPE_HI_GREEN
+                            elif (self.roomtype_radio_hi_red.get_active()):
+                                new_type = Room.TYPE_HI_RED
+                            elif (self.roomtype_radio_hi_blue.get_active()):
+                                new_type = Room.TYPE_HI_BLUE
+                            elif (self.roomtype_radio_hi_yellow.get_active()):
+                                new_type = Room.TYPE_HI_YELLOW
+                            elif (self.roomtype_radio_hi_purple.get_active()):
+                                new_type = Room.TYPE_HI_PURPLE
+                            elif (self.roomtype_radio_hi_cyan.get_active()):
+                                new_type = Room.TYPE_HI_CYAN
+                            elif (self.roomtype_radio_label.get_active()):
+                                new_type = Room.TYPE_LABEL
+                            elif (self.roomtype_radio_faint.get_active()):
+                                new_type = Room.TYPE_FAINT
+                            elif (self.roomtype_radio_dark.get_active()):
+                                new_type = Room.TYPE_DARK
+                            else:
+                                new_type = Room.TYPE_NORMAL
+                            if (room.type != new_type):
                                 need_gfx_update = True
+                                room.type = new_type
+                            if (room.up != self.room_up_entry.get_text()):
+                                need_gfx_update = True
+                                room.up = self.room_up_entry.get_text()
+                            if (room.down != self.room_down_entry.get_text()):
+                                need_gfx_update = True
+                                room.down = self.room_down_entry.get_text()
+                            if (room.door_in != self.room_in_entry.get_text()):
+                                need_gfx_update = True
+                                room.door_in = self.room_in_entry.get_text()
+                            if (room.door_out != self.room_out_entry.get_text()):
+                                need_gfx_update = True
+                                room.door_out = self.room_out_entry.get_text()
+                            buftxt = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
+                            if (room.notes != buftxt):
+                                need_gfx_update = True
+                                room.notes = buftxt
 
-                        # Temp, report
-                        #print('Existing Groups:')
-                        #print('')
-                        #for (idx, group) in enumerate(self.map.groups):
-                        #    print('Group %d:' % (idx+1))
-                        #    for room_view in group.rooms:
-                        #        print(' * %s' % room_view.name)
-                        #    print('')
-                        #print('')
+                            if (self.room_offset_x.get_active() != room.offset_x):
+                                need_gfx_update = True
+                                room.offset_x = self.room_offset_x.get_active()
+                            if (self.room_offset_y.get_active() != room.offset_y):
+                                need_gfx_update = True
+                                room.offset_y = self.room_offset_y.get_active()
+
+                            # Grouping
+                            iterator = self.room_group_box.get_active_iter()
+                            group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
+                            if (group_roomid == -1):
+                                if room.group:
+                                    self.mapobj.remove_room_from_group(room)
+                                    need_gfx_update = True
+                            else:
+                                if (self.mapobj.group_rooms(room, self.mapobj.get_room(group_roomid))):
+                                    need_gfx_update = True
+
+                            # Temp, report
+                            #print('Existing Groups:')
+                            #print('')
+                            #for (idx, group) in enumerate(self.map.groups):
+                            #    print('Group %d:' % (idx+1))
+                            #    for room_view in group.rooms:
+                            #        print(' * %s' % room_view.name)
+                            #    print('')
+                            #print('')
 
                 elif (self.hover == self.HOVER_CONN_NEW):
                     # create a new room / connection
@@ -1941,14 +1984,10 @@ class GUI(object):
                     # Nothing...
                     pass
 
-                if (need_gfx_update):
-                    self.trigger_redraw()
-
         elif (event.button == 2):
 
             # Processing a middle click
             if (event.type == gtk.gdk.BUTTON_PRESS):
-                need_gfx_update = False
 
                 if (self.hover == self.HOVER_CONN_NEW):
                     # If we're hovering over a new connection, middle-click will
@@ -1958,14 +1997,10 @@ class GUI(object):
                     room.set_loopback(direction)
                     need_gfx_update = True
 
-                if (need_gfx_update):
-                    self.trigger_redraw()
-
         elif (event.button == 3):
             # Processing a right click
 
             if (event.type == gtk.gdk.BUTTON_PRESS):
-                need_gfx_update = False
 
                 # First check for a couple of "move" operations which we might be doing.
                 if self.move_room is not None and self.move_dir is not None:
@@ -2012,24 +2047,38 @@ class GUI(object):
                     # TODO: it would probably be nice to have some different GUI highlighting
                     # when this is active, as well.
 
-                if (need_gfx_update):
-                    self.trigger_redraw()
+        cur_select_len = len(self.multi_select)
+        if self.reset_transient_operations(saved_move_vars=saved_move_vars,
+                saved_link_conn_vars=saved_link_conn_vars,
+                saved_multiple_selections=saved_multiple_selections):
+            need_gfx_update = True
+        new_select_len = len(self.multi_select)
 
-        self.reset_transient_operations(saved_move_vars, saved_link_conn_vars)
+        if cur_select_len != new_select_len:
+            self.update_hover_text()
+
+        if (need_gfx_update):
+            self.trigger_redraw()
 
     def reset_transient_operations(self,
             saved_move_vars=False,
             saved_link_conn_vars=False,
             saved_add_extra_vars=False,
             saved_grouping_vars=False,
+            saved_multiple_selections=False,
             ):
         """
-        We have four "transient" operations: moving existing connections, linking
-        two previously-unlinked directions between rooms, adding an extra end
-        to a connection, and grouping two rooms.  This will reset all the
-        necessary vars.
+        We have five "transient" operations:
+          1) moving existing connections
+          2) linking two previously-unlinked directions between rooms
+          3) adding an extra end to a connection
+          4) grouping two rooms.
+          5) multiple selection of rooms
+        This will reset all the necessary vars.  Returns `True` if something
+        we did should result in a map redraw, and `False` otherwise.
         """
 
+        need_gfx_update = False
         if not saved_move_vars:
             self.move_room = None
             self.move_dir = None
@@ -2041,9 +2090,15 @@ class GUI(object):
             self.add_extra_dir = None
         if not saved_grouping_vars:
             self.grouping_room = None
+        if not saved_multiple_selections:
+            if len(self.multi_select) > 0:
+                self.multi_select = set()
+                need_gfx_update = True
         if (not saved_move_vars and not saved_link_conn_vars and
-                not saved_add_extra_vars and not saved_grouping_vars):
+                not saved_add_extra_vars and not saved_grouping_vars and
+                not saved_multiple_selections):
             self.set_secondary_status('')
+        return need_gfx_update
 
     def trigger_redraw(self, clean_hover=True):
         """
@@ -2064,6 +2119,13 @@ class GUI(object):
             self.dragging = False
             self.mainarea.window.set_cursor(None)
 
+            # Cancel multi-select if we registered a click which didn't actually
+            # drag the canvas at all
+            if not self.dragged and len(self.multi_select) > 0:
+                self.multi_select = set()
+                self.trigger_redraw()
+                self.update_hover_text()
+
     def redraw_current_hover(self):
         """
         Called after some redraws to make sure that we remain highlighting
@@ -2078,6 +2140,27 @@ class GUI(object):
         elif self.hover == self.HOVER_EDGE:
             self.hover_edge()
 
+    def get_group_info(self, roomset):
+        """
+        Given a set of rooms, return some information about the aggregate group
+        membership of the rooms.  Specifically, we will return a tuple with the
+        following:
+
+            1) Number of rooms with no group
+            2) Number of unique groups seen
+            3) One of the groups seen, if possible
+        """
+        seen_groups = set()
+        no_groups = 0
+        group = None
+        for room in roomset:
+            if room.group:
+                seen_groups.add(room.group)
+                group = room.group
+            else:
+                no_groups += 1
+        return (no_groups, len(seen_groups), group)
+
     def update_hover_text(self):
         """
         Updates our hover text which tells the user what actions are available.
@@ -2088,9 +2171,35 @@ class GUI(object):
 
         hover_text = ''
 
+        # Set up an array of actions available when we have mulitple rooms selected
+        multi_actions = []
+        if len(self.multi_select) > 0:
+            multi_actions.append(('WASD', 'nudge rooms'))
+            multi_actions.append(('H/V', 'toggle horiz/vert offsets'))
+            multi_actions.append(('T', 'change types'))
+            if len(self.multi_select) > 1:
+                (num_nogroup, num_unique_groups, group) = self.get_group_info(self.multi_select)
+                if num_nogroup == 0:
+                    if num_unique_groups == 1:
+                        multi_actions.append(('G', 'change group render'))
+                else:
+                    if num_unique_groups < 2:
+                        multi_actions.append(('G', 'group selected'))
+
+                if num_unique_groups > 0:
+                    multi_actions.append(('O', 'ungroup selected'))
+            else:
+                selected_room = next(iter(self.multi_select))
+                if selected_room.group:
+                    multi_actions.append(('O', 'ungroup selected'))
+
         if self.hover == self.HOVER_NONE:
 
-            hover_text = 'LMB: click-and-drag'
+            actions = [('LMB', 'click-and-drag')]
+            if len(self.multi_select) > 0:
+                actions.extend(multi_actions)
+
+            hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
 
         else:
 
@@ -2103,16 +2212,24 @@ class GUI(object):
                     if readonly:
                         actions.append(('LMB', 'view details'))
                     else:
+                        room = self.curhover
                         actions.append(('LMB', 'edit room'))
-                        actions.append(('WASD', 'nudge room'))
-                        actions.append(('X', 'delete'))
-                        actions.append(('H/V', 'toggle horiz/vert offset'))
-                        actions.append(('T', 'change type'))
-                        if self.hover_roomobj.group:
-                            actions.append(('G', 'change group render'))
-                            actions.append(('O', 'remove from group'))
+                        if room in self.multi_select:
+                            actions.append(('shift-click', 'deselect'))
                         else:
-                            actions.append(('G', 'add to group'))
+                            actions.append(('shift-click', 'select'))
+                        if len(self.multi_select) > 0:
+                            actions.extend(multi_actions)
+                        else:
+                            actions.append(('WASD', 'nudge room'))
+                            actions.append(('X', 'delete'))
+                            actions.append(('H/V', 'toggle horiz/vert offset'))
+                            actions.append(('T', 'change type'))
+                            if self.hover_roomobj.group:
+                                actions.append(('G', 'change group render'))
+                                actions.append(('O', 'remove from group'))
+                            else:
+                                actions.append(('G', 'add to group'))
 
                 elif self.hover == self.HOVER_CONN:
                     if not readonly:
@@ -2164,6 +2281,7 @@ class GUI(object):
             diff_x = self.hold_x - event.x_root
             diff_y = self.hold_y - event.y_root
             if (diff_x != 0):
+                self.dragged = True
                 adjust = self.mainscroll.get_hadjustment()
                 newvalue = adjust.get_value() + diff_x
                 if (newvalue < adjust.lower):
@@ -2172,6 +2290,7 @@ class GUI(object):
                     newvalue = adjust.upper-adjust.page_size
                 adjust.set_value(newvalue)
             if (diff_y != 0):
+                self.dragged = True
                 adjust = self.mainscroll.get_vadjustment()
                 newvalue = adjust.get_value() + diff_y
                 if (newvalue < adjust.lower):
@@ -2251,22 +2370,141 @@ class GUI(object):
         # a transient operation is never going to "span" any number of clicks.
         saved_add_extra_vars = False
         saved_grouping_vars = False
+        saved_multiple_selections = False
+
+        # Var to find out if we need a graphical update
+        need_gfx_update = False
+        need_clean_hover = False
 
         if (event.keyval < 256 and (event.state & self.keymask) == 0):
             key = chr(event.keyval).lower()
 
-            if self.hover == self.HOVER_ROOM:
+            # First up, some actions for multi-selected rooms which do the
+            # same thing whether we're hovering on NONE or ROOM
+            if (len(self.multi_select) > 0 and (self.hover == self.HOVER_NONE or
+                    self.hover == self.HOVER_ROOM)):
+                if (key == 'h'):
+                    need_gfx_update = True
+                    need_clean_hover = True
+                    saved_multiple_selections = True
+                    num_offset = 0
+                    num_not_offset = 0
+                    for room in self.multi_select:
+                        if room.offset_x:
+                            num_offset += 1
+                        else:
+                            num_not_offset += 1
+                    # Invert whatever the current majority is.  In the event of
+                    # a tie, we'll default to making everything offset.
+                    if num_offset > num_not_offset:
+                        set_value = False
+                    else:
+                        set_value = True
+                    for room in self.multi_select:
+                        room.offset_x = set_value
+                elif (key == 'v'):
+                    need_gfx_update = True
+                    need_clean_hover = True
+                    saved_multiple_selections = True
+                    num_offset = 0
+                    num_not_offset = 0
+                    for room in self.multi_select:
+                        if room.offset_y:
+                            num_offset += 1
+                        else:
+                            num_not_offset += 1
+                    # Invert whatever the current majority is.  In the event of
+                    # a tie, we'll default to making everything offset.
+                    if num_offset > num_not_offset:
+                        set_value = False
+                    else:
+                        set_value = True
+                    for room in self.multi_select:
+                        room.offset_y = set_value
+                elif (key == 't'):
+                    need_gfx_update = True
+                    saved_multiple_selections = True
+                    type_hist = {}
+                    type_to_room = {}
+                    max_rooms_in_single_type = 0
+                    room_to_increment = None
+                    for room in self.multi_select:
+                        if room.type in type_hist:
+                            type_hist[room.type] += 1
+                        else:
+                            type_hist[room.type] = 1
+                            type_to_room[room.type] = room
+                        if type_hist[room.type] > max_rooms_in_single_type:
+                            max_rooms_in_single_type = type_hist[room.type]
+                            room_to_increment = room
+                    if room_to_increment:
+                        room_to_increment.increment_type()
+                        for room in self.multi_select:
+                            room.type = room_to_increment.type
+                elif (key == 'g'):
+                    if len(self.multi_select) > 1:
+                        (num_nogroup, num_unique_groups, group) = self.get_group_info(self.multi_select)
+                        if num_nogroup == 0:
+                            if num_unique_groups == 1:
+                                room = next(iter(self.multi_select))
+                                room.group.increment_style()
+                                need_gfx_update = True
+                                saved_multiple_selections = True
+                                self.update_hover_text()
+                        else:
+                            if num_unique_groups < 2:
+                                need_gfx_update = True
+                                if group:
+                                    for room in self.multi_select:
+                                        if not room.group:
+                                            self.mapobj.group_rooms(room, group.rooms[0])
+                                else:
+                                    roomlist = list(self.multi_select)
+                                    for room in roomlist[1:]:
+                                        self.mapobj.group_rooms(roomlist[0], room)
+                                saved_multiple_selections = True
+                                self.update_hover_text()
+                elif (key == 'o'):
+                    for room in self.multi_select:
+                        if self.mapobj.remove_room_from_group(room):
+                            need_gfx_update = True
+                    if need_gfx_update:
+                        self.update_hover_text()
+                    saved_multiple_selections = True
+                elif (key == 'w'):
+                    saved_multiple_selections = True
+                    if self.mapobj.nudge(DIR_N, self.multi_select):
+                        need_gfx_update = True
+                        need_clean_hover = True
+                elif (key == 'a'):
+                    saved_multiple_selections = True
+                    if self.mapobj.nudge(DIR_W, self.multi_select):
+                        need_gfx_update = True
+                        need_clean_hover = True
+                elif (key == 's'):
+                    saved_multiple_selections = True
+                    if self.mapobj.nudge(DIR_S, self.multi_select):
+                        need_gfx_update = True
+                        need_clean_hover = True
+                elif (key == 'd'):
+                    saved_multiple_selections = True
+                    if self.mapobj.nudge(DIR_E, self.multi_select):
+                        need_gfx_update = True
+                        need_clean_hover = True
+
+            # Now for actions which only apply to rooms (when not multi-selected)
+            elif self.hover == self.HOVER_ROOM:
                 if (key == 'x'):
                     if (len(self.mapobj.rooms) < 2):
                         self.errordialog('You cannot remove the last room from a map', self.window)
                         return
                     self.mapobj.del_room(self.curhover)
-                    self.trigger_redraw()
+                    need_gfx_update = True
                 elif (key == 'g'):
                     room = self.curhover
                     if self.grouping_room is not None:
                         if self.mapobj.group_rooms(room, self.grouping_room):
-                            self.trigger_redraw(False)
+                            need_gfx_update = True
                             self.update_hover_text()
                     elif room.group is None:
                         self.grouping_room = room
@@ -2274,33 +2512,38 @@ class GUI(object):
                         self.set_secondary_status('G again to add to a group')
                     else:
                         room.group.increment_style()
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                 elif (key == 'o'):
                     if self.mapobj.remove_room_from_group(self.curhover):
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                         self.update_hover_text()
                 elif (key == 'h'):
                     self.curhover.offset_x = not self.curhover.offset_x
-                    self.trigger_redraw()
+                    need_gfx_update = True
                 elif (key == 'v'):
                     self.curhover.offset_y = not self.curhover.offset_y
-                    self.trigger_redraw()
+                    need_gfx_update = True
                 elif (key == 't'):
                     self.curhover.increment_type()
-                    self.trigger_redraw(False)
+                    need_gfx_update = True
                 elif (key == 'w'):
                     self.mapobj.move_room(self.curhover, DIR_N)
-                    self.trigger_redraw(True)
+                    need_gfx_update = True
+                    need_clean_hover = True
                 elif (key == 'a'):
                     self.mapobj.move_room(self.curhover, DIR_W)
-                    self.trigger_redraw(True)
+                    need_gfx_update = True
+                    need_clean_hover = True
                 elif (key == 's'):
                     self.mapobj.move_room(self.curhover, DIR_S)
-                    self.trigger_redraw(True)
+                    need_gfx_update = True
+                    need_clean_hover = True
                 elif (key == 'd'):
                     self.mapobj.move_room(self.curhover, DIR_E)
-                    self.trigger_redraw(True)
+                    need_gfx_update = True
+                    need_clean_hover = True
 
+            # Connection actions
             elif self.hover == self.HOVER_CONN:
                 room = self.curhover[0]
                 conn_dir = self.curhover[1]
@@ -2309,30 +2552,31 @@ class GUI(object):
                     end = conn.get_end(room, conn_dir)
                     if (key == 'c'):
                         self.mapobj.detach(room, conn_dir)
-                        self.trigger_redraw(True)
+                        need_gfx_update = True
+                        need_clean_hover = True
                     elif (key == 'p'):
                         conn.cycle_render_type(room, conn_dir)
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 'l'):
                         conn.increment_stub_length(room, conn_dir)
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 't'):
                         conn.cycle_conn_type(room, conn_dir)
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 'o'):
                         conn.cycle_passage()
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 's'):
                         conn.toggle_symmetric(room=room, direction=conn_dir)
                         self.update_hover_text()
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 'r'):
                         # Technically this option isn't displayed most of the time, but it
                         # won't hurt anything if it's triggered whenever, since it'd generally
                         # be a no-op.
                         conn.set_primary(room, conn_dir)
                         self.update_hover_text()
-                        self.trigger_redraw(False)
+                        need_gfx_update = True
                     elif (key == 'e'):
                         if self.add_extra_room is None or self.add_extra_dir is None:
                             self.add_extra_room = self.curhover[0]
@@ -2344,8 +2588,10 @@ class GUI(object):
                     # Must be a loopback instead.
                     if (key == 'c'):
                         self.mapobj.detach(room, conn_dir)
-                        self.trigger_redraw(True)
+                        need_gfx_update = True
+                        need_clean_hover = True
 
+            # New connection actions
             elif self.hover == self.HOVER_CONN_NEW:
                 room = self.curhover[0]
                 conn_dir = self.curhover[1]
@@ -2356,10 +2602,23 @@ class GUI(object):
                             conn.connect_extra(room, conn_dir)
                         except Exception as e:
                             pass
-                        self.trigger_redraw(True)
+                        need_gfx_update = True
+                        need_clean_hover = True
+        else:
 
-        self.reset_transient_operations(saved_add_extra_vars=saved_add_extra_vars,
-                saved_grouping_vars=saved_grouping_vars)
+            # If we're here, it was just a control key of some sort:
+            # shift, ctrl, etc...  Don't get rid of multi-select in that case.
+            saved_multiple_selections = True
+
+        # Reset transient operations
+        if self.reset_transient_operations(saved_add_extra_vars=saved_add_extra_vars,
+                saved_grouping_vars=saved_grouping_vars,
+                saved_multiple_selections=saved_multiple_selections):
+            need_gfx_update = True
+
+        # Update the GUI, if we need to
+        if need_gfx_update:
+            self.trigger_redraw(need_clean_hover)
 
     def nudge_lock_toggled(self, widget):
         """
@@ -2390,6 +2649,9 @@ class GUI(object):
             button_status = True
         for widget in self.nudge_buttons + self.resize_buttons + [self.nudge_lock]:
             widget.set_sensitive(button_status)
+
+        # Get rid of any multi-select status we may have
+        self.multi_select = set()
 
         # I think that I'd originally done this to try and have the lock icon image
         # get a dark background just like the Button does (or at least, whatever the
