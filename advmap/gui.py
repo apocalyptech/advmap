@@ -263,7 +263,8 @@ class GUI(object):
                 'open_notes_all': self.open_notes_all,
                 'draw_offset_toggle': self.draw_offset_toggle,
                 'duplicate_map': self.duplicate_map,
-                'export_image': self.export_image
+                'export_image': self.export_image,
+                'import_maps': self.import_maps,
             }
         self.builder.connect_signals(dic)
 
@@ -719,6 +720,47 @@ class GUI(object):
 
         dialog.destroy()
 
+    def import_maps(self, widget=None):
+        """
+        Throws up an Import Maps dialog
+        """
+        dialog = gtk.FileChooserDialog('Import Game Map File...', None,
+                gtk.FILE_CHOOSER_ACTION_OPEN,
+                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                gtk.STOCK_OPEN, gtk.RESPONSE_OK))
+        dialog.set_default_response(gtk.RESPONSE_OK)
+        dialog.set_transient_for(self.window)
+        dialog.set_position(gtk.WIN_POS_CENTER_ON_PARENT)
+        dialog.add_filter(self.filefilter1)
+        dialog.add_filter(self.filefilter2)
+        if self.curfile:
+            path = os.path.dirname(os.path.realpath(self.curfile))
+        else:
+            path = self.reldir('data')
+        dialog.set_current_folder(path)
+
+        rundialog = True
+        imported = 0
+        while (rundialog):
+            rundialog = False
+            response = dialog.run()
+            if response == gtk.RESPONSE_OK:
+                try:
+                    imported = self.import_maps_from_file(dialog.get_filename())
+                except Exception as e:
+                    self.errordialog('Unable to import file: %s' % e, dialog)
+                    rundialog = True
+
+        dialog.destroy()
+        if imported > 0:
+            self.update_gameinfo()
+            if imported == 1:
+                plural = ''
+            else:
+                plural = 's'
+            self.infodialog('Imported %d map%s' % (imported, plural))
+        return True
+
     def create_new_game(self):
         """
         Starts a new Game file from scratch.
@@ -753,6 +795,26 @@ class GUI(object):
         self.cancel_delayed_status()
         self.set_status('Editing %s' % filename)
         return True
+
+    def import_maps_from_file(self, filename):
+        """
+        Imports maps from another adventure file into this one.
+        Returns the number of new maps added.
+        """
+        seen_names = set()
+        for mapobj in self.game.maps:
+            seen_names.add(mapobj.name)
+        game = Game.load(filename)
+        for mapobj in game.maps:
+            base_mapname = mapobj.name
+            mapname = base_mapname
+            idx = 1
+            while mapname in seen_names:
+                idx += 1
+                mapname = '%s (%d)' % (base_mapname, idx)
+            mapobj.name = mapname
+            self.game.add_map_obj(mapobj)
+        return len(game.maps)
 
     def update_title(self):
         """
@@ -3088,10 +3150,6 @@ class GUI(object):
             self.game.add_map_obj(newmap)
             self.update_gameinfo()
 
-    def export_image(self, widget):
-        """
-        Exports the current image to a PNG
-        """
     def export_image(self, widget=None):
         """ Used to export a PNG of the current map image to disk. """
 
