@@ -103,7 +103,7 @@ Controls while highlighting a room or rooms:
 * `H` - Toggle horizontal offset (useful in some circumstances to make maps look prettier)
 * `V` - Toggle vertical offset (useful in some circumstances to make maps look prettier)
 * `T` - Change room type
-* `G` *(while room is ungrouped)* - Add room to a group with other room(s).  Mostly just a highlighted background around the rooms in question.
+* `G` *(while room is ungrouped)* - Add room to a group with other room(s). *(press G again on the other room)*
 * `G` *(while room is in group)* - Change group highlight color
 * `O` *(while room is in group)* - Remove room from group
 
@@ -113,7 +113,7 @@ Controls while highlighting the edge of a room *(if toggled on at the top of the
 
 Controls while highlighting an "empty" connection on the side of a room:
 
-* `Left Mouse` - Create new connected room *(or connect to existing room if one is directly adjacent already)*
+* `Left Mouse` - Create new connected room, if there is room adjacent.
 * `Right Mouse` - Connect to existing room *(use right mouse again on another room's empty slot to connect)*
 * `Middle Mouse` - Create a loopback connection
 

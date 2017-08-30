@@ -1871,11 +1871,7 @@ class GUI(object):
                     coords = self.mapobj.dir_coord(room, direction)
                     if coords:
                         newroom = self.mapobj.get_room_at(*coords)
-                        if newroom:
-                            if (DIR_OPP[direction] not in newroom.conns):
-                                self.mapobj.connect(room, direction, newroom)
-                                need_gfx_update = True
-                        else:
+                        if not newroom:
                             self.new_to_dir_label.show_all()
                             self.new_to_dir_align.show_all()
                             self.new_conn_style_label.show_all()
