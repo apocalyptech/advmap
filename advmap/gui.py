@@ -1975,7 +1975,7 @@ class GUI(object):
                                 room.name = self.roomname_entry.get_text()
 
                             # Type radio buttons
-                            elif (self.roomtype_radio_label.get_active()):
+                            if (self.roomtype_radio_label.get_active()):
                                 new_type = Room.TYPE_LABEL
                             elif (self.roomtype_radio_faint.get_active()):
                                 new_type = Room.TYPE_FAINT
