@@ -1210,6 +1210,8 @@ class GUI(object):
                     # else will get the full stub/etc treatment below
 
                     # Vars to use while rendering the primary
+                    first_is_connhelper = False
+                    second_is_connhelper = False
                     if room == conn.r1:
                         prim_direction = conn.dir1
                         end_close = conn.ends1[prim_direction]
@@ -1226,12 +1228,25 @@ class GUI(object):
 
                     if self.is_primary_adjacent(conn):
 
+                        if room.type == Room.TYPE_CONNHELPER:
+                            first_is_connhelper = True
+                        if room2.type == Room.TYPE_CONNHELPER:
+                            second_is_connhelper = True
+
                         # Drawing our primary connection as a simple "adjacent" link
                         (conn_x, conn_y) = self.room_xy(room2)
-                        x1 = x+self.CONN_OFF[prim_direction][0]
-                        y1 = y+self.CONN_OFF[prim_direction][1]
-                        x2 = conn_x+self.CONN_OFF[dir2][0]
-                        y2 = conn_y+self.CONN_OFF[dir2][1]
+                        if first_is_connhelper:
+                            x1 = x+self.room_half
+                            y1 = y+self.room_half
+                        else:
+                            x1 = x+self.CONN_OFF[prim_direction][0]
+                            y1 = y+self.CONN_OFF[prim_direction][1]
+                        if second_is_connhelper:
+                            x2 = conn_x+self.room_half
+                            y2 = conn_y+self.room_half
+                        else:
+                            x2 = conn_x+self.CONN_OFF[dir2][0]
+                            y2 = conn_y+self.CONN_OFF[dir2][1]
                         secondary_midpoints[room] = (x2, y2)
                         secondary_midpoints[room2] = (x1, y1)
                         if end_close.conn_type == end_far.conn_type:
