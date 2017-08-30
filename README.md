@@ -47,23 +47,34 @@ rooms, which is kind of lame, but so far that's not been a problem.
 
 ![Game Editing](screenshots/screenshot-gameedit.png)
 
-Rooms can be highlighted in a number of colors, including a "dark" setting
-that I'm fond of using for dark rooms in the Zork series.  A number of text
-labels can be attached to rooms, and will be rendered with appropriate
-icons: up/down/in/out.  A "notes" field exists for more general gameplay
-notes, and is useful for mapping things like the Zork I maze.
+Rooms can be highlighted in a number of styles:
+* Normal
+* Faint
+* Dark
+* Labels *(dotted border, only the room name is shown)*
+* Connection Helpers *(intended to help route connections - no text is shown)*
+I'm fond of using the Dark setting for dark rooms in the Zork series, for instance.
+Rooms can also be colored with any one of eight colors: black+white, green, blue,
+red, yellow, purple/magenta, cyan, and orange.  A number of text labels can be
+attached to rooms, and will be rendered with appropriate icons: up/down/in/out.
+A "notes" field exists for more general gameplay notes, and is useful for mapping
+things like the Zork I maze.  The screenshot below includes all room types, including
+a Connection Helper connecting "In A Tree" to "Outside Cave."
 
 ![Room Styling](screenshots/screenshot-roomstyles.png)
 
 Connections between rooms are pretty flexible - you can specify regular,
 "ladder", or dotted lines for the connection, and optionally have different
 styles on each side of the connection.  The line drawn between rooms can take a
-few different paths as well, and one-way connections can be specified as well.
-You can have a connection go to multiple points on the same room, which is at
-least useful in mapping Zork III.  The main limitation for connections is that
+few different paths (direct vs. "bent"), and one-way connections can be specified
+as well.  You can have a connection go to multiple points on the same room, which
+is at least useful in mapping Zork III.  The main limitation for connections is that
 they can only support going between two rooms - no more.  For a situation like
 the bank puzzle in Zork II, you're best off with a "label" type room in an
-intermediate space.
+intermediate space.  The room type Connection Helper can be used to route connections
+around more complex paths, though note that technically you're just connecting to
+an intermediate room, so changing the connection type must be done on both ends if
+you wanted it to remain symmetric, in that case.
 
 ![Connection Styling](screenshots/screenshot-connectionstyles.png)
 
@@ -151,34 +162,43 @@ current, of course) but will always save in the most recent:
     * Style/coloration
     * Up/Down/In/Out/Notes text labels
     * Horizontal/Vertical offsets
-  * Supports grouping of rooms (only w/ grey color)
+  * Supports grouping of rooms (only w/ grey color).
   * Connection styles: regular, dotted, ladder
 
 **v2**
 
-* Added one-way connections
+* Added one-way connections.
 
 **v3**
 
-* Added loopback connections
+* Added loopback connections.
 
 **v4**
 
-* Added path selection choice for connections (direct vs. "bent")
+* Added path selection choice for connections (direct vs. "bent").
 
 **v5**
 
-* Added ability to set "stub length" on connections
+* Added ability to set "stub length" on connections.
 
 **v6**
 
-* Added group coloration styles
+* Added group coloration styles.
 
 **v7**
 
 * Major overhaul of connections:
   * Connections can have more than one end connected to each of the
-    two rooms
+    two rooms.
   * Nonsymmetric connections: can have stub length, style, and path
     selection defined on a per-end basis *(the "primary" connection
-    between two rooms will share a path selection)*
+    between two rooms will share a path selection)*.
+
+**v8**
+
+* Split room types (normal, faint, dark, label) from coloration, so they
+  can be set independently.  So dark/faint/label rooms can have a color
+  set, just like normal rooms.
+* Added "Connection Helper" room type which just serves as a passthrough
+  for more complex connection paths.  No text is drawn for Connection Helpers.
+* Added Orange as a color.

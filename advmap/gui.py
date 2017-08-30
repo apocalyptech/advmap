@@ -76,6 +76,7 @@ class GUI(object):
         self.view_room_dialog = self.builder.get_object('view_room_dialog')
         self.view_room_roomname_label = self.builder.get_object('view_room_roomname_label')
         self.view_room_roomtype_label = self.builder.get_object('view_room_roomtype_label')
+        self.view_room_roomcolor_label = self.builder.get_object('view_room_roomcolor_label')
         self.view_room_up_label = self.builder.get_object('view_room_up_label')
         self.view_room_up_hdr = self.builder.get_object('view_room_up_hdr')
         self.view_room_down_label = self.builder.get_object('view_room_down_label')
@@ -92,15 +93,18 @@ class GUI(object):
         self.edit_room_dialog = self.builder.get_object('edit_room_dialog')
         self.edit_room_label = self.builder.get_object('edit_room_label')
         self.roomtype_radio_normal = self.builder.get_object('roomtype_radio_normal')
-        self.roomtype_radio_hi_green = self.builder.get_object('roomtype_radio_hi_green')
-        self.roomtype_radio_hi_red = self.builder.get_object('roomtype_radio_hi_red')
-        self.roomtype_radio_hi_blue = self.builder.get_object('roomtype_radio_hi_blue')
-        self.roomtype_radio_hi_yellow = self.builder.get_object('roomtype_radio_hi_yellow')
-        self.roomtype_radio_hi_purple = self.builder.get_object('roomtype_radio_hi_purple')
-        self.roomtype_radio_hi_cyan = self.builder.get_object('roomtype_radio_hi_cyan')
         self.roomtype_radio_faint = self.builder.get_object('roomtype_radio_faint')
         self.roomtype_radio_dark = self.builder.get_object('roomtype_radio_dark')
         self.roomtype_radio_label = self.builder.get_object('roomtype_radio_label')
+        self.roomtype_radio_connhelper = self.builder.get_object('roomtype_radio_connhelper')
+        self.roomcolor_radio_bw = self.builder.get_object('roomcolor_radio_bw')
+        self.roomcolor_radio_green = self.builder.get_object('roomcolor_radio_green')
+        self.roomcolor_radio_red = self.builder.get_object('roomcolor_radio_red')
+        self.roomcolor_radio_blue = self.builder.get_object('roomcolor_radio_blue')
+        self.roomcolor_radio_yellow = self.builder.get_object('roomcolor_radio_yellow')
+        self.roomcolor_radio_purple = self.builder.get_object('roomcolor_radio_purple')
+        self.roomcolor_radio_cyan = self.builder.get_object('roomcolor_radio_cyan')
+        self.roomcolor_radio_orange = self.builder.get_object('roomcolor_radio_orange')
         self.roomname_entry = self.builder.get_object('roomname_entry')
         self.room_up_entry = self.builder.get_object('room_up_entry')
         self.room_down_entry = self.builder.get_object('room_down_entry')
@@ -294,6 +298,8 @@ class GUI(object):
         self.room_spc = 30
         self.room_spc_h = self.room_spc/2
         self.room_spc_grp = 10
+        self.connhelper_corner_length = int(self.room_w/2*.20)
+        self.room_half = int(self.room_w/2)
 
         # Connection offsets
         self.CONN_OFF = []
@@ -800,7 +806,7 @@ class GUI(object):
         """
         mapobj = Map(name)
         room = mapobj.add_room_at(4, 4, 'Starting Room')
-        room.type = Room.TYPE_HI_GREEN
+        room.color = Room.COLOR_GREEN
         return mapobj
 
     def arrow_coords(self, x1, y1, x2, y2):
@@ -963,8 +969,12 @@ class GUI(object):
         conn_coord = self.room_xy_coord(*self.mapobj.dir_coord(room, direction, True))
         if conn_coord:
             (conn_x, conn_y) = self.apply_xy_offset(conn_coord[0], conn_coord[1], room)
-            x1 = room_x+self.CONN_OFF[direction][0]
-            y1 = room_y+self.CONN_OFF[direction][1]
+            if room.type == Room.TYPE_CONNHELPER:
+                x1 = room_x + self.room_half
+                y1 = room_y + self.room_half
+            else:
+                x1 = room_x+self.CONN_OFF[direction][0]
+                y1 = room_y+self.CONN_OFF[direction][1]
             orig_x2 = conn_x+self.CONN_OFF[DIR_OPP[direction]][0]
             orig_y2 = conn_y+self.CONN_OFF[DIR_OPP[direction]][1]
 
@@ -1017,58 +1027,102 @@ class GUI(object):
 
         # Rooms with a name of "(unexplored)" become labels, effectively.
         # So that's what we're doing here.
-        if (room.type == Room.TYPE_LABEL or room.unexplored()):
-            is_label = True
+        if (room.type != Room.TYPE_CONNHELPER and
+                (room.type == Room.TYPE_LABEL or room.unexplored())):
+            effective_type = Room.TYPE_LABEL
         else:
-            is_label = False
+            effective_type = room.type
 
         # Find out if we're part of a multi-select
         is_selected = (room in self.multi_select)
 
         # Figure out our colors
-        if is_label:
-            border = self.c_label
-            background = self.c_background
-            textcolor = self.c_type_default[2]
-        elif room.type in self.c_type_map:
-            border = self.c_type_map[room.type][0]
-            background = self.c_type_map[room.type][1]
-            textcolor = self.c_type_map[room.type][2]
+        if effective_type in self.c_type_map:
+            if room.color in self.c_type_map[effective_type]:
+                border = self.c_type_map[effective_type][room.color][0]
+                background = self.c_type_map[effective_type][room.color][1]
+                textcolor = self.c_type_map[effective_type][room.color][2]
+            else:
+                border = self.c_type_map[effective_type][Room.COLOR_BW][0]
+                background = self.c_type_map[effective_type][Room.COLOR_BW][1]
+                textcolor = self.c_type_map[effective_type][Room.COLOR_BW][2]
         else:
-            border = self.c_type_default[0]
-            background = self.c_type_default[1]
-            textcolor = self.c_type_default[2]
+            border = self.c_type_map[Room.TYPE_NORMAL][Room.COLOR_BW][0]
+            background = self.c_type_map[Room.TYPE_NORMAL][Room.COLOR_BW][1]
+            textcolor = self.c_type_map[Room.TYPE_NORMAL][Room.COLOR_BW][2]
 
         # Draw the room
         ctx.save()
-        if is_selected:
-            if room.type == Room.TYPE_DARK:
-                ctx.set_source_rgba(
-                        background[0]*1.5,
-                        background[1]*1.5,
-                        background[2]*1.5,
-                        background[3],
-                        )
+
+        # Find out if we're going to fill in our background or not
+        # (the only case where we don't, currently, is for nonselected
+        # connection helpers)
+        do_bg_fill = True
+        if effective_type == Room.TYPE_CONNHELPER and not is_selected:
+            do_bg_fill = False
+
+        # Fill the background if we're supposed to
+        if do_bg_fill:
+            if is_selected:
+                if effective_type == Room.TYPE_DARK:
+                    ctx.set_source_rgba(
+                            background[0]*1.5,
+                            background[1]*1.5,
+                            background[2]*1.5,
+                            background[3],
+                            )
+                else:
+                    ctx.set_source_rgba(
+                            background[0]*.92,
+                            background[1]*.92,
+                            background[2]*.92,
+                            background[3],
+                            )
             else:
-                ctx.set_source_rgba(
-                        background[0]*.92,
-                        background[1]*.92,
-                        background[2]*.92,
-                        background[3],
-                        )
-        else:
-            ctx.set_source_rgba(*background)
-        ctx.rectangle(x, y, self.room_w, self.room_h)
-        ctx.fill()
+                ctx.set_source_rgba(*background)
+            ctx.rectangle(x, y, self.room_w, self.room_h)
+            ctx.fill()
+
+        # Draw our room border
         ctx.set_source_rgba(*border)
-        if is_label:
+        if effective_type == Room.TYPE_LABEL:
             ctx.set_dash([9.0], 0)
         if is_selected:
             ctx.set_line_width(3)
         else:
             ctx.set_line_width(1)
-        ctx.rectangle(x, y, self.room_w, self.room_h)
-        ctx.stroke()
+        if effective_type == Room.TYPE_CONNHELPER:
+            # NW corner
+            ctx.move_to(x, y)
+            ctx.line_to(x+self.connhelper_corner_length, y)
+            ctx.stroke()
+            ctx.move_to(x, y)
+            ctx.line_to(x, y+self.connhelper_corner_length)
+            ctx.stroke()
+            # NE corner
+            ctx.move_to(x+self.room_w, y)
+            ctx.line_to(x+self.room_w-self.connhelper_corner_length, y)
+            ctx.stroke()
+            ctx.move_to(x+self.room_w, y)
+            ctx.line_to(x+self.room_w, y+self.connhelper_corner_length)
+            ctx.stroke()
+            # SW corner
+            ctx.move_to(x, y+self.room_h)
+            ctx.line_to(x+self.connhelper_corner_length, y+self.room_h)
+            ctx.stroke()
+            ctx.move_to(x, y+self.room_h)
+            ctx.line_to(x, y+self.room_h-self.connhelper_corner_length)
+            ctx.stroke()
+            # SE corner
+            ctx.move_to(x+self.room_w, y+self.room_h)
+            ctx.line_to(x+self.room_w-self.connhelper_corner_length, y+self.room_h)
+            ctx.stroke()
+            ctx.move_to(x+self.room_w, y+self.room_h)
+            ctx.line_to(x+self.room_w, y+self.room_h-self.connhelper_corner_length)
+            ctx.stroke()
+        else:
+            ctx.rectangle(x, y, self.room_w, self.room_h)
+            ctx.stroke()
         ctx.restore()
 
         # Mousemap room box
@@ -1265,7 +1319,7 @@ class GUI(object):
                         mmctx.rectangle(x+self.EDGE_OFF[direction][0], y+self.EDGE_OFF[direction][1], self.room_spc, self.room_spc)
                         mmctx.fill()
 
-        if (is_label):
+        if effective_type == Room.TYPE_LABEL:
             label_layout = pango.Layout(self.pangoctx)
             label_layout.set_markup('<i>%s</i>' % (gobject.markup_escape_text(room.name)))
             label_layout.set_width((self.room_w-self.room_spc)*pango.SCALE)
@@ -1282,7 +1336,7 @@ class GUI(object):
             ctx.set_source_rgba(*textcolor)
             pangoctx = pangocairo.CairoContext(ctx)
             pangoctx.show_layout(label_layout)
-        else:
+        elif effective_type != Room.TYPE_CONNHELPER:
             # Draw the room title
             if (room.notes and room.notes != ''):
                 self.update_notes(room.notes)
@@ -1342,7 +1396,7 @@ class GUI(object):
                     text_x = ladder_x + icon_dim + icon_txt_spc
 
                     # Draw the icon
-                    if room.type == Room.TYPE_DARK:
+                    if effective_type == Room.TYPE_DARK:
                         graphic = graphic_dark
                     else:
                         graphic = graphic_light
@@ -1408,18 +1462,67 @@ class GUI(object):
             }
         self.c_group_default = self.c_group_map[Group.STYLE_NORMAL]
 
+        # Entries here are tuples with the following:
+        #   1) Foreground color for borderse
+        #   2) Background color for fill
+        #   3) Foreground color for text
         c_default_text = (0, 0, 0, 1)
+        c_default_text_faint = (.4, .4, .4, 1)
+        c_default_text_dark = (.9, .9, .9, 1)
         self.c_type_map = {
-                Room.TYPE_HI_RED: ((.5, 0, 0, 1), (1, .98, .98, 1), c_default_text),
-                Room.TYPE_HI_GREEN: ((0, .5, 0, 1), (.98, 1, .98, 1), c_default_text),
-                Room.TYPE_HI_BLUE: ((0, 0, .5, 1), (.98, .98, 1, 1), c_default_text),
-                Room.TYPE_HI_YELLOW: ((.5, .5, 0, 1), (1, 1, .98, 1), c_default_text),
-                Room.TYPE_HI_PURPLE: ((.5, 0, .5, 1), (1, .98, 1, 1), c_default_text),
-                Room.TYPE_HI_CYAN: ((0, .5, .5, 1), (.98, 1, 1, 1), c_default_text),
-                Room.TYPE_FAINT: ((.6, .6, .6, 1), (1, 1, 1, 1), (.4, .4, .4, 1)),
-                Room.TYPE_DARK: ((0, 0, 0, 1), (.35, .35, .35, 1), (.9, .9, .9, 1))
+                Room.TYPE_NORMAL: {
+                        Room.COLOR_BW: (self.c_borders, (.98, .98, .98, 1), c_default_text),
+                        Room.COLOR_RED: ((.5, 0, 0, 1), (1, .98, .98, 1), c_default_text),
+                        Room.COLOR_GREEN: ((0, .5, 0, 1), (.98, 1, .98, 1), c_default_text),
+                        Room.COLOR_BLUE: ((0, 0, .5, 1), (.98, .98, 1, 1), c_default_text),
+                        Room.COLOR_YELLOW: ((.5, .5, 0, 1), (1, 1, .98, 1), c_default_text),
+                        Room.COLOR_PURPLE: ((.5, 0, .5, 1), (1, .98, 1, 1), c_default_text),
+                        Room.COLOR_CYAN: ((0, .5, .5, 1), (.98, 1, 1, 1), c_default_text),
+                        Room.COLOR_ORANGE: ((.7, .35, 0, 1), (.98, .99, 1, 1), c_default_text),
+                    },
+                Room.TYPE_LABEL: {
+                        Room.COLOR_BW: (self.c_borders, (.98, .98, .98, 1), c_default_text),
+                        Room.COLOR_RED: ((.5, 0, 0, 1), (1, .98, .98, 1), c_default_text),
+                        Room.COLOR_GREEN: ((0, .5, 0, 1), (.98, 1, .98, 1), c_default_text),
+                        Room.COLOR_BLUE: ((0, 0, .5, 1), (.98, .98, 1, 1), c_default_text),
+                        Room.COLOR_YELLOW: ((.5, .5, 0, 1), (1, 1, .98, 1), c_default_text),
+                        Room.COLOR_PURPLE: ((.5, 0, .5, 1), (1, .98, 1, 1), c_default_text),
+                        Room.COLOR_CYAN: ((0, .5, .5, 1), (.98, 1, 1, 1), c_default_text),
+                        Room.COLOR_ORANGE: ((.7, .35, 0, 1), (.98, 1, 1, 1), c_default_text),
+                    },
+                Room.TYPE_FAINT: {
+                        Room.COLOR_BW: ((.6, .6, .6, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_RED: ((.80, .6, .6, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_GREEN: ((.6, .80, .6, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_BLUE: ((.6, .6, .80, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_YELLOW: ((.80, .80, .6, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_PURPLE: ((.80, .6, .80, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_CYAN: ((.6, .80, .80, 1), (1, 1, 1, 1), c_default_text_faint),
+                        Room.COLOR_ORANGE: ((.80, .7, .6, 1), (1, 1, 1, 1), c_default_text_faint),
+                    },
+                Room.TYPE_DARK: {
+                        Room.COLOR_BW: ((0, 0, 0, 1), (.35, .35, .35, 1), c_default_text_dark),
+                        Room.COLOR_RED: ((.5, 0, 0, 1), (.35, .20, .20, 1), c_default_text_dark),
+                        Room.COLOR_GREEN: ((0, .5, 0, 1), (.20, .35, .20, 1), c_default_text_dark),
+                        Room.COLOR_BLUE: ((0, 0, .5, 1), (.20, .20, .35, 1), c_default_text_dark),
+                        Room.COLOR_YELLOW: ((.5, .5, 0, 1), (.35, .35, .20, 1), c_default_text_dark),
+                        Room.COLOR_PURPLE: ((.5, 0, .5, 1), (.35, .20, .35, 1), c_default_text_dark),
+                        Room.COLOR_CYAN: ((0, .5, .5, 1), (.20, .35, .35, 1), c_default_text_dark),
+                        Room.COLOR_ORANGE: ((.5, .25, 0, 1), (.35, .27, .20, 1), c_default_text_dark),
+                    },
+                Room.TYPE_CONNHELPER: {
+                        # Background for connhelper is only used if the room is selected.  Text color
+                        # is never used.
+                        Room.COLOR_BW: ((.6, .6, .6, 1), (.98, .98, .98, 1), None),
+                        Room.COLOR_RED: ((.80, .6, .6, 1), (1, .98, .98, 1), None),
+                        Room.COLOR_GREEN: ((.6, .80, .6, 1), (.98, 1, .98, 1), None),
+                        Room.COLOR_BLUE: ((.6, .6, .80, 1), (.98, .98, 1, 1), None),
+                        Room.COLOR_YELLOW: ((.80, .80, .6, 1), (1, 1, .98, 1), None),
+                        Room.COLOR_PURPLE: ((.80, .6, .80, 1), (1, .98, 1, 1), None),
+                        Room.COLOR_CYAN: ((.6, .80, .80, 1), (.98, 1, 1, 1), None),
+                        Room.COLOR_ORANGE: ((.80, .7, .6, 1), (.98, .99, 1, 1), None),
+                    },
             }
-        self.c_type_default = (self.c_borders, (.98, .98, .98, 1), c_default_text)
 
         # Set initial sizing information
         self.set_area_size()
@@ -1683,6 +1786,7 @@ class GUI(object):
                         if (self.readonly_lock.get_active()):
                             self.view_room_roomname_label.set_markup('<b>%s</b>' % gobject.markup_escape_text(room.name))
                             self.view_room_roomtype_label.set_text(room.TYPE_TXT[room.type])
+                            self.view_room_roomcolor_label.set_text(room.COLOR_TXT[room.color])
                             if (room.up and room.up != ''):
                                 self.view_room_up_label.set_text(room.up)
                                 self.view_room_up_label.show()
@@ -1724,26 +1828,37 @@ class GUI(object):
                         self.edit_room_label.set_markup('<b>Edit Room</b>')
                         self.roomname_entry.set_text(room.name)
                         self.roomnotes_view.get_buffer().set_text(room.notes)
-                        if (room.type == Room.TYPE_HI_GREEN):
-                            self.roomtype_radio_hi_green.set_active(True)
-                        elif (room.type == Room.TYPE_HI_BLUE):
-                            self.roomtype_radio_hi_blue.set_active(True)
-                        elif (room.type == Room.TYPE_HI_RED):
-                            self.roomtype_radio_hi_red.set_active(True)
-                        elif (room.type == Room.TYPE_HI_YELLOW):
-                            self.roomtype_radio_hi_yellow.set_active(True)
-                        elif (room.type == Room.TYPE_HI_PURPLE):
-                            self.roomtype_radio_hi_purple.set_active(True)
-                        elif (room.type == Room.TYPE_HI_CYAN):
-                            self.roomtype_radio_hi_cyan.set_active(True)
-                        elif (room.type == Room.TYPE_LABEL):
+
+                        # Type radio buttons
+                        if (room.type == Room.TYPE_LABEL):
                             self.roomtype_radio_label.set_active(True)
                         elif (room.type == Room.TYPE_FAINT):
                             self.roomtype_radio_faint.set_active(True)
                         elif (room.type == Room.TYPE_DARK):
                             self.roomtype_radio_dark.set_active(True)
+                        elif (room.type == Room.TYPE_CONNHELPER):
+                            self.roomtype_radio_connhelper.set_active(True)
                         else:
                             self.roomtype_radio_normal.set_active(True)
+
+                        # Color radio buttons
+                        if (room.color == Room.COLOR_GREEN):
+                            self.roomcolor_radio_green.set_active(True)
+                        elif (room.color == Room.COLOR_BLUE):
+                            self.roomcolor_radio_blue.set_active(True)
+                        elif (room.color == Room.COLOR_RED):
+                            self.roomcolor_radio_red.set_active(True)
+                        elif (room.color == Room.COLOR_YELLOW):
+                            self.roomcolor_radio_yellow.set_active(True)
+                        elif (room.color == Room.COLOR_PURPLE):
+                            self.roomcolor_radio_purple.set_active(True)
+                        elif (room.color == Room.COLOR_CYAN):
+                            self.roomcolor_radio_cyan.set_active(True)
+                        elif (room.color == Room.COLOR_ORANGE):
+                            self.roomcolor_radio_orange.set_active(True)
+                        else:
+                            self.roomcolor_radio_bw.set_active(True)
+
                         self.room_up_entry.set_text(room.up)
                         self.room_up_entry.set_position(0)
                         self.room_down_entry.set_text(room.down)
@@ -1796,29 +1911,43 @@ class GUI(object):
                             if (room.name != self.roomname_entry.get_text()):
                                 need_gfx_update = True
                                 room.name = self.roomname_entry.get_text()
-                            if (self.roomtype_radio_hi_green.get_active()):
-                                new_type = Room.TYPE_HI_GREEN
-                            elif (self.roomtype_radio_hi_red.get_active()):
-                                new_type = Room.TYPE_HI_RED
-                            elif (self.roomtype_radio_hi_blue.get_active()):
-                                new_type = Room.TYPE_HI_BLUE
-                            elif (self.roomtype_radio_hi_yellow.get_active()):
-                                new_type = Room.TYPE_HI_YELLOW
-                            elif (self.roomtype_radio_hi_purple.get_active()):
-                                new_type = Room.TYPE_HI_PURPLE
-                            elif (self.roomtype_radio_hi_cyan.get_active()):
-                                new_type = Room.TYPE_HI_CYAN
+
+                            # Type radio buttons
                             elif (self.roomtype_radio_label.get_active()):
                                 new_type = Room.TYPE_LABEL
                             elif (self.roomtype_radio_faint.get_active()):
                                 new_type = Room.TYPE_FAINT
                             elif (self.roomtype_radio_dark.get_active()):
                                 new_type = Room.TYPE_DARK
+                            elif (self.roomtype_radio_connhelper.get_active()):
+                                new_type = Room.TYPE_CONNHELPER
                             else:
                                 new_type = Room.TYPE_NORMAL
+
+                            # Color radio buttons
+                            if (self.roomcolor_radio_green.get_active()):
+                                new_color = Room.COLOR_GREEN
+                            elif (self.roomcolor_radio_red.get_active()):
+                                new_color = Room.COLOR_RED
+                            elif (self.roomcolor_radio_blue.get_active()):
+                                new_color = Room.COLOR_BLUE
+                            elif (self.roomcolor_radio_yellow.get_active()):
+                                new_color = Room.COLOR_YELLOW
+                            elif (self.roomcolor_radio_purple.get_active()):
+                                new_color = Room.COLOR_PURPLE
+                            elif (self.roomcolor_radio_cyan.get_active()):
+                                new_color = Room.COLOR_CYAN
+                            elif (self.roomcolor_radio_orange.get_active()):
+                                new_color = Room.COLOR_ORANGE
+                            else:
+                                new_color = Room.COLOR_BW
+
                             if (room.type != new_type):
                                 need_gfx_update = True
                                 room.type = new_type
+                            if (room.color != new_color):
+                                need_gfx_update = True
+                                room.color = new_color
                             if (room.up != self.room_up_entry.get_text()):
                                 need_gfx_update = True
                                 room.up = self.room_up_entry.get_text()
@@ -1890,6 +2019,7 @@ class GUI(object):
                             self.roomname_entry.set_text('(unexplored)')
                             self.roomnotes_view.get_buffer().set_text('')
                             self.roomtype_radio_normal.set_active(True)
+                            self.roomcolor_radio_bw.set_active(True)
                             self.room_up_entry.set_text('')
                             self.room_down_entry.set_text('')
                             self.room_in_entry.set_text('')
@@ -1905,26 +2035,37 @@ class GUI(object):
                                 except Exception as e:
                                     self.errordialog("Couldn't add room: %s" % (e))
                                     return
-                                if (self.roomtype_radio_hi_green.get_active()):
-                                    newroom.type = Room.TYPE_HI_GREEN
-                                elif (self.roomtype_radio_hi_red.get_active()):
-                                    newroom.type = Room.TYPE_HI_RED
-                                elif (self.roomtype_radio_hi_blue.get_active()):
-                                    newroom.type = Room.TYPE_HI_BLUE
-                                elif (self.roomtype_radio_hi_yellow.get_active()):
-                                    newroom.type = Room.TYPE_HI_YELLOW
-                                elif (self.roomtype_radio_hi_purple.get_active()):
-                                    newroom.type = Room.TYPE_HI_PURPLE
-                                elif (self.roomtype_radio_hi_cyan.get_active()):
-                                    newroom.type = Room.TYPE_HI_CYAN
-                                elif (self.roomtype_radio_label.get_active()):
+
+                                # Room type radio
+                                if (self.roomtype_radio_label.get_active()):
                                     newroom.type = Room.TYPE_LABEL
                                 elif (self.roomtype_radio_faint.get_active()):
                                     newroom.type = Room.TYPE_FAINT
                                 elif (self.roomtype_radio_dark.get_active()):
                                     newroom.type = Room.TYPE_DARK
+                                elif (self.roomtype_radio_connhelper.get_active()):
+                                    newroom.type = Room.TYPE_CONNHELPER
                                 else:
                                     newroom.type = Room.TYPE_NORMAL
+
+                                # Room color radio
+                                if (self.roomcolor_radio_green.get_active()):
+                                    newroom.color = Room.COLOR_GREEN
+                                elif (self.roomcolor_radio_red.get_active()):
+                                    newroom.color = Room.COLOR_RED
+                                elif (self.roomcolor_radio_blue.get_active()):
+                                    newroom.color = Room.COLOR_BLUE
+                                elif (self.roomcolor_radio_yellow.get_active()):
+                                    newroom.color = Room.COLOR_YELLOW
+                                elif (self.roomcolor_radio_purple.get_active()):
+                                    newroom.color = Room.COLOR_PURPLE
+                                elif (self.roomcolor_radio_cyan.get_active()):
+                                    newroom.color = Room.COLOR_CYAN
+                                elif (self.roomcolor_radio_orange.get_active()):
+                                    newroom.color = Room.COLOR_ORANGE
+                                else:
+                                    newroom.color = Room.COLOR_BW
+
                                 newroom.up = self.room_up_entry.get_text()
                                 newroom.down = self.room_down_entry.get_text()
                                 newroom.door_in = self.room_in_entry.get_text()
@@ -2173,6 +2314,7 @@ class GUI(object):
             multi_actions.append(('WASD', 'nudge rooms'))
             multi_actions.append(('H/V', 'toggle horiz/vert offsets'))
             multi_actions.append(('T', 'change types'))
+            multi_actions.append(('R', 'change colors'))
             if len(self.multi_select) > 1:
                 (num_nogroup, num_unique_groups, group) = self.get_group_info(self.multi_select)
                 if num_nogroup == 0:
@@ -2221,6 +2363,7 @@ class GUI(object):
                             actions.append(('X', 'delete'))
                             actions.append(('H/V', 'toggle horiz/vert offset'))
                             actions.append(('T', 'change type'))
+                            actions.append(('R', 'change color'))
                             if self.hover_roomobj.group:
                                 actions.append(('G', 'change group render'))
                                 actions.append(('O', 'remove from group'))
@@ -2437,6 +2580,26 @@ class GUI(object):
                         room_to_increment.increment_type()
                         for room in self.multi_select:
                             room.type = room_to_increment.type
+                elif (key == 'r'):
+                    need_gfx_update = True
+                    saved_multiple_selections = True
+                    color_hist = {}
+                    color_to_room = {}
+                    max_rooms_in_single_color = 0
+                    room_to_increment = None
+                    for room in self.multi_select:
+                        if room.color in color_hist:
+                            color_hist[room.color] += 1
+                        else:
+                            color_hist[room.color] = 1
+                            color_to_room[room.color] = room
+                        if color_hist[room.color] > max_rooms_in_single_color:
+                            max_rooms_in_single_color = color_hist[room.color]
+                            room_to_increment = room
+                    if room_to_increment:
+                        room_to_increment.increment_color()
+                        for room in self.multi_select:
+                            room.color = room_to_increment.color
                 elif (key == 'g'):
                     if len(self.multi_select) > 1:
                         (num_nogroup, num_unique_groups, group) = self.get_group_info(self.multi_select)
@@ -2521,6 +2684,9 @@ class GUI(object):
                     need_gfx_update = True
                 elif (key == 't'):
                     self.curhover.increment_type()
+                    need_gfx_update = True
+                elif (key == 'r'):
+                    self.curhover.increment_color()
                     need_gfx_update = True
                 elif (key == 'w'):
                     self.mapobj.move_room(self.curhover, DIR_N)

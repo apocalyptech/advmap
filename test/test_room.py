@@ -50,6 +50,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r.door_in, '')
         self.assertEqual(r.door_out, '')
         self.assertEqual(r.type, Room.TYPE_NORMAL)
+        self.assertEqual(r.color, Room.COLOR_BW)
         self.assertEqual(r.offset_x, False)
         self.assertEqual(r.offset_y, False)
         self.assertEqual(len(r.loopbacks), 0)
@@ -66,6 +67,7 @@ class RoomTests(unittest.TestCase):
         r.door_in = 'In'
         r.door_out = 'Out'
         r.type = Room.TYPE_FAINT
+        r.color = Room.COLOR_CYAN
         r.offset_x = True
         r.offset_y = True
         r.set_loopback(DIR_S)
@@ -81,6 +83,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r2.door_in, 'In')
         self.assertEqual(r2.door_out, 'Out')
         self.assertEqual(r2.type, Room.TYPE_FAINT)
+        self.assertEqual(r2.color, Room.COLOR_CYAN)
         self.assertEqual(r2.offset_x, True)
         self.assertEqual(r2.offset_y, True)
         self.assertEqual(len(r2.loopbacks), 1)
@@ -431,16 +434,31 @@ class RoomTests(unittest.TestCase):
                 (1, 2),
                 (2, 3),
                 (3, 4),
-                (4, 5),
-                (5, 6),
-                (6, 7),
-                (7, 8),
-                (8, 9),
-                (9, 0),
+                (4, 0),
                 ]:
             self.assertEqual(r.type, current)
             r.increment_type()
             self.assertEqual(r.type, result)
+
+    def test_increment_color(self):
+        """
+        Tests increment_color
+        """
+        # Shame about unittest.subTest not being in Py2
+        r = Room(1, 1, 1)
+        for (current, result) in [
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 0),
+                ]:
+            self.assertEqual(r.color, current)
+            r.increment_color()
+            self.assertEqual(r.color, result)
 
     def test_save_basic_room_no_loopbacks_or_flags(self):
         """
@@ -451,6 +469,7 @@ class RoomTests(unittest.TestCase):
         r = Room(1, 2, 3)
         r.name = 'Room'
         r.type = Room.TYPE_FAINT
+        r.color = Room.COLOR_GREEN
         r.up = 'Up'
         r.down = 'Down'
         r.door_in = 'In'
@@ -463,6 +482,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(df.readuchar(), 3)
         self.assertEqual(df.readstr(), 'Room')
         self.assertEqual(df.readuchar(), Room.TYPE_FAINT)
+        self.assertEqual(df.readuchar(), Room.COLOR_GREEN)
         self.assertEqual(df.readstr(), 'Up')
         self.assertEqual(df.readstr(), 'Down')
         self.assertEqual(df.readstr(), 'In')
@@ -481,6 +501,7 @@ class RoomTests(unittest.TestCase):
         r = Room(1, 2, 3)
         r.name = 'Room'
         r.type = Room.TYPE_FAINT
+        r.color = Room.COLOR_BLUE
         r.up = 'Up'
         r.down = 'Down'
         r.door_in = 'In'
@@ -498,6 +519,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(df.readuchar(), 3)
         self.assertEqual(df.readstr(), 'Room')
         self.assertEqual(df.readuchar(), Room.TYPE_FAINT)
+        self.assertEqual(df.readuchar(), Room.COLOR_BLUE)
         self.assertEqual(df.readstr(), 'Up')
         self.assertEqual(df.readstr(), 'Down')
         self.assertEqual(df.readstr(), 'In')
@@ -516,7 +538,7 @@ class RoomTests(unittest.TestCase):
         df.writeuchar(2)
         df.writeuchar(3)
         df.writestr('Room')
-        df.writeuchar(Room.TYPE_FAINT)
+        df.writeuchar(5) # v2 code for "Faint"
         df.writestr('Up')
         df.writestr('Down')
         df.writestr('In')
@@ -536,6 +558,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r.door_in, 'In')
         self.assertEqual(r.door_out, 'Out')
         self.assertEqual(r.type, Room.TYPE_FAINT)
+        self.assertEqual(r.color, Room.COLOR_BW)
         self.assertEqual(r.offset_x, False)
         self.assertEqual(r.offset_y, False)
         self.assertEqual(len(r.loopbacks), 0)
@@ -549,7 +572,7 @@ class RoomTests(unittest.TestCase):
         df.writeuchar(2)
         df.writeuchar(3)
         df.writestr('Room')
-        df.writeuchar(Room.TYPE_FAINT)
+        df.writeuchar(5) # v2 code for "Faint"
         df.writestr('Up')
         df.writestr('Down')
         df.writestr('In')
@@ -569,6 +592,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r.door_in, 'In')
         self.assertEqual(r.door_out, 'Out')
         self.assertEqual(r.type, Room.TYPE_FAINT)
+        self.assertEqual(r.color, Room.COLOR_BW)
         self.assertEqual(r.offset_x, True)
         self.assertEqual(r.offset_y, True)
         self.assertEqual(len(r.loopbacks), 0)
@@ -582,7 +606,7 @@ class RoomTests(unittest.TestCase):
         df.writeuchar(2)
         df.writeuchar(3)
         df.writestr('Room')
-        df.writeuchar(Room.TYPE_FAINT)
+        df.writeuchar(5) # v3 code for Faint
         df.writestr('Up')
         df.writestr('Down')
         df.writestr('In')
@@ -603,6 +627,7 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r.door_in, 'In')
         self.assertEqual(r.door_out, 'Out')
         self.assertEqual(r.type, Room.TYPE_FAINT)
+        self.assertEqual(r.color, Room.COLOR_BW)
         self.assertEqual(r.offset_x, False)
         self.assertEqual(r.offset_y, False)
         self.assertEqual(len(r.loopbacks), 0)
@@ -616,7 +641,7 @@ class RoomTests(unittest.TestCase):
         df.writeuchar(2)
         df.writeuchar(3)
         df.writestr('Room')
-        df.writeuchar(Room.TYPE_FAINT)
+        df.writeuchar(5) # v3 code for Faint
         df.writestr('Up')
         df.writestr('Down')
         df.writestr('In')
@@ -637,9 +662,100 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(r.door_in, 'In')
         self.assertEqual(r.door_out, 'Out')
         self.assertEqual(r.type, Room.TYPE_FAINT)
+        self.assertEqual(r.color, Room.COLOR_BW)
         self.assertEqual(r.offset_x, True)
         self.assertEqual(r.offset_y, True)
         self.assertEqual(len(r.loopbacks), 8)
         for direction in [DIR_N, DIR_NE, DIR_E, DIR_SE, DIR_S,
                 DIR_SW, DIR_W, DIR_NW]:
             self.assertEqual(r.get_loopback(direction), True)
+
+    def test_load_v3_type_color_changes(self):
+        """
+        v8 changed our type/color attributes to be split, as opposed to
+        having everything in a single "type" field (the type field has
+        been otherwise unchanged since v1).  This tests our translation,
+        to make sure that old maps get assigned the proper colors.
+        """
+        old_to_new = [
+                (0, (Room.TYPE_NORMAL, Room.COLOR_BW)), # Normal
+                (1, (Room.TYPE_NORMAL, Room.COLOR_GREEN)), # Green
+                (2, (Room.TYPE_LABEL, Room.COLOR_BW)), # Label
+                (3, (Room.TYPE_NORMAL, Room.COLOR_BLUE)), # Blue
+                (4, (Room.TYPE_NORMAL, Room.COLOR_RED)), # Red
+                (5, (Room.TYPE_FAINT, Room.COLOR_BW)), # Faint
+                (6, (Room.TYPE_NORMAL, Room.COLOR_YELLOW)), # Yellow
+                (7, (Room.TYPE_NORMAL, Room.COLOR_PURPLE)), # Purple
+                (8, (Room.TYPE_NORMAL, Room.COLOR_CYAN)), # Cyan
+                (9, (Room.TYPE_DARK, Room.COLOR_BW)), # Dark
+                (10, (Room.TYPE_NORMAL, Room.COLOR_BW)), # Invalid, should default to Normal/BW
+            ]
+
+        # Alas for not having unittest.subTest in py2
+        for (orig_type, (new_type, new_color)) in old_to_new:
+            df = self.getSavefile()
+            df.writeshort(1)
+            df.writeuchar(2)
+            df.writeuchar(3)
+            df.writestr('Room')
+            df.writeuchar(orig_type)
+            df.writestr('Up')
+            df.writestr('Down')
+            df.writestr('In')
+            df.writestr('Out')
+            df.writestr('Notes')
+            df.writeuchar(0)
+            df.writeuchar(0)
+            df.seek(0)
+            r = Room.load(df, 3)
+            self.assertEqual(df.eof(), True)
+            self.assertEqual(r.idnum, 1)
+            self.assertEqual(r.x, 2)
+            self.assertEqual(r.y, 3)
+            self.assertEqual(r.name, 'Room')
+            self.assertEqual(r.notes, 'Notes')
+            self.assertEqual(r.up, 'Up')
+            self.assertEqual(r.down, 'Down')
+            self.assertEqual(r.door_in, 'In')
+            self.assertEqual(r.door_out, 'Out')
+            self.assertEqual(r.type, new_type)
+            self.assertEqual(r.color, new_color)
+            self.assertEqual(r.offset_x, False)
+            self.assertEqual(r.offset_y, False)
+            self.assertEqual(len(r.loopbacks), 0)
+
+    def test_load_v8_basic(self):
+        """
+        Tests loading a basic v8 room (with color specified)
+        """
+        df = self.getSavefile()
+        df.writeshort(1)
+        df.writeuchar(2)
+        df.writeuchar(3)
+        df.writestr('Room')
+        df.writeuchar(Room.TYPE_DARK)
+        df.writeuchar(Room.COLOR_ORANGE)
+        df.writestr('Up')
+        df.writestr('Down')
+        df.writestr('In')
+        df.writestr('Out')
+        df.writestr('Notes')
+        df.writeuchar(0)
+        df.writeuchar(0)
+        df.seek(0)
+        r = Room.load(df, 8)
+        self.assertEqual(df.eof(), True)
+        self.assertEqual(r.idnum, 1)
+        self.assertEqual(r.x, 2)
+        self.assertEqual(r.y, 3)
+        self.assertEqual(r.name, 'Room')
+        self.assertEqual(r.notes, 'Notes')
+        self.assertEqual(r.up, 'Up')
+        self.assertEqual(r.down, 'Down')
+        self.assertEqual(r.door_in, 'In')
+        self.assertEqual(r.door_out, 'Out')
+        self.assertEqual(r.type, Room.TYPE_DARK)
+        self.assertEqual(r.color, Room.COLOR_ORANGE)
+        self.assertEqual(r.offset_x, False)
+        self.assertEqual(r.offset_y, False)
+        self.assertEqual(len(r.loopbacks), 0)

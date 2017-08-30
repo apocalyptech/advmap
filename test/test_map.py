@@ -1711,7 +1711,7 @@ class MapTests(unittest.TestCase):
         # length of the string itself; our room names are all the
         # same length so I can skip doing those dynamically.
         for i in range(3):
-            df.read(31)
+            df.read(34)
         for i in range(2):
             df.read(18)
         df.read(7)

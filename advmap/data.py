@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 7
+SAVEFILE_VER = 8
 
 class Group(object):
     """
@@ -193,31 +193,45 @@ class Room(object):
     """
 
     # Type constants
-    TYPE_MAX = 10
+    TYPE_MAX = 5
     (TYPE_NORMAL,
-        TYPE_HI_GREEN,
         TYPE_LABEL,
-        TYPE_HI_BLUE,
-        TYPE_HI_RED,
         TYPE_FAINT,
-        TYPE_HI_YELLOW,
-        TYPE_HI_PURPLE,
-        TYPE_HI_CYAN,
         TYPE_DARK,
+        TYPE_CONNHELPER,
         ) = range(TYPE_MAX)
 
     # English equivalents
     TYPE_TXT = {
             TYPE_NORMAL: 'Normal Room',
-            TYPE_HI_GREEN: 'Green Highlight',
             TYPE_LABEL: 'Label',
-            TYPE_HI_BLUE: 'Blue Highlight',
-            TYPE_HI_RED: 'Red Highlight',
-            TYPE_FAINT: 'Unimportant',
-            TYPE_HI_YELLOW: 'Yellow Highlight',
-            TYPE_HI_PURPLE: 'Purple Highlight',
-            TYPE_HI_CYAN: 'Cyan Highlight',
-            TYPE_DARK: 'Dark'
+            TYPE_FAINT: 'Faint',
+            TYPE_DARK: 'Dark',
+            TYPE_CONNHELPER: 'Connection Helper',
+        }
+
+    # Color constants
+    COLOR_MAX = 8
+    (COLOR_BW,
+        COLOR_GREEN,
+        COLOR_BLUE,
+        COLOR_RED,
+        COLOR_YELLOW,
+        COLOR_PURPLE,
+        COLOR_CYAN,
+        COLOR_ORANGE,
+        ) = range(COLOR_MAX)
+
+    # Color equivalents
+    COLOR_TXT = {
+            COLOR_BW: 'Black+White',
+            COLOR_GREEN: 'Green',
+            COLOR_BLUE: 'Blue',
+            COLOR_RED: 'Red',
+            COLOR_YELLOW: 'Yellow',
+            COLOR_PURPLE: 'Purple',
+            COLOR_CYAN: 'Cyan',
+            COLOR_ORANGE: 'Orange',
         }
 
     def __init__(self, idnum, x, y):
@@ -233,6 +247,7 @@ class Room(object):
         self.door_in = ''
         self.door_out = ''
         self.type = self.TYPE_NORMAL
+        self.color = self.COLOR_BW
         self.offset_x = False
         self.offset_y = False
         self.group = None
@@ -251,6 +266,7 @@ class Room(object):
         newroom.door_in = self.door_in
         newroom.door_out = self.door_out
         newroom.type = self.type
+        newroom.color = self.color
         newroom.offset_x = self.offset_x
         newroom.offset_y = self.offset_y
         for direction, value in self.loopbacks.items():
@@ -364,6 +380,12 @@ class Room(object):
         """
         self.type = (self.type + 1) % self.TYPE_MAX
 
+    def increment_color(self):
+        """
+        Increments our color
+        """
+        self.color = (self.color + 1) % self.COLOR_MAX
+
     def save(self, df):
         """
         Writes ourself to the given filehandle
@@ -378,6 +400,7 @@ class Room(object):
         df.writeuchar(self.y)
         df.writestr(self.name)
         df.writeuchar(self.type)
+        df.writeuchar(self.color)
         df.writestr(self.up)
         df.writestr(self.down)
         df.writestr(self.door_in)
@@ -401,7 +424,32 @@ class Room(object):
         y = df.readuchar()
         room = Room(idnum, x, y)
         room.name = df.readstr()
-        room.type = df.readuchar()
+        if version >= 8:
+            room.type = df.readuchar()
+            room.color = df.readuchar()
+        else:
+            # v8 split off type+color for much better room flexibility.
+            # This means we've got to do a mapping for previous revs, though!
+            previous_type = df.readuchar()
+            mapping = {
+                    0: (0, 0),  # Normal
+                    1: (0, 1),  # Green
+                    2: (1, 0),  # Label
+                    3: (0, 2),  # Blue
+                    4: (0, 3),  # Red
+                    5: (2, 0),  # Faint
+                    6: (0, 4),  # Yellow
+                    7: (0, 5),  # Purple
+                    8: (0, 6),  # Cyan
+                    9: (3, 0),  # Dark
+                }
+            if previous_type in mapping:
+                room.type = mapping[previous_type][0]
+                room.color = mapping[previous_type][1]
+            else:
+                # Shouldn't really ever be able to get here
+                room.type = Room.TYPE_NORMAL
+                room.color = Room.COLOR_BW
         room.up = df.readstr()
         room.down = df.readstr()
         room.door_in = df.readstr()
