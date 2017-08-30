@@ -48,11 +48,13 @@ rooms, which is kind of lame, but so far that's not been a problem.
 ![Game Editing](screenshots/screenshot-gameedit.png)
 
 Rooms can be highlighted in a number of styles:
+
 * Normal
 * Faint
 * Dark
 * Labels *(dotted border, only the room name is shown)*
 * Connection Helpers *(intended to help route connections - no text is shown)*
+
 I'm fond of using the Dark setting for dark rooms in the Zork series, for instance.
 Rooms can also be colored with any one of eight colors: black+white, green, blue,
 red, yellow, purple/magenta, cyan, and orange.  A number of text labels can be
