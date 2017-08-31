@@ -2461,6 +2461,9 @@ class GUI(object):
         # Look to see if we're in readonly mode
         readonly = self.readonly_lock.get_active()
 
+        # Variables we use to construct hover_text
+        actions = []
+        prefix = None
         hover_text = ''
 
         # Set up an array of actions available when we have mulitple rooms selected
@@ -2488,18 +2491,15 @@ class GUI(object):
 
         if self.hover == self.HOVER_NONE:
 
-            actions = [('LMB', 'click-and-drag')]
+            actions.append(('LMB', 'click-and-drag'))
             if len(self.multi_select) > 0:
                 actions.extend(multi_actions)
-
-            hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
 
         else:
 
             if self.hover_roomobj:
 
                 prefix = '(%d, %d)' % (self.hover_roomobj.x+1, self.hover_roomobj.y+1)
-                actions = []
 
                 if self.hover == self.HOVER_ROOM:
                     if readonly:
@@ -2557,19 +2557,22 @@ class GUI(object):
                     if not readonly:
                         actions.append(('LMB', 'nudge room'))
 
-                if len(actions) == 0:
-                    hover_text = prefix
-                else:
-                    hover_text = '%s - %s' % (prefix, ', '.join(['%s: %s' % (key, action) for (key, action) in actions]))
-
             else:
 
-                actions = [('LMB', 'click-and-drag')]
+                actions.append(('LMB', 'click-and-drag'))
                 if self.hover == self.HOVER_ROOM_NEW:
                     if not readonly:
-                        actions.append(('N', 'new room at (%d, %d)' % (self.curhover[0], self.curhover[1])))
+                        prefix = '(%d, %d)' % (self.curhover[0]+1, self.curhover[1]+1)
+                        actions.append(('N', 'new room'))
 
-                hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
+        # Construct the hover text
+        if len(actions) == 0:
+            if prefix is not None:
+                hover_text = prefix
+        else:
+            hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
+            if prefix is not None:
+                hover_text = '%s - %s' % (prefix, hover_text)
 
         self.set_hover(hover_text)
 
