@@ -97,43 +97,55 @@ Right now the only actual export format is PNG.
 Usage
 -----
 
-Links between rooms can most easily be placed in the main GUI area, by clicking
-on the borders of the rooms.  If two rooms are next to each other, clicking the
-borders will automatically link them up - otherwise a new room will be created.
-Middle-clicks and and right-clicks are also supported to do various things;
-text at the bottom of the window will update to let you know what actions you can
-take.
+As you move the mouse around the map area, text at the bottom of the window will
+update to let you know what actions you can take at all times, so that may be
+the easiest reference as to what can be done.
+
+You can create a new room either by left-clicking on a connection point of an
+existing room (the rooms will be connected unless you specify otherwise), or
+by using the `n` key while highlighting an empty spot on the map.  You can
+right-click on a connection point and then right-click on another room's
+connection point to arbitrarily connect rooms.  You can also right-click on an
+existing connection and then right-click elsewhere to *move* connections
+around.  Middle-clicking on a connection point will cause a loopback to be
+created.
 
 You can also nudge a room in the cardinal directions by using WASD.  If you enable
 a toggle switch at the top of the screen, you can also nudge rooms by clicking on
-the inside of the room itself (again, text at the bottom of the window will always
-tell you what actions are possible with what keys).  Clicking on the main room
-itself will allow you to edit the room, add notes, etc.  Currently the room-edit
-dialog does *not* support editing the room connections; this may return eventually.
-Shift-clicking on rooms will let you select more than one room at once.
+the inside of the room itself, though I find that to be tricker than just using WASD.
+Clicking on the main room itself will allow you to edit the room, add notes, etc.
+
+You can select multiple rooms with shift-click, which will let you change parameters
+to groups of rooms at a time - most of the room keys below will work (I've noted where
+they don't).
+
+Controls while highlighting an empty spot on the map:
+
+* `Left-click and Drag` - Move the map around
+* `N` - Create a new room
 
 Controls while highlighting a room or rooms:
 
-* `Left Mouse` - Edit room details (Room Name, type, up/down/in/out labels, notes, vert/horiz offsets, room grouping)
+* `Left Mouse` - Edit room details *(Room Name, type, up/down/in/out labels, notes, vert/horiz offsets, room grouping)*
 * `Shift-Click` *(left mouse)* - Select room *(shift-click on more rooms to multi-select)*
-* `W`/`A`/`S`/`D` - Nudge room North/West/South/East
+* `W`/`A`/`S`/`D` - Nudge room(s) North/West/South/East
 * `X` - Delete the room *(unavailable while selecting more than one room)*
-* `H` - Toggle horizontal offset (useful in some circumstances to make maps look prettier)
-* `V` - Toggle vertical offset (useful in some circumstances to make maps look prettier)
-* `T` - Change room type
-* `G` *(while room is ungrouped)* - Add room to a group with other room(s). *(press G again on the other room)*
+* `H` - Toggle horizontal offset(s) *(useful in some circumstances to make maps look prettier)*
+* `V` - Toggle vertical offset(s) *(useful in some circumstances to make maps look prettier)*
+* `T` - Change room type(s)
+* `G` *(while room is ungrouped)* - Add room(s) to a group *(press G again on the other room, if you haven't selected multiple rooms already)*
 * `G` *(while room is in group)* - Change group highlight color
-* `O` *(while room is in group)* - Remove room from group
+* `O` *(while room is in group)* - Remove room(s) from group
 
 Controls while highlighting the edge of a room *(if toggled on at the top of the screen)*:
 
 * `Left Mouse` - Nudge room in the specified direction
 
-Controls while highlighting an "empty" connection on the side of a room:
+Controls while highlighting an "empty" connection point on the side of a room:
 
-* `Left Mouse` - Create new connected room, if there is room adjacent.
+* `Left Mouse` - Create new connected room, if there is an empty space for the room
 * `Right Mouse` - Connect to existing room *(use right mouse again on another room's empty slot to connect)*
-* `Middle Mouse` - Create a loopback connection
+* `Middle Mouse` - Create a loopback
 
 Controls while highlighting an existing connection:
 
@@ -144,7 +156,7 @@ Controls while highlighting an existing connection:
 * `P` - Change path *(straight line or kinked/bent line)*
 * `O` - Change orientation *(two-way, one-way in, one-way out)*
 * `L` - Change stub length *(how far out the initial line is drawn before it gets connected to the other room)*
-* `S` - Toggle symmetry within the link *(so one half of the connection can be ladder and the other dotted, for instance)*
+* `S` - Toggle symmetry within the connection *(so one half of the connection can be ladder and the other dotted, for instance)*
 * `R` - Sets the primary direction when a connection with multiple ends is being used (via the `E` key).  The "primary" direction is rendered more directly than any extra end.
 
 More Screenshots
@@ -158,8 +170,8 @@ Savegame Format Reference
 -------------------------
 
 Just for my own purposes, here's a list of what's changed in each savegame
-format revision.  The app can load any savegame version (so long as it's
-current, of course) but will always save in the most recent:
+format revision.  The app can load any savegame version (so long as the app
+is current, of course) but will always save in the most recent:
 
 **v1**
 
