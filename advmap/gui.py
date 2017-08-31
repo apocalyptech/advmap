@@ -41,6 +41,7 @@ class GUI(object):
     HOVER_EDGE = 2
     HOVER_CONN = 3
     HOVER_CONN_NEW = 4
+    HOVER_ROOM_NEW = 5
 
     def __init__(self, initfile=None, readonly=False):
         """
@@ -1666,6 +1667,16 @@ class GUI(object):
             self.cleanctx.rectangle(min_x, min_y, max_x-min_x, max_y-min_y)
             self.cleanctx.fill()
 
+        # Draw new-room areas on mousemap
+        for x in range(self.mapobj.w):
+            for y in range(self.mapobj.h):
+                room = self.mapobj.get_room_at(x, y)
+                if not room:
+                    (draw_x, draw_y) = self.room_xy_coord(x, y)
+                    self.mmctx.set_source_rgba(self.m_step*self.HOVER_ROOM_NEW, self.m_step*x, self.m_step*y)
+                    self.mmctx.rectangle(draw_x, draw_y, self.room_w, self.room_h)
+                    self.mmctx.fill()
+
         # Loop through and draw our rooms
         drawn_conns = set()
         for room in self.mapobj.roomlist():
@@ -1739,6 +1750,13 @@ class GUI(object):
         (x, y) = self.room_xy(room)
         self.hover_simple(x, y, self.room_w, self.room_h)
 
+    def hover_new_room(self):
+        """
+        Draw a new-room hover
+        """
+        (x, y) = self.room_xy_coord(*self.curhover)
+        self.hover_simple(x, y, self.room_w, self.room_h)
+
     def hover_conn(self, color=None):
         """
         Draw a hovered connection
@@ -1798,6 +1816,194 @@ class GUI(object):
                 res = cmp(room1.x, room2.x)
         return res
 
+    def populate_group_membership_dropdown(self, cur_room=None):
+        """
+        Populates our group membership dropdown for our New/Edit Room dialog,
+        given the `cur_room`, if there's any rooms to be excluded from the
+        list.
+
+        Returns the `iterator` used to retreive the value of the dropdown
+        once we're done.
+        """
+        self.room_mapstore.clear()
+        iterator = self.room_mapstore.append()
+        rowmap = {}
+        self.room_mapstore.set(iterator,
+                self.ROOM_COL_NAME, '-',
+                self.ROOM_COL_IDX, -1)
+        currow = 0
+        self.room_group_box.set_active(0)
+        have_group = False
+        rooms = list(self.mapobj.roomlist())
+        rooms.sort(self.room_sort)
+        for iterroom in rooms:
+            if (cur_room != iterroom):
+                currow += 1
+                rowmap[iterroom.idnum] = currow
+                iterator = self.room_mapstore.append()
+                self.room_mapstore.set(iterator,
+                        self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
+                        self.ROOM_COL_IDX, iterroom.idnum)
+                if cur_room is not None:
+                    if (not have_group and cur_room.in_group_with(iterroom)):
+                        self.room_group_box.set_active(currow)
+                        have_group = True
+            else:
+                rowmap[iterroom.idnum] = 0
+
+        return iterator
+
+    def add_room_dialog_at(self, x, y, from_room=None, from_dir=None):
+        """
+        Launches a dialog to add a new room at (`x`, `y`).  If `from_room` and
+        `from_dir` are passed in, we will show the connection possibilities
+        in the dialog.  If not, we will not.  Returns `True` if something was
+        changed, `False` otherwise.
+        """
+
+        if from_room is not None and from_dir is not None:
+            link_to_room = True
+        else:
+            link_to_room = False
+
+        # Hide/show depending on if we're linking
+        if link_to_room:
+            self.new_to_dir_label.show_all()
+            self.new_to_dir_align.show_all()
+            self.new_conn_style_label.show_all()
+            self.new_conn_style_align.show_all()
+            self.new_conn_type_label.show_all()
+            self.new_conn_type_align.show_all()
+            self.new_group_with_label.show_all()
+            self.new_group_with_align.show_all()
+            self.room_group_label.hide()
+            self.room_group_align.hide()
+            self.new_group_with_button.set_active(False)
+            self.new_to_dir_box.set_active(DIR_OPP[from_dir])
+            self.new_conn_type_pass_twoway.set_active(True)
+            self.new_conn_style_regular.set_active(True)
+            iterator = None
+        else:
+            self.new_to_dir_label.hide()
+            self.new_to_dir_align.hide()
+            self.new_conn_style_label.hide()
+            self.new_conn_style_align.hide()
+            self.new_conn_type_label.hide()
+            self.new_conn_type_align.hide()
+            self.new_group_with_label.hide()
+            self.new_group_with_align.hide()
+            self.room_group_label.show_all()
+            self.room_group_align.show_all()
+            iterator = self.populate_group_membership_dropdown()
+
+        self.edit_room_label.set_markup('<b>New Room</b>')
+        self.roomname_entry.set_text('(unexplored)')
+        self.roomnotes_view.get_buffer().set_text('')
+        self.roomtype_radio_normal.set_active(True)
+        self.roomcolor_radio_bw.set_active(True)
+        self.room_up_entry.set_text('')
+        self.room_down_entry.set_text('')
+        self.room_in_entry.set_text('')
+        self.room_out_entry.set_text('')
+        if link_to_room:
+            self.room_offset_x.set_active(from_room.offset_x)
+            self.room_offset_y.set_active(from_room.offset_y)
+        else:
+            self.room_offset_x.set_active(False)
+            self.room_offset_y.set_active(False)
+        self.roomname_entry.grab_focus()
+        result = self.edit_room_dialog.run()
+        self.edit_room_dialog.hide()
+        if (result == gtk.RESPONSE_OK):
+            try:
+                newroom = self.mapobj.add_room_at(x, y, self.roomname_entry.get_text())
+            except Exception as e:
+                self.errordialog("Couldn't add room: %s" % (e))
+                return False
+
+            # Room type radio
+            if (self.roomtype_radio_label.get_active()):
+                newroom.type = Room.TYPE_LABEL
+            elif (self.roomtype_radio_faint.get_active()):
+                newroom.type = Room.TYPE_FAINT
+            elif (self.roomtype_radio_dark.get_active()):
+                newroom.type = Room.TYPE_DARK
+            elif (self.roomtype_radio_connhelper.get_active()):
+                newroom.type = Room.TYPE_CONNHELPER
+            else:
+                newroom.type = Room.TYPE_NORMAL
+
+            # Room color radio
+            if (self.roomcolor_radio_green.get_active()):
+                newroom.color = Room.COLOR_GREEN
+            elif (self.roomcolor_radio_red.get_active()):
+                newroom.color = Room.COLOR_RED
+            elif (self.roomcolor_radio_blue.get_active()):
+                newroom.color = Room.COLOR_BLUE
+            elif (self.roomcolor_radio_yellow.get_active()):
+                newroom.color = Room.COLOR_YELLOW
+            elif (self.roomcolor_radio_purple.get_active()):
+                newroom.color = Room.COLOR_PURPLE
+            elif (self.roomcolor_radio_cyan.get_active()):
+                newroom.color = Room.COLOR_CYAN
+            elif (self.roomcolor_radio_orange.get_active()):
+                newroom.color = Room.COLOR_ORANGE
+            else:
+                newroom.color = Room.COLOR_BW
+
+            newroom.up = self.room_up_entry.get_text()
+            newroom.down = self.room_down_entry.get_text()
+            newroom.door_in = self.room_in_entry.get_text()
+            newroom.door_out = self.room_out_entry.get_text()
+            buf = self.roomnotes_view.get_buffer()
+            newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
+
+            # Connect the new room to the first room, if we haven't been told not to.
+            if link_to_room and not self.new_conn_style_none.get_active():
+                new_direction = self.new_to_dir_box.get_active()
+                newconn = self.mapobj.connect(from_room, from_dir, newroom, new_direction)
+                if self.new_conn_type_pass_oneway_in.get_active():
+                    newconn.set_oneway_b()
+                elif self.new_conn_type_pass_oneway_out.get_active():
+                    newconn.set_oneway_a()
+                if self.new_conn_style_ladder.get_active():
+                    newconn.set_ladder(newroom, new_direction)
+                elif self.new_conn_style_dotted.get_active():
+                    newconn.set_dotted(newroom, new_direction)
+
+            # Handle adding grouping if we've been told to, as well.
+            if link_to_room:
+                if self.new_group_with_button.get_active():
+                    self.mapobj.group_rooms(newroom, from_room)
+            else:
+                iterator = self.room_group_box.get_active_iter()
+                group_roomid = self.room_mapstore.get_value(iterator, self.ROOM_COL_IDX)
+                if (group_roomid != -1):
+                    self.mapobj.group_rooms(newroom, self.mapobj.get_room(group_roomid))
+
+            # Handle offsets
+            if self.room_offset_x.get_active():
+                newroom.offset_x = True
+            if self.room_offset_y.get_active():
+                newroom.offset_y = True
+
+            # Temp, report
+            #print('Existing Groups:')
+            #print('')
+            #for (idx, group) in enumerate(self.map.groups):
+            #    print('Group %d:' % (idx+1))
+            #    for room_view in group.rooms:
+            #        print(' * %s' % room_view.name)
+            #    print('')
+            #print('')
+
+            if (len(self.mapobj.rooms) == 256):
+                self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
+
+            return True
+
+        return False
+
     def on_map_clicked(self, widget, event):
         """
         Handle clicks-n-such
@@ -1818,7 +2024,7 @@ class GUI(object):
         # Left-click
         if (event.button == 1):
 
-            if (self.hover == self.HOVER_NONE):
+            if (self.hover == self.HOVER_NONE or self.hover == self.HOVER_ROOM_NEW):
                 # If we don't have anything selected, we'll drag the canvas
                 saved_multiple_selections = True
                 self.dragging = True
@@ -1956,30 +2162,7 @@ class GUI(object):
                         self.room_offset_y.set_active(room.offset_y)
 
                         # Room dropdown for group membership
-                        self.room_mapstore.clear()
-                        iterator = self.room_mapstore.append()
-                        rowmap = {}
-                        self.room_mapstore.set(iterator,
-                                self.ROOM_COL_NAME, '-',
-                                self.ROOM_COL_IDX, -1)
-                        currow = 0
-                        self.room_group_box.set_active(0)
-                        have_group = False
-                        rooms = list(self.mapobj.roomlist())
-                        rooms.sort(self.room_sort)
-                        for iterroom in rooms:
-                            if (room != iterroom):
-                                currow += 1
-                                rowmap[iterroom.idnum] = currow
-                                iterator = self.room_mapstore.append()
-                                self.room_mapstore.set(iterator,
-                                        self.ROOM_COL_NAME, '<b>%s</b> <i>at (%d, %d)</i>' % (gobject.markup_escape_text(iterroom.name), iterroom.x+1, iterroom.y+1),
-                                        self.ROOM_COL_IDX, iterroom.idnum)
-                                if (not have_group and room.in_group_with(iterroom)):
-                                    self.room_group_box.set_active(currow)
-                                    have_group = True
-                            else:
-                                rowmap[iterroom.idnum] = 0
+                        iterator = self.populate_group_membership_dropdown(cur_room=room)
 
                         # TODO: should we poke around with scroll/cursor here?
                         result = self.edit_room_dialog.run()
@@ -2078,114 +2261,9 @@ class GUI(object):
                     if coords:
                         newroom = self.mapobj.get_room_at(*coords)
                         if not newroom:
-                            self.new_to_dir_label.show_all()
-                            self.new_to_dir_align.show_all()
-                            self.new_conn_style_label.show_all()
-                            self.new_conn_style_align.show_all()
-                            self.new_conn_type_label.show_all()
-                            self.new_conn_type_align.show_all()
-                            self.new_group_with_label.show_all()
-                            self.new_group_with_align.show_all()
-                            self.room_group_label.hide()
-                            self.room_group_align.hide()
-                            self.new_group_with_button.set_active(False)
-                            self.new_to_dir_box.set_active(DIR_OPP[direction])
-                            self.new_conn_type_pass_twoway.set_active(True)
-                            self.new_conn_style_regular.set_active(True)
-                            self.edit_room_label.set_markup('<b>New Room</b>')
-                            self.roomname_entry.set_text('(unexplored)')
-                            self.roomnotes_view.get_buffer().set_text('')
-                            self.roomtype_radio_normal.set_active(True)
-                            self.roomcolor_radio_bw.set_active(True)
-                            self.room_up_entry.set_text('')
-                            self.room_down_entry.set_text('')
-                            self.room_in_entry.set_text('')
-                            self.room_out_entry.set_text('')
-                            self.room_offset_x.set_active(room.offset_x)
-                            self.room_offset_y.set_active(room.offset_y)
-                            self.roomname_entry.grab_focus()
-                            result = self.edit_room_dialog.run()
-                            self.edit_room_dialog.hide()
-                            if (result == gtk.RESPONSE_OK):
-                                try:
-                                    newroom = self.mapobj.add_room_at(coords[0], coords[1], self.roomname_entry.get_text())
-                                except Exception as e:
-                                    self.errordialog("Couldn't add room: %s" % (e))
-                                    return
-
-                                # Room type radio
-                                if (self.roomtype_radio_label.get_active()):
-                                    newroom.type = Room.TYPE_LABEL
-                                elif (self.roomtype_radio_faint.get_active()):
-                                    newroom.type = Room.TYPE_FAINT
-                                elif (self.roomtype_radio_dark.get_active()):
-                                    newroom.type = Room.TYPE_DARK
-                                elif (self.roomtype_radio_connhelper.get_active()):
-                                    newroom.type = Room.TYPE_CONNHELPER
-                                else:
-                                    newroom.type = Room.TYPE_NORMAL
-
-                                # Room color radio
-                                if (self.roomcolor_radio_green.get_active()):
-                                    newroom.color = Room.COLOR_GREEN
-                                elif (self.roomcolor_radio_red.get_active()):
-                                    newroom.color = Room.COLOR_RED
-                                elif (self.roomcolor_radio_blue.get_active()):
-                                    newroom.color = Room.COLOR_BLUE
-                                elif (self.roomcolor_radio_yellow.get_active()):
-                                    newroom.color = Room.COLOR_YELLOW
-                                elif (self.roomcolor_radio_purple.get_active()):
-                                    newroom.color = Room.COLOR_PURPLE
-                                elif (self.roomcolor_radio_cyan.get_active()):
-                                    newroom.color = Room.COLOR_CYAN
-                                elif (self.roomcolor_radio_orange.get_active()):
-                                    newroom.color = Room.COLOR_ORANGE
-                                else:
-                                    newroom.color = Room.COLOR_BW
-
-                                newroom.up = self.room_up_entry.get_text()
-                                newroom.down = self.room_down_entry.get_text()
-                                newroom.door_in = self.room_in_entry.get_text()
-                                newroom.door_out = self.room_out_entry.get_text()
-                                buf = self.roomnotes_view.get_buffer()
-                                newroom.notes = buf.get_text(buf.get_start_iter(), buf.get_end_iter())
-
-                                # Connect the new room to the first room, if we haven't been told not to.
-                                if not self.new_conn_style_none.get_active():
-                                    new_direction = self.new_to_dir_box.get_active()
-                                    newconn = self.mapobj.connect(room, direction, newroom, new_direction)
-                                    if self.new_conn_type_pass_oneway_in.get_active():
-                                        newconn.set_oneway_b()
-                                    elif self.new_conn_type_pass_oneway_out.get_active():
-                                        newconn.set_oneway_a()
-                                    if self.new_conn_style_ladder.get_active():
-                                        newconn.set_ladder(newroom, new_direction)
-                                    elif self.new_conn_style_dotted.get_active():
-                                        newconn.set_dotted(newroom, new_direction)
-
-                                # Handle adding grouping if we've been told to, as well.
-                                if self.new_group_with_button.get_active():
-                                    self.mapobj.group_rooms(newroom, room)
-
-                                # Handle offsets
-                                if self.room_offset_x.get_active():
-                                    newroom.offset_x = True
-                                if self.room_offset_y.get_active():
-                                    newroom.offset_y = True
-
-                                # Temp, report
-                                #print('Existing Groups:')
-                                #print('')
-                                #for (idx, group) in enumerate(self.map.groups):
-                                #    print('Group %d:' % (idx+1))
-                                #    for room_view in group.rooms:
-                                #        print(' * %s' % room_view.name)
-                                #    print('')
-                                #print('')
-
+                            if self.add_room_dialog_at(coords[0], coords[1],
+                                    from_room=room, from_dir=direction):
                                 need_gfx_update = True
-                                if (len(self.mapobj.rooms) == 256):
-                                    self.infodialog('Note: Currently this application can only support 256 rooms on each map.  You have just added the last one, so new rooms will no longer be available, unless you delete some existing ones.')
 
                 elif (self.hover == self.HOVER_EDGE):
                     # move the room, if possible
@@ -2484,6 +2562,15 @@ class GUI(object):
                 else:
                     hover_text = '%s - %s' % (prefix, ', '.join(['%s: %s' % (key, action) for (key, action) in actions]))
 
+            else:
+
+                actions = [('LMB', 'click-and-drag')]
+                if self.hover == self.HOVER_ROOM_NEW:
+                    if not readonly:
+                        actions.append(('N', 'new room at (%d, %d)' % (self.curhover[0], self.curhover[1])))
+
+                hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
+
         self.set_hover(hover_text)
 
     def on_mouse_changed(self, widget, event):
@@ -2563,6 +2650,13 @@ class GUI(object):
                         self.hover_roomobj = room
                         self.hover_edge()
                         self.mainarea.queue_draw()
+            elif (typeidx == self.HOVER_ROOM_NEW):
+                if not readonly:
+                    self.clean_hover()
+                    self.hover = self.HOVER_ROOM_NEW
+                    self.curhover = (hoverpixel[1], hoverpixel[0])
+                    self.hover_new_room()
+                    self.mainarea.queue_draw()
             else:
                 raise Exception("Invalid R code in bit mousemap")
         else:
@@ -2781,6 +2875,16 @@ class GUI(object):
                     self.mapobj.move_room(self.curhover, DIR_E)
                     need_gfx_update = True
                     need_clean_hover = True
+
+            # Now for actions which only apply to new rooms
+            elif self.hover == self.HOVER_ROOM_NEW:
+                coords = self.curhover
+                room = self.mapobj.get_room_at(*coords)
+                if not room:
+                    if (key == 'n'):
+                        if self.add_room_dialog_at(*coords):
+                            need_gfx_update=True
+                            need_clean_hover=True
 
             # Connection actions
             elif self.hover == self.HOVER_CONN:
