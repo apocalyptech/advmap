@@ -2564,6 +2564,8 @@ class GUI(object):
                     if not readonly:
                         prefix = '(%d, %d)' % (self.curhover[0]+1, self.curhover[1]+1)
                         actions.append(('N', 'new room'))
+                if len(self.multi_select) > 0:
+                    actions.extend(multi_actions)
 
         # Construct the hover text
         if len(actions) == 0:
@@ -2695,7 +2697,7 @@ class GUI(object):
             # First up, some actions for multi-selected rooms which do the
             # same thing whether we're hovering on NONE or ROOM
             if (len(self.multi_select) > 0 and (self.hover == self.HOVER_NONE or
-                    self.hover == self.HOVER_ROOM)):
+                    self.hover == self.HOVER_ROOM or self.hover == self.HOVER_ROOM_NEW)):
                 if (key == 'h'):
                     need_gfx_update = True
                     need_clean_hover = True
