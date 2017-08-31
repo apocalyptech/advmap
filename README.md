@@ -2,24 +2,29 @@ Adventure Game Mapper
 =====================
 
 This is an experimental mapping program for adventure games, such as the old
-Sierra adventures, and interactive fiction (such as from Infocom, etc).
+Sierra / LucasArts adventures, and interactive fiction (such as from Infocom,
+etc).
 
-It's got some good points and bad points; a lot of it's a little bizarre,
-though it worked well enough for my purposes while I was going on a huge
-adventure game binge a number of years ago.
+It's got some good points and bad points; a lot of it's a little bizarre.
+Regardless, I've been using it off and on since 2010, whenever I go on an
+adventure game bender, and it's continued to perform well for me.  (Though
+the odd game will end up prompting more feature enhancements to support
+more mapping possibilities -- the Zork series in particular prompted more
+features than just about the rest combined.)
 
-The file format itself is currently all binary -- I struggled for awhile with
-the knowledge that really I should be using some kind of gzipped XML format
-rather than binary, but I have something of a grudge against XML and tend to
-avoid it whenever possible.
+The file format itself is currently a custom binary format.  This may end
+up eventually changing to something like gzipped json, though I'm not sure
+if that's something I care enough to change.
 
-Anyway, inside `data` there's a bunch of sample ones that I had created and
-played around with.  Perhaps this'll be of use to someone.
+Inside the `data` directory, you can find the collected maps that I've produced
+over the years, as well as a few testing maps.  For the most part these
+shouldn't contain too many non-map-related spoilers, though there were a few
+games which I'd used the map as a general- purpose note-taking device as well.
 
 Running
 -------
 
-This is written in Python 2, using PyGTK2/PyCairo, and is therefore a gtk+-2
+This is written in Python 2.7, using PyGTK2/PyCairo, and is therefore a gtk+-2
 application.  As far as I know, PyGTK2 doesn't work with Python 3 (you've
 instead got to start using gobject for gtk+-3 bindings instead), so this
 remains a Python 2 app.
