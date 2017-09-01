@@ -338,6 +338,7 @@ class MapTests(unittest.TestCase):
         r1 = original.add_room_at(0, 0, 'Room 1')
         r2 = original.add_room_at(1, 1, 'Room 2')
         original.group_rooms(r1, r2)
+        r1.group.style = Group.STYLE_GREEN
         new = original.duplicate()
         self.assertEqual(len(new.groups), 1)
         self.assertNotEqual(original.groups[0], new.groups[0])
@@ -345,6 +346,7 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(new_group.rooms), 2)
         self.assertEqual(new_group.rooms[0].idnum, r1.idnum)
         self.assertEqual(new_group.rooms[1].idnum, r2.idnum)
+        self.assertEqual(new_group.style, Group.STYLE_GREEN)
 
     def test_duplicate_single_group_three_rooms(self):
         """
@@ -356,6 +358,7 @@ class MapTests(unittest.TestCase):
         r3 = original.add_room_at(2, 2, 'Room 3')
         original.group_rooms(r1, r2)
         original.group_rooms(r3, r1)
+        r1.group.style = Group.STYLE_RED
         new = original.duplicate()
         self.assertEqual(len(new.groups), 1)
         self.assertNotEqual(original.groups[0], new.groups[0])
@@ -364,6 +367,7 @@ class MapTests(unittest.TestCase):
         self.assertEqual(new_group.rooms[0].idnum, r1.idnum)
         self.assertEqual(new_group.rooms[1].idnum, r2.idnum)
         self.assertEqual(new_group.rooms[2].idnum, r3.idnum)
+        self.assertEqual(new_group.style, Group.STYLE_RED)
 
     def test_duplicate_two_groups_four_rooms(self):
         """
@@ -376,6 +380,8 @@ class MapTests(unittest.TestCase):
         r4 = original.add_room_at(3, 3, 'Room 3')
         original.group_rooms(r1, r2)
         original.group_rooms(r3, r4)
+        r1.group.style = Group.STYLE_BLUE
+        r3.group.style = Group.STYLE_YELLOW
         new = original.duplicate()
         self.assertEqual(len(new.groups), 2)
         self.assertNotEqual(original.groups[0], new.groups[0])
@@ -384,10 +390,12 @@ class MapTests(unittest.TestCase):
         self.assertEqual(len(new_group1.rooms), 2)
         self.assertEqual(new_group1.rooms[0].idnum, r1.idnum)
         self.assertEqual(new_group1.rooms[1].idnum, r2.idnum)
+        self.assertEqual(new_group1.style, Group.STYLE_BLUE)
         new_group2 = new.groups[1]
         self.assertEqual(len(new_group2.rooms), 2)
         self.assertEqual(new_group2.rooms[0].idnum, r3.idnum)
         self.assertEqual(new_group2.rooms[1].idnum, r4.idnum)
+        self.assertEqual(new_group2.style, Group.STYLE_YELLOW)
 
     def test_roomlist_no_rooms(self):
         """

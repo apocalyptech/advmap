@@ -1078,6 +1078,7 @@ class Map(object):
             r1 = newmap.get_room(group.rooms[0].idnum)
             r2 = newmap.get_room(group.rooms[1].idnum)
             newmap.group_rooms(r1, r2)
+            r1.group.style = group.style
             for room in group.rooms[2:]:
                 newmap.group_rooms(newmap.get_room(room.idnum), r1)
         return newmap
