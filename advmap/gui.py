@@ -1092,23 +1092,23 @@ class GUI(object):
         # So that's what we're doing here.
         if (room.type != Room.TYPE_CONNHELPER and
                 (room.type == Room.TYPE_LABEL or room.unexplored())):
-            effective_type = Room.TYPE_LABEL
+            pretend_label = True
         else:
-            effective_type = room.type
+            pretend_label = (room.type == Room.TYPE_LABEL)
 
         # Find out if we're part of a multi-select
         is_selected = (room in self.multi_select)
 
         # Figure out our colors
-        if effective_type in self.c_type_map:
-            if room.color in self.c_type_map[effective_type]:
-                border = self.c_type_map[effective_type][room.color][0]
-                background = self.c_type_map[effective_type][room.color][1]
-                textcolor = self.c_type_map[effective_type][room.color][2]
+        if room.type in self.c_type_map:
+            if room.color in self.c_type_map[room.type]:
+                border = self.c_type_map[room.type][room.color][0]
+                background = self.c_type_map[room.type][room.color][1]
+                textcolor = self.c_type_map[room.type][room.color][2]
             else:
-                border = self.c_type_map[effective_type][Room.COLOR_BW][0]
-                background = self.c_type_map[effective_type][Room.COLOR_BW][1]
-                textcolor = self.c_type_map[effective_type][Room.COLOR_BW][2]
+                border = self.c_type_map[room.type][Room.COLOR_BW][0]
+                background = self.c_type_map[room.type][Room.COLOR_BW][1]
+                textcolor = self.c_type_map[room.type][Room.COLOR_BW][2]
         else:
             border = self.c_type_map[Room.TYPE_NORMAL][Room.COLOR_BW][0]
             background = self.c_type_map[Room.TYPE_NORMAL][Room.COLOR_BW][1]
@@ -1121,13 +1121,13 @@ class GUI(object):
         # (the only case where we don't, currently, is for nonselected
         # connection helpers)
         do_bg_fill = True
-        if effective_type == Room.TYPE_CONNHELPER and not is_selected:
+        if room.type == Room.TYPE_CONNHELPER and not is_selected:
             do_bg_fill = False
 
         # Fill the background if we're supposed to
         if do_bg_fill:
             if is_selected:
-                if effective_type == Room.TYPE_DARK:
+                if room.type == Room.TYPE_DARK:
                     ctx.set_source_rgba(
                             background[0]*1.5,
                             background[1]*1.5,
@@ -1148,13 +1148,13 @@ class GUI(object):
 
         # Draw our room border
         ctx.set_source_rgba(*border)
-        if effective_type == Room.TYPE_LABEL:
+        if pretend_label == Room.TYPE_LABEL:
             ctx.set_dash([9.0], 0)
         if is_selected:
             ctx.set_line_width(3)
         else:
             ctx.set_line_width(1)
-        if effective_type == Room.TYPE_CONNHELPER:
+        if room.type == Room.TYPE_CONNHELPER:
             # NW corner
             ctx.move_to(x, y)
             ctx.line_to(x+self.connhelper_corner_length, y)
@@ -1397,7 +1397,7 @@ class GUI(object):
                         mmctx.rectangle(x+self.EDGE_OFF[direction][0], y+self.EDGE_OFF[direction][1], self.room_spc, self.room_spc)
                         mmctx.fill()
 
-        if effective_type == Room.TYPE_LABEL:
+        if pretend_label == Room.TYPE_LABEL:
             label_layout = pango.Layout(self.pangoctx)
             label_layout.set_markup('<i>%s</i>' % (gobject.markup_escape_text(room.name)))
             label_layout.set_width((self.room_w-self.room_spc)*pango.SCALE)
@@ -1414,7 +1414,7 @@ class GUI(object):
             ctx.set_source_rgba(*textcolor)
             pangoctx = pangocairo.CairoContext(ctx)
             pangoctx.show_layout(label_layout)
-        elif effective_type != Room.TYPE_CONNHELPER:
+        elif room.type != Room.TYPE_CONNHELPER:
             # Draw the room title
             if (room.notes and room.notes != ''):
                 self.update_notes(room.notes)
@@ -1474,7 +1474,7 @@ class GUI(object):
                     text_x = ladder_x + icon_dim + icon_txt_spc
 
                     # Draw the icon
-                    if effective_type == Room.TYPE_DARK:
+                    if room.type == Room.TYPE_DARK:
                         graphic = graphic_dark
                     else:
                         graphic = graphic_light
