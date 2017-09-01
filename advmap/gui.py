@@ -1878,7 +1878,10 @@ class GUI(object):
             self.new_group_with_align.show_all()
             self.room_group_label.hide()
             self.room_group_align.hide()
-            self.new_group_with_button.set_active(False)
+            if from_room.group is not None:
+                self.new_group_with_button.set_active(True)
+            else:
+                self.new_group_with_button.set_active(False)
             self.new_to_dir_box.set_active(DIR_OPP[from_dir])
             self.new_conn_type_pass_twoway.set_active(True)
             self.new_conn_style_regular.set_active(True)
