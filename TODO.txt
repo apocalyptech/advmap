@@ -17,10 +17,34 @@ GUI stuffs:
    it.
  * Have a separate set of "activated" icons for our toggleable buttons
  * Undo/Redo would be real nice
+ * Copy/Paste would be nice, too.
  * Popup when LMB on a connection to edit conn attributes (should be much
    more manageable than our previous Advanced tab on Room Edit)
  * Better one-way arrows for ladder connections.  What we do right now
    is technically Good Enough, but it doesn't really look great.
+ * I would like to have the app remember the scrollbar positions for all
+   the maps in a game, and automatically put you back where you left off
+   when you're flipping back.  This is especially annoying in, for
+   instance, Stationfall, since you're hopping through tons of maps pretty
+   frequently.  I haven't yet found a reasonable way to do this, though,
+   because the Adjustments attached to the scrollbars don't actually get
+   updated until after we've relenquished control to the GTK mainloop.  So
+   if we try to update the Adjustments *before* getting back to the
+   mainloop, in the main `draw()` function (where it happens right now the
+   very first time), it won't work properly if the map sizes that you've
+   changed between are different, since the Adjustments haven't been
+   updated yet.  I tried hooking into the Adjustments' "changed" signal
+   instead, but there's two problems there: 1) sometimes two maps have the
+   same dimensions, so "changed" is never triggered, and 2) you'll get TWO
+   of those signals if there's a change to whether or not the scrollbar
+   gets rendered.  #2 isn't that big of a deal; I could deal with a bit of
+   drift.  #1 is more frustrating, though.  I tried doing some nonsense
+   with flipping values back and forth in an attempt to get the signal to
+   go out regardless but didn't have much success.  I also tried hooking
+   into the main `on_expose()` event, which seemed to do slightly better
+   than doing the resize in the `draw()` function, but it was still very
+   liable to Not Work in various circumstances.  Frustrating!  Will maybe
+   try again later, but I'm through messing with it for now.
 
 Internal stuffs:
  * Have a flag to draw_room() which lets us only re-draw the mousemap
