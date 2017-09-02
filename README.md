@@ -1,3 +1,13 @@
+WARNING
+=======
+
+This branch is going to be an attempt to port this over to PyQt5, specifically
+using their excellent-looking QGraphicsView/QGraphicsScene framework.  The
+branch may be in various states of disarray and will probably often not work
+at all.  At time of writing this, I haven't actually even started on the
+conversion, but it'll probably soon start getting all broken.  So beware!
+You probably want to be back on the master branch.
+
 Adventure Game Mapper
 =====================
 
