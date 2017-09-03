@@ -100,13 +100,13 @@ class Savefile(object):
         """ Passthrough to the internal object. """
         return self.df.tell()
 
-    def write(self, str):
+    def write(self, byteval):
         """ Passthrough to the internal object. """
-        return self.df.write(str)
+        return self.df.write(byteval)
 
-    def read(self, len=-1):
+    def read(self, length=-1):
         """ Read the rest of the file from the handle. """
-        return self.df.read(len)
+        return self.df.read(length)
 
     def readchar(self):
         """ Read a signed character (1-byte) "integer" from the savefile. """
@@ -174,14 +174,14 @@ class Savefile(object):
             raise IOError('File is not open for reading')
         length = self.readshort()
         if (length == 0):
-            str = ''
+            string = ''
         else:
-            str = self.df.read(length)
-        if (len(str) != length):
-            raise LoadException('Error reading string, expected %d, read %d' % (length, len(str)))
+            string = str(self.df.read(length), encoding='utf-8')
+        if (len(string) != length):
+            raise LoadException('Error reading string, expected %d, read %d' % (length, len(string)))
         # Discard the NULL byte
         self.readchar()
-        return str
+        return string
 
     def writestr(self, strval):
         """
@@ -196,5 +196,5 @@ class Savefile(object):
         if (len(strval) > 65535):
             raise IOError('Maximum string length is currently 65535')
         self.writeshort(len(strval))
-        self.df.write(strval)
-        self.df.write("\0")
+        self.df.write(bytes(strval, 'utf-8'))
+        self.df.write(b"\0")

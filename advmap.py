@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # vim: set expandtab tabstop=4 shiftwidth=4:
 #
 # Adventure Game Mapper
@@ -19,7 +19,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import sys
-from advmap.gui import GUI
+from advmap.gui import Application
 from optparse import OptionParser
 
 # Parse Arguments
@@ -31,10 +31,10 @@ parser.add_option('-r', '--readonly',
 
 # See if we have any files to load initially
 if (len(args) > 0):
-    file = args[0]
+    filename = args[0]
 else:
-    file = None
+    filename = None
 
 # ... regardless, run the GUI
-gui = GUI(file, options.readonly)
-gui.run()
+gui = Application(filename, options.readonly)
+sys.exit(gui.exec_())

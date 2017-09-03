@@ -1510,7 +1510,7 @@ class Game(object):
         """
         Save ourselves to a Savefile object
         """
-        df.write('ADVMAP')
+        df.write(b'ADVMAP')
         df.writeshort(SAVEFILE_VER)
         df.writestr(self.name)
         df.writeshort(len(self.maps))
@@ -1534,7 +1534,7 @@ class Game(object):
         Loads ourselves from a Savefile object.  Returns the Game object.
         """
         openstr = df.read(6)
-        if (openstr != 'ADVMAP'):
+        if (openstr != b'ADVMAP'):
             raise LoadException('Invalid Map File specified')
         version = df.readshort()
         if (version > SAVEFILE_VER):

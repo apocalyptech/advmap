@@ -75,7 +75,7 @@ class GameTests(unittest.TestCase):
         df = self.getSavefile()
         g._save(df)
         df.seek(0)
-        self.assertEqual(df.read(6), 'ADVMAP')
+        self.assertEqual(df.read(6), b'ADVMAP')
         self.assertEqual(df.readshort(), SAVEFILE_VER)
         self.assertEqual(df.readstr(), 'Game')
         self.assertEqual(df.readshort(), 0)
@@ -91,7 +91,7 @@ class GameTests(unittest.TestCase):
         df = self.getSavefile()
         g._save(df)
         df.seek(0)
-        self.assertEqual(df.read(6), 'ADVMAP')
+        self.assertEqual(df.read(6), b'ADVMAP')
         self.assertEqual(df.readshort(), SAVEFILE_VER)
         self.assertEqual(df.readstr(), 'Game')
         self.assertEqual(df.readshort(), 1)
@@ -117,7 +117,7 @@ class GameTests(unittest.TestCase):
             g.save(pathname)
             df = Savefile(pathname)
             df.open_r()
-            self.assertEqual(df.read(6), 'ADVMAP')
+            self.assertEqual(df.read(6), b'ADVMAP')
             self.assertEqual(df.readshort(), SAVEFILE_VER)
             self.assertEqual(df.readstr(), 'Game')
             self.assertEqual(df.readshort(), 0)
@@ -131,7 +131,7 @@ class GameTests(unittest.TestCase):
         Test loading without any maps
         """
         df = self.getSavefile()
-        df.write('ADVMAP')
+        df.write(b'ADVMAP')
         df.writeshort(SAVEFILE_VER)
         df.writestr('Game')
         df.writeshort(0)
@@ -147,7 +147,7 @@ class GameTests(unittest.TestCase):
         Test loading with a single map
         """
         df = self.getSavefile()
-        df.write('ADVMAP')
+        df.write(b'ADVMAP')
         df.writeshort(SAVEFILE_VER)
         df.writestr('Game')
         df.writeshort(1)
@@ -172,7 +172,7 @@ class GameTests(unittest.TestCase):
         Test loading when the file isn't valid
         """
         df = self.getSavefile()
-        df.write('NOTAMAPFILE')
+        df.write(b'NOTAMAPFILE')
         df.seek(0)
 
         with self.assertRaises(LoadException) as cm:
@@ -193,7 +193,7 @@ class GameTests(unittest.TestCase):
         Test loading when the mapfile version is higher than we understand
         """
         df = self.getSavefile()
-        df.write('ADVMAP')
+        df.write(b'ADVMAP')
         df.writeshort(SAVEFILE_VER+1)
         df.writestr('Game')
         df.writeshort(0)
@@ -212,7 +212,7 @@ class GameTests(unittest.TestCase):
         try:
             df = Savefile(pathname)
             df.open_w()
-            df.write('ADVMAP')
+            df.write(b'ADVMAP')
             df.writeshort(SAVEFILE_VER)
             df.writestr('Game')
             df.writeshort(0)

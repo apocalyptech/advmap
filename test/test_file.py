@@ -215,7 +215,7 @@ class SavefileTests(unittest.TestCase):
         Test for end-of-file when that is not the case.
         """
         df = self.get_in_memory()
-        df.write('test')
+        df.write(b'test')
         df.seek(0)
         self.assertEqual(df.eof(), False)
         self.assertEqual(df.tell(), 0)
@@ -225,34 +225,34 @@ class SavefileTests(unittest.TestCase):
         Test basic `seek()` functionality.
         """
         df = self.get_in_memory()
-        df.write('0123456789')
+        df.write(b'0123456789')
         df.seek(5)
-        self.assertEqual(df.read(1), '5')
+        self.assertEqual(df.read(1), b'5')
 
     def test_seek_whence_cur(self):
         """
         Test `seek()` functionality using the `whence` arg os.SEEK_CUR
         """
         df = self.get_in_memory()
-        df.write('0123456789')
+        df.write(b'0123456789')
         df.seek(-2, os.SEEK_CUR)
-        self.assertEqual(df.read(1), '8')
+        self.assertEqual(df.read(1), b'8')
 
     def test_seek_whence_end(self):
         """
         Test `seek()` functionality using the `whence` arg os.SEEK_END
         """
         df = self.get_in_memory()
-        df.write('0123456789')
+        df.write(b'0123456789')
         df.seek(-3, os.SEEK_END)
-        self.assertEqual(df.read(1), '7')
+        self.assertEqual(df.read(1), b'7')
 
     def test_tell(self):
         """
         Test `tell()` functionality
         """
         df = self.get_in_memory()
-        df.write('0123456789')
+        df.write(b'0123456789')
         self.assertEqual(df.tell(), 10)
         df.seek(0)
         self.assertEqual(df.tell(), 0)
@@ -262,27 +262,27 @@ class SavefileTests(unittest.TestCase):
         Test writing arbitrary data
         """
         df = self.get_in_memory()
-        df.write('hello')
+        df.write(b'hello')
         df.seek(0)
-        self.assertEqual(df.read(5), 'hello')
+        self.assertEqual(df.read(5), b'hello')
 
     def test_read_specific(self):
         """
         Tests reading a certain amount of data
         """
         df = self.get_in_memory()
-        df.write('hello')
+        df.write(b'hello')
         df.seek(0)
-        self.assertEqual(df.read(1), 'h')
+        self.assertEqual(df.read(1), b'h')
 
     def test_read_all(self):
         """
         Tests reading the rest of the data in the file
         """
         df = self.get_in_memory()
-        df.write('hello')
+        df.write(b'hello')
         df.seek(0)
-        self.assertEqual(df.read(), 'hello')
+        self.assertEqual(df.read(), b'hello')
 
     def test_reading_on_unopened_file(self):
         """
@@ -400,7 +400,7 @@ class SavefileTests(unittest.TestCase):
         """
         df = self.get_in_memory()
         df.writeshort(10)
-        df.write('hi')
+        df.write(b'hi')
         df.seek(0)
         with self.assertRaises(LoadException) as cm:
             df.readstr()
