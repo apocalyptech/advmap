@@ -71,6 +71,7 @@ class Constants(object):
     c_highlight_del = QtGui.QColor(255, 127, 127, 51)
     c_highlight_new = QtGui.QColor(127, 127, 255, 51)
     c_grid = QtGui.QColor(229, 229, 229, 255)
+    c_transparent = QtGui.QColor(0, 0, 0, 0)
 
     c_group_map = {
             Group.STYLE_NORMAL: QtGui.QColor(216, 216, 216, 255),
@@ -231,8 +232,8 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.gui_room = gui_room
         self.setAcceptHoverEvents(True)
         self.setFlags(self.ItemIsFocusable)
-        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
-        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setPos(gui_room.gfx_x, gui_room.gfx_y)
         self.setZValue(Constants.z_value_room_hover)
@@ -249,8 +250,8 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         """
         We've entered hovering
         """
-        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
-        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
 
     def keyPressEvent(self, event):
@@ -265,8 +266,6 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         super().__init__()
         self.room = room
         self.set_position()
-        #self.setAcceptHoverEvents(True)
-        #self.setFlags(self.ItemIsFocusable)
         self.setZValue(Constants.z_value_room)
 
         self.color_border = Constants.c_type_map[self.room.type][self.room.color][0]
@@ -322,9 +321,9 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         font.setWeight(font.Bold)
         self.title.setFont(font)
         #print(self.title.boundingRect().height())
-
         self.title.setPos(Constants.room_space_half/2, Constants.room_space_half/8)
 
+        # Set our coloration
         self.setBrush(QtGui.QBrush(self.color_bg))
         self.setPen(QtGui.QPen(self.color_border))
         if self.color_text:
