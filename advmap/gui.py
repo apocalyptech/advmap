@@ -237,6 +237,45 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         self.color_bg = Constants.c_type_map[self.room.type][self.room.color][1]
         self.color_text = Constants.c_type_map[self.room.type][self.room.color][2]
 
+        # Show our notes, or at least set up a pretend note var so that we know
+        # what height to constrain our title
+        notes_font = QtGui.QFont()
+        notes_font.setItalic(True)
+        notes_metrics = QtGui.QFontMetrics(notes_font)
+        if self.room.notes is None or self.room.notes == '':
+            metrics_rect = notes_metrics.boundingRect('(notes)')
+            self.notes = None
+        else:
+            if len(self.room.notes) > 15:
+                note_str = '%s...' % (self.room.notes[:12])
+            else:
+                note_str = self.room.notes
+            metrics_rect = notes_metrics.boundingRect(note_str)
+            self.notes = QtWidgets.QGraphicsTextItem(note_str)
+            self.notes.setFont(notes_font)
+            self.notes.setTextWidth(Constants.room_size)
+            doc = self.notes.document()
+            options = doc.defaultTextOption()
+            options.setAlignment(QtCore.Qt.AlignHCenter)
+            options.setWrapMode(options.NoWrap)
+            doc.setDefaultTextOption(options)
+            notes_rect = self.notes.boundingRect()
+            # TODO: For centering, there's two ways to do it.
+            #   Way 1: setTextWidth+setAlignment+using a number below.  But for long notes, using -1 looks better than 0
+            #   Way 2: do the commented out calc instead.  But for long notes, using +1 looks better than without.
+            # ... why?
+            self.notes.setPos(
+                #Constants.room_size_half - (notes_rect.width()/2) + 1,
+                -1,
+                Constants.room_size_half - notes_rect.height() + ((notes_rect.height()-metrics_rect.height())/2)
+                )
+            self.notes.setParentItem(self)
+
+        # How tall our title is allowed to be is dependent, currently, on how tall
+        # Notes are (whether they're shown or not)
+        title_max_height = Constants.room_size_half - Constants.room_space_half - metrics_rect.height()
+
+        # Show our title
         self.title = QtWidgets.QGraphicsTextItem(self.room.name, self)
         self.title.setTextWidth(Constants.room_size-Constants.room_space_half)
         doc = self.title.document()
@@ -246,9 +285,9 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         font = QtGui.QFont()
         font.setWeight(font.Bold)
         self.title.setFont(font)
-        print(self.title.boundingRect().height())
+        #print(self.title.boundingRect().height())
 
-        self.title.setPos(Constants.room_space_half/2, Constants.room_space_half/4)
+        self.title.setPos(Constants.room_space_half/2, Constants.room_space_half/8)
 
         self.set_hover_vars(False)
     
@@ -261,11 +300,15 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
             self.setPen(QtGui.QPen(overlay_color(self.color_border, Constants.c_highlight)))
             if self.color_text:
                 self.title.setDefaultTextColor(overlay_color(self.color_text, Constants.c_highlight))
+                if self.notes:
+                    self.notes.setDefaultTextColor(overlay_color(self.color_text, Constants.c_highlight))
         else:
             self.setBrush(QtGui.QBrush(self.color_bg))
             self.setPen(QtGui.QPen(self.color_border))
             if self.color_text:
                 self.title.setDefaultTextColor(self.color_text)
+                if self.notes:
+                    self.notes.setDefaultTextColor(self.color_text)
 
     def set_position(self):
         """
