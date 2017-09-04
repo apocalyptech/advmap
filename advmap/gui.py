@@ -54,12 +54,13 @@ class Constants(object):
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
     (z_value_background,
-        z_value_groups,
-        z_value_connections,
-        z_value_rooms,
+        z_value_group,
+        z_value_connection,
+        z_value_room,
+        z_value_room_hover,
         z_value_connection_hover,
         z_value_edge_hover,
-        ) = range(6)
+        ) = range(7)
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
@@ -223,15 +224,50 @@ class GUI(QtWidgets.QMainWindow):
         room.color = Room.COLOR_GREEN
         return mapobj
 
+class GUIRoomHover(QtWidgets.QGraphicsRectItem):
+
+    def __init__(self, parent, gui_room):
+        super().__init__()
+        self.gui_room = gui_room
+        self.setAcceptHoverEvents(True)
+        self.setFlags(self.ItemIsFocusable)
+        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.setRect(0, 0, Constants.room_size, Constants.room_size)
+        self.setPos(gui_room.gfx_x, gui_room.gfx_y)
+        self.setZValue(Constants.z_value_room_hover)
+
+    def hoverEnterEvent(self, event):
+        """
+        We've entered hovering
+        """
+        self.setBrush(QtGui.QBrush(Constants.c_highlight))
+        self.setPen(QtGui.QPen(Constants.c_highlight))
+        self.setFocus()
+
+    def hoverLeaveEvent(self, event):
+        """
+        We've entered hovering
+        """
+        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.clearFocus()
+
+    def keyPressEvent(self, event):
+        """
+        Keyboard input
+        """
+        print('{}: Received {}'.format(self.gui_room.room.name, event.text()))
+
 class GUIRoom(QtWidgets.QGraphicsRectItem):
 
     def __init__(self, parent, room):
         super().__init__()
         self.room = room
         self.set_position()
-        self.setAcceptHoverEvents(True)
-        self.setFlags(self.ItemIsFocusable)
-        self.setZValue(Constants.z_value_rooms)
+        #self.setAcceptHoverEvents(True)
+        #self.setFlags(self.ItemIsFocusable)
+        self.setZValue(Constants.z_value_room)
 
         self.color_border = Constants.c_type_map[self.room.type][self.room.color][0]
         self.color_bg = Constants.c_type_map[self.room.type][self.room.color][1]
@@ -289,59 +325,29 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
 
         self.title.setPos(Constants.room_space_half/2, Constants.room_space_half/8)
 
-        self.set_hover_vars(False)
-    
-    def set_hover_vars(self, hovered):
-        """
-        Sets vars which change depending on if we're hovered or not
-        """
-        if hovered:
-            self.setBrush(QtGui.QBrush(overlay_color(self.color_bg, Constants.c_highlight)))
-            self.setPen(QtGui.QPen(overlay_color(self.color_border, Constants.c_highlight)))
-            if self.color_text:
-                self.title.setDefaultTextColor(overlay_color(self.color_text, Constants.c_highlight))
-                if self.notes:
-                    self.notes.setDefaultTextColor(overlay_color(self.color_text, Constants.c_highlight))
-        else:
-            self.setBrush(QtGui.QBrush(self.color_bg))
-            self.setPen(QtGui.QPen(self.color_border))
-            if self.color_text:
-                self.title.setDefaultTextColor(self.color_text)
-                if self.notes:
-                    self.notes.setDefaultTextColor(self.color_text)
+        self.setBrush(QtGui.QBrush(self.color_bg))
+        self.setPen(QtGui.QPen(self.color_border))
+        if self.color_text:
+            self.title.setDefaultTextColor(self.color_text)
+            if self.notes:
+                self.notes.setDefaultTextColor(self.color_text)
+        
+        # Also add a Hover object for ourselves
+        self.hover_obj = GUIRoomHover(parent, self)
+
 
     def set_position(self):
         """
         Sets our position within the scene, based on our room coords
         """
-        gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.x
-        gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.y
+        self.gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.x
+        self.gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.y
         if self.room.offset_x:
-            gfx_x += Constants.room_size_half + Constants.room_space_half
+            self.gfx_x += Constants.room_size_half + Constants.room_space_half
         if self.room.offset_y:
-            gfx_y += Constants.room_size_half + Constants.room_space_half
+            self.gfx_y += Constants.room_size_half + Constants.room_space_half
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
-        self.setPos(gfx_x, gfx_y)
-
-    def hoverEnterEvent(self, event):
-        """
-        We've entered hovering
-        """
-        self.set_hover_vars(True)
-        self.setFocus()
-
-    def hoverLeaveEvent(self, event):
-        """
-        We've entered hovering
-        """
-        self.set_hover_vars(False)
-        self.clearFocus()
-
-    def keyPressEvent(self, event):
-        """
-        Keyboard input
-        """
-        print('{}: Received {}'.format(self.room.name, event.text()))
+        self.setPos(self.gfx_x, self.gfx_y)
 
 class MapScene(QtWidgets.QGraphicsScene):
 
@@ -369,6 +375,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         for room in mapobj.rooms.values():
             guiroom = GUIRoom(self, room)
             self.addItem(guiroom)
+            self.addItem(guiroom.hover_obj)
 
 class MapArea(QtWidgets.QGraphicsView):
 
