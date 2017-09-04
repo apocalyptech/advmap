@@ -47,8 +47,19 @@ class Constants(object):
     # Geometry of our rooms, etc
     room_size = 110
     room_size_half = room_size/2
-    room_space_half = 30
-    room_space_half = room_space_half/2
+    room_space = 30
+    room_space_half = room_space/2
+
+    # Z-values we'll use in the scene - layers, effectively.  This makes
+    # sure that our hovers are prioritized the way we want them to, and also
+    # makes connection+room rendering show up in a consistent way.
+    (z_value_background,
+        z_value_groups,
+        z_value_connections,
+        z_value_rooms,
+        z_value_connection_hover,
+        z_value_edge_hover,
+        ) = range(6)
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
@@ -220,6 +231,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         self.set_position()
         self.setAcceptHoverEvents(True)
         self.setFlags(self.ItemIsFocusable)
+        self.setZValue(Constants.z_value_rooms)
 
         self.color_border = Constants.c_type_map[self.room.type][self.room.color][0]
         self.color_bg = Constants.c_type_map[self.room.type][self.room.color][1]
@@ -259,8 +271,8 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         """
         Sets our position within the scene, based on our room coords
         """
-        gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space_half)*self.room.x
-        gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space_half)*self.room.y
+        gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.x
+        gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.y
         if self.room.offset_x:
             gfx_x += Constants.room_size_half + Constants.room_space_half
         if self.room.offset_y:
@@ -301,8 +313,8 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Sets our dimensions in terms of rooms
         """
-        total_w = (Constants.room_space_half + Constants.room_size)*w
-        total_h = (Constants.room_space_half + Constants.room_size)*h
+        total_w = (Constants.room_space + Constants.room_size)*w
+        total_h = (Constants.room_space + Constants.room_size)*h
         self.setSceneRect(QtCore.QRectF(0, 0, total_w, total_h))
 
     def set_map(self, mapobj):
