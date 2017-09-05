@@ -51,15 +51,19 @@ class Constants(object):
     room_space_half = room_space/2
     connhelper_corner_length = room_size_half*.2
 
+    # Border around the room where we theoretically want to not have text
+    room_text_padding = 6
+
+    # Vars for our in/out/up/down labels
+    icon_start_y = room_size_half + 6
+    icon_label_space = 3
+    icon_space_between = 4
+
     # Various room text spacing constants.  Some of these actually rely on
     # values we get from querying QFont and QFontMetrics data directly,
     # which will segfault the app if there's not a full Qt environment up
     # and running, so we can't do it here.  These will get populated when
     # our main GUI class is initializing.
-
-    # Border around the room where we theoretically want to not have text
-    # (also the space we'll try to keep between lines of text)
-    room_text_padding = 6
 
     # Blank padding which our QGraphicsTextItem objects will report on each
     # side of the actual text dimensions contained within.  Will be a dict with
@@ -72,12 +76,14 @@ class Constants(object):
     notes_font_sizes = [10, 9, 8, 7, 6]
     notes_padding_x = {}
     notes_padding_y = {}
+    default_note_size = 9
 
     # Similar to the others, for our in/out/up/down labels.  A dict because the
     # size can vary.
     other_font_sizes = [8, 7, 6]
     other_padding_x = {}
     other_padding_y = {}
+    other_max_width = None
 
     # Y position where we'll always draw the notes field, if it exists
     notes_start_y = None
@@ -85,6 +91,18 @@ class Constants(object):
     # Parameters for fitting the room title
     title_max_width = room_size - (room_text_padding*2)
     title_max_height = None
+
+    # Images.  As with some of the font stuff above, we need a QApplication first,
+    # so these will be loaded in later
+    gfx_room_in = None
+    gfx_room_out = None
+    gfx_ladder_up = None
+    gfx_ladder_down = None
+    gfx_room_in_rev = None
+    gfx_room_out_rev = None
+    gfx_ladder_up_rev = None
+    gfx_ladder_down_rev = None
+    gfx_icon_width = None
 
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
@@ -229,8 +247,20 @@ class GUI(QtWidgets.QMainWindow):
             t_rect = t.boundingRect()
             Constants.notes_padding_x[font_size] = (t_rect.width() - m_rect.width()) / 2
             Constants.notes_padding_y[font_size] = (t_rect.height() - m_rect.height()) / 2
-        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.notes_font_sizes[0]]
+        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.default_note_size]*2
         Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
+
+        # Load in some external images; currently all assumed to be the same width
+        Constants.gfx_door_in = QtGui.QPixmap(self.resfile('door_in.png'))
+        Constants.gfx_door_out = QtGui.QPixmap(self.resfile('door_out.png'))
+        Constants.gfx_ladder_up = QtGui.QPixmap(self.resfile('ladder_up.png'))
+        Constants.gfx_ladder_down = QtGui.QPixmap(self.resfile('ladder_down.png'))
+        Constants.gfx_door_in_rev = QtGui.QPixmap(self.resfile('door_in_rev.png'))
+        Constants.gfx_door_out_rev = QtGui.QPixmap(self.resfile('door_out_rev.png'))
+        Constants.gfx_ladder_up_rev = QtGui.QPixmap(self.resfile('ladder_up_rev.png'))
+        Constants.gfx_ladder_down_rev = QtGui.QPixmap(self.resfile('ladder_down_rev.png'))
+        Constants.gfx_icon_width = Constants.gfx_door_in.width()
+        Constants.other_max_width = Constants.room_size - Constants.room_text_padding*2 - Constants.gfx_icon_width - Constants.icon_label_space
 
         # Load the specified game, or create a blank map
         self.curfile = None
@@ -293,6 +323,19 @@ class GUI(QtWidgets.QMainWindow):
         room = mapobj.add_room_at(4, 4, 'Starting Room')
         room.color = Room.COLOR_GREEN
         return mapobj
+
+    def reldir(self, directory):
+        """
+        Returns a directory at the same level as our current directory.  Er, that makes little
+        sense to anyone but me, probably.
+        """
+        return os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', directory))
+
+    def resfile(self, filename):
+        """
+        Returns a proper full path to a file in our resource directory, given the base filename
+        """
+        return os.path.join(self.reldir('res'), filename)
 
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
@@ -371,7 +414,7 @@ class GUIRoomNotesTextItem(QtWidgets.QGraphicsTextItem):
         else:
             note_str = parent.room.notes
         super().__init__(note_str, parent)
-        self.setFont(GUIRoom.get_notes_font(9))
+        self.setFont(GUIRoom.get_notes_font(Constants.default_note_size))
         self.setDefaultTextColor(parent.color_text)
         doc = self.document()
         options = doc.defaultTextOption()
@@ -426,6 +469,41 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
                 Constants.room_text_padding - Constants.title_padding_y[font_size],
             )
 
+class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
+
+    def __init__(self, parent, text, graphic, y):
+
+        super().__init__(graphic, parent)
+
+        # Loop through to find out what size we can put in there
+        width = 999
+        chars = min(15, len(text))
+        self.label = QtWidgets.QGraphicsTextItem(parent)
+        self.label.setDefaultTextColor(parent.color_text)
+        while (width > Constants.other_max_width):
+            self.label.setPlainText(text)
+            for font_size in Constants.other_font_sizes:
+                self.label.setFont(GUIRoom.get_other_font(font_size))
+                rect = self.label.boundingRect()
+                width = rect.width() - Constants.other_padding_x[font_size]*2
+                if width <= Constants.other_max_width:
+                    break
+            if width > Constants.other_max_width:
+                chars -= 1
+                if chars == 0:
+                    break
+                text = '{} ...'.format(text[:chars])
+        icon_x = Constants.room_size_half - (Constants.gfx_icon_width + Constants.icon_space_between + width)/2
+
+        # Set our own position
+        self.setPos(icon_x, y)
+
+        # Set the text position
+        self.label.setPos(
+                icon_x + Constants.gfx_icon_width + Constants.icon_space_between - Constants.other_padding_x[font_size],
+                y - Constants.other_padding_y[font_size]
+            )
+
 class GUIRoom(QtWidgets.QGraphicsRectItem):
 
     def __init__(self, parent, room):
@@ -463,6 +541,22 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
             # Show our title
             if room.type != Room.TYPE_CONNHELPER:
                 self.title = GUIRoomTitleTextItem(self)
+
+        # Draw any in/out/up/down labels we might have
+        if room.type != Room.TYPE_CONNHELPER and room.type != Room.TYPE_LABEL:
+            cur_y = Constants.icon_start_y
+            for (label, (graphic_light, graphic_dark)) in [
+                    (room.up, (Constants.gfx_ladder_up, Constants.gfx_ladder_up_rev)),
+                    (room.down, (Constants.gfx_ladder_down, Constants.gfx_ladder_down_rev)),
+                    (room.door_in, (Constants.gfx_door_in, Constants.gfx_door_in_rev)),
+                    (room.door_out, (Constants.gfx_door_out, Constants.gfx_door_out_rev))]:
+                if label and label != '':
+                    if room.type == Room.TYPE_DARK:
+                        graphic = graphic_dark
+                    else:
+                        graphic = graphic_light
+                    label = GUIRoomTextLabel(self, label, graphic, cur_y)
+                    cur_y += graphic.height() + Constants.icon_space_between
 
         # Set our background/border coloration
         # TODO: be sure to draw connhelper background if we're selected
