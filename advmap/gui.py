@@ -50,6 +50,42 @@ class Constants(object):
     room_space = 30
     room_space_half = room_space/2
 
+    # Various room text spacing constants.  Some of these actually rely on
+    # values we get from querying QFont and QFontMetrics data directly,
+    # which will segfault the app if there's not a full Qt environment up
+    # and running, so we can't do it here.  These will get populated when
+    # our main GUI class is initializing.
+
+    # Border around the room where we theoretically want to not have text
+    # (also the space we'll try to keep between lines of text)
+    room_text_padding = 5
+
+    # Blank padding which our QGraphicsTextItem objects will report on each
+    # side of the actual text dimensions contained within.  Will be a dict with
+    # the key corresponding to the font size in use.
+    title_font_sizes = [10, 9, 8, 7, 6]
+    title_padding_x = {}
+    title_padding_y = {}
+
+    # Similar to the blank padding for title, but for notes.  We only have one
+    # size of note at the moment so this is not a dict
+    notes_font_size = 9
+    notes_padding_x = None
+    notes_padding_y = None
+
+    # Similar to the others, for our in/out/up/down labels.  A dict because the
+    # size can vary.
+    other_font_sizes = [8, 7, 6]
+    other_padding_x = {}
+    other_padding_y = {}
+
+    # Y position where we'll always draw the notes field, if it exists
+    notes_start_y = None
+
+    # Parameters for fitting the room title
+    title_max_width = room_size - (room_text_padding*2)
+    title_max_height = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -162,6 +198,38 @@ class GUI(QtWidgets.QMainWindow):
         # Set up a stats bar
         self.statusbar = self.statusBar()
 
+        # Set up some constants which we can't do directly in Constants
+        # because of Reasons.  First up: title font padding
+        for font_size in Constants.title_font_sizes:
+            f = GUIRoom.get_title_font(font_size)
+            m = QtGui.QFontMetrics(f)
+            m_rect = m.boundingRect('Title')
+            t = QtWidgets.QGraphicsTextItem('Title')
+            t.setFont(f)
+            t_rect = t.boundingRect()
+            Constants.title_padding_x[font_size] = (t_rect.width() - m_rect.width()) / 2
+            Constants.title_padding_y[font_size] = (t_rect.height() - m_rect.height()) // 2
+        # Next up: the exact same thing but for our "other" labels
+        for font_size in Constants.other_font_sizes:
+            f = GUIRoom.get_other_font(font_size)
+            m = QtGui.QFontMetrics(f)
+            m_rect = m.boundingRect('Other')
+            t = QtWidgets.QGraphicsTextItem('Other')
+            t.setFont(f)
+            t_rect = t.boundingRect()
+            Constants.other_padding_x[font_size] = (t_rect.width() - m_rect.width()) / 2
+            Constants.other_padding_y[font_size] = (t_rect.height() - m_rect.height()) // 2
+        # and finally (for this kind of calculation, anyway, for notes.
+        f = GUIRoom.get_other_font()
+        m = QtGui.QFontMetrics(f)
+        m_rect = m.boundingRect('Notes')
+        t = QtWidgets.QGraphicsTextItem('Notes')
+        t.setFont(f)
+        t_rect = t.boundingRect()
+        Constants.notes_padding_x = (t_rect.width() - m_rect.width()) / 2
+        Constants.notes_padding_y = (t_rect.height() - m_rect.height()) // 2
+        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y
+        Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
 
         # Load the specified game, or create a blank map
         self.curfile = None
@@ -259,6 +327,64 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         """
         print('{}: Received {}'.format(self.gui_room.room.name, event.text()))
 
+class GUIRoomNotesTextItem(QtWidgets.QGraphicsTextItem):
+    """
+    A text field used for showing room notes
+    """
+
+    def __init__(self, parent):
+        if len(parent.room.notes) > 15:
+            note_str = '%s...' % (parent.room.notes[:12])
+        else:
+            note_str = parent.room.notes
+        super().__init__(note_str, parent)
+        self.setFont(GUIRoom.get_notes_font())
+        self.setDefaultTextColor(parent.color_text)
+        doc = self.document()
+        options = doc.defaultTextOption()
+        options.setWrapMode(options.NoWrap)
+        doc.setDefaultTextOption(options)
+
+        # Update our position automatically.
+        rect = self.boundingRect()
+        self.setPos(
+                Constants.room_size_half - (rect.width()/2) + 1,
+                Constants.notes_start_y,
+            )
+
+class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
+    """
+    A text field used for showing room title
+    """
+
+    def __init__(self, parent):
+
+        super().__init__(parent.room.name, parent)
+
+        self.setTextWidth(Constants.title_max_width)
+        self.setDefaultTextColor(parent.color_text)
+        doc = self.document()
+        options = doc.defaultTextOption()
+        options.setAlignment(QtCore.Qt.AlignHCenter)
+        options.setWrapMode(options.WordWrap)
+        doc.setDefaultTextOption(options)
+
+        # Loop through font sizes, trying to find one which fits
+        for font_size in Constants.title_font_sizes:
+            self.setFont(GUIRoom.get_title_font(font_size))
+            rect = self.boundingRect()
+            if (rect.width() > (Constants.title_max_width + (Constants.title_padding_x[font_size]*2)) or
+                    rect.height() > (Constants.title_max_height + (Constants.title_padding_y[font_size]*2))):
+                continue
+            else:
+                break
+
+        # Set our position
+        self.setPos(
+                Constants.room_text_padding,
+                Constants.room_text_padding - Constants.title_padding_y[font_size],
+            )
+
 class GUIRoom(QtWidgets.QGraphicsRectItem):
 
     def __init__(self, parent, room):
@@ -267,71 +393,53 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         self.set_position()
         self.setZValue(Constants.z_value_room)
 
+        # Set up the colors we'll use
         self.color_border = Constants.c_type_map[self.room.type][self.room.color][0]
         self.color_bg = Constants.c_type_map[self.room.type][self.room.color][1]
         self.color_text = Constants.c_type_map[self.room.type][self.room.color][2]
 
-        # Show our notes, or at least set up a pretend note var so that we know
-        # what height to constrain our title
-        notes_font = QtGui.QFont()
-        notes_font.setItalic(True)
-        notes_metrics = QtGui.QFontMetrics(notes_font)
-        if self.room.notes is None or self.room.notes == '':
-            metrics_rect = notes_metrics.boundingRect('(notes)')
-            self.notes = None
-        else:
-            if len(self.room.notes) > 15:
-                note_str = '%s...' % (self.room.notes[:12])
-            else:
-                note_str = self.room.notes
-            metrics_rect = notes_metrics.boundingRect(note_str)
-            self.notes = QtWidgets.QGraphicsTextItem(note_str)
-            self.notes.setFont(notes_font)
-            self.notes.setTextWidth(Constants.room_size)
-            doc = self.notes.document()
-            options = doc.defaultTextOption()
-            options.setAlignment(QtCore.Qt.AlignHCenter)
-            options.setWrapMode(options.NoWrap)
-            doc.setDefaultTextOption(options)
-            notes_rect = self.notes.boundingRect()
-            # TODO: For centering, there's two ways to do it.
-            #   Way 1: setTextWidth+setAlignment+using a number below.  But for long notes, using -1 looks better than 0
-            #   Way 2: do the commented out calc instead.  But for long notes, using +1 looks better than without.
-            # ... why?
-            self.notes.setPos(
-                #Constants.room_size_half - (notes_rect.width()/2) + 1,
-                -1,
-                Constants.room_size_half - notes_rect.height() + ((notes_rect.height()-metrics_rect.height())/2)
-                )
-            self.notes.setParentItem(self)
-
-        # How tall our title is allowed to be is dependent, currently, on how tall
-        # Notes are (whether they're shown or not)
-        title_max_height = Constants.room_size_half - Constants.room_space_half - metrics_rect.height()
+        # Show our notes, if we need to
+        if self.room.notes and self.room.notes != '':
+            self.notes = GUIRoomNotesTextItem(self)
 
         # Show our title
-        self.title = QtWidgets.QGraphicsTextItem(self.room.name, self)
-        self.title.setTextWidth(Constants.room_size-Constants.room_space_half)
-        doc = self.title.document()
-        options = doc.defaultTextOption()
-        options.setAlignment(QtCore.Qt.AlignHCenter)
-        doc.setDefaultTextOption(options)
-        font = QtGui.QFont()
-        font.setWeight(font.Bold)
-        self.title.setFont(font)
-        #print(self.title.boundingRect().height())
-        self.title.setPos(Constants.room_space_half/2, Constants.room_space_half/8)
+        self.title = GUIRoomTitleTextItem(self)
 
         # Set our coloration
         self.setBrush(QtGui.QBrush(self.color_bg))
         self.setPen(QtGui.QPen(self.color_border))
-        if self.color_text:
-            self.title.setDefaultTextColor(self.color_text)
-            if self.notes:
-                self.notes.setDefaultTextColor(self.color_text)
         
         # Also add a Hover object for ourselves
         self.hover_obj = GUIRoomHover(self)
+
+    @staticmethod
+    def get_title_font(size=Constants.title_font_sizes[0]):
+        """
+        Returns a QFont for the title, of the specified size
+        """
+        f = QtGui.QFont()
+        f.setBold(True)
+        f.setPointSize(size)
+        return f
+
+    @staticmethod
+    def get_notes_font(size=Constants.notes_font_size):
+        """
+        Returns a QFont for our notes text, of the specified size
+        """
+        f = QtGui.QFont()
+        f.setItalic(True)
+        f.setPointSize(size)
+        return f
+
+    @staticmethod
+    def get_other_font(size=Constants.other_font_sizes[0]):
+        """
+        Returns a QFont for our "other" text, of the specified size
+        """
+        f = QtGui.QFont()
+        f.setPointSize(size)
+        return f
 
     def set_position(self):
         """
