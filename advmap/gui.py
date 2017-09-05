@@ -227,15 +227,14 @@ class GUI(QtWidgets.QMainWindow):
 
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
-    def __init__(self, parent, gui_room):
-        super().__init__()
+    def __init__(self, gui_room):
+        super().__init__(gui_room)
         self.gui_room = gui_room
         self.setAcceptHoverEvents(True)
         self.setFlags(self.ItemIsFocusable)
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
-        self.setPos(gui_room.gfx_x, gui_room.gfx_y)
         self.setZValue(Constants.z_value_room_hover)
 
     def hoverEnterEvent(self, event):
@@ -332,8 +331,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                 self.notes.setDefaultTextColor(self.color_text)
         
         # Also add a Hover object for ourselves
-        self.hover_obj = GUIRoomHover(parent, self)
-
+        self.hover_obj = GUIRoomHover(self)
 
     def set_position(self):
         """
@@ -374,7 +372,6 @@ class MapScene(QtWidgets.QGraphicsScene):
         for room in mapobj.rooms.values():
             guiroom = GUIRoom(self, room)
             self.addItem(guiroom)
-            self.addItem(guiroom.hover_obj)
 
 class MapArea(QtWidgets.QGraphicsView):
 
