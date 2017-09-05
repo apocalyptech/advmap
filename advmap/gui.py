@@ -58,7 +58,7 @@ class Constants(object):
 
     # Border around the room where we theoretically want to not have text
     # (also the space we'll try to keep between lines of text)
-    room_text_padding = 5
+    room_text_padding = 6
 
     # Blank padding which our QGraphicsTextItem objects will report on each
     # side of the actual text dimensions contained within.  Will be a dict with
@@ -361,6 +361,14 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
 
         super().__init__(parent.room.name, parent)
 
+        # TODO: The default Qt line spacing is a bit too big for my tastes;
+        # the Gtk formatting was noticeably more compact.  It looks like this
+        # is actually super difficult to accomplish in Qt.  (Stylesheets don't
+        # help, unfortunately; the line-height attribute isn't supported.)
+        # My only real idea is that I think the Document can give you the text
+        # on a per-line basis, and we could manually add multiple items for
+        # each line, setting the distance ourselves.  I don't actually care
+        # that much yet, though.
         self.setTextWidth(Constants.title_max_width)
         self.setDefaultTextColor(parent.color_text)
         doc = self.document()
