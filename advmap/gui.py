@@ -447,7 +447,7 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
-        Constants.statusbar.set_hover_actions()
+        self.scene().default_actions()
 
     def keyPressEvent(self, event):
         """
@@ -673,7 +673,7 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
-        Constants.statusbar.set_hover_actions()
+        self.scene().default_actions()
 
     def mousePressEvent(self, event):
         """
@@ -854,6 +854,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Keep track of whether we're currently dragging
         self.dragging = False
 
+        # Default actions
+        self.default_actions()
+
     def hover_start(self, new_hover):
         """
         Make `new_hover` our current hover object.  If there's already
@@ -910,6 +913,14 @@ class MapScene(QtWidgets.QGraphicsScene):
                     self.addItem(newroom)
                     if keep_hover == (x, y):
                         newroom.hover_obj.hoverEnterEvent()
+
+    def default_actions(self):
+        """
+        Actions to show when we're not hovering on anything.
+        """
+        actions = []
+        actions.append(('LMB', 'click-and-drag'))
+        Constants.statusbar.set_hover_actions(actions=actions)
 
     def mousePressEvent(self, event):
         """
