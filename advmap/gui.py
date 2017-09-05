@@ -419,25 +419,31 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setZValue(Constants.z_value_room_hover)
 
-    def hoverEnterEvent(self, event):
+    def hoverEnterEvent(self, event=None):
         """
         We've entered hovering
         """
+        # TODO: multi-select actions, of course
+        self.scene().hover_start(self)
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
         actions = []
+        actions.append(('WASD', 'nudge room'))
         actions.append(('X', 'delete'))
+        actions.append(('H/V', 'toggle horiz/vert offset'))
         actions.append(('R', 'change color'))
+        actions.append(('T', 'change type'))
         Constants.statusbar.set_hover_actions(
             actions=actions,
             prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
             )
 
-    def hoverLeaveEvent(self, event):
+    def hoverLeaveEvent(self, event=None):
         """
         We've entered hovering
         """
+        self.scene().hover_end()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
@@ -450,17 +456,48 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         # TODO: readonly checks
         key = event.text().lower()
         scene = self.scene()
+        mapobj = scene.mapobj
+        room = self.gui_room.room
         need_scene_recreate = False
         keep_hover = None
         if key == 'r':
-            self.gui_room.room.increment_color()
+            room.increment_color()
             need_scene_recreate = True
-            keep_hover = self.gui_room.room
+            keep_hover = room
+        elif key == 't':
+            room.increment_type()
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 'h':
+            room.offset_x = not room.offset_x
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 'v':
+            room.offset_y = not room.offset_y
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 'w':
+            mapobj.move_room(room, DIR_N)
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 'a':
+            mapobj.move_room(room, DIR_W)
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 's':
+            mapobj.move_room(room, DIR_S)
+            need_scene_recreate = True
+            keep_hover = room
+        elif key == 'd':
+            mapobj.move_room(room, DIR_E)
+            need_scene_recreate = True
+            keep_hover = room
         elif key == 'x':
-            if len(scene.mapobj.rooms) < 2:
+            if len(mapobj.rooms) < 2:
                 # TODO: notification
                 return
-            scene.mapobj.del_room(self.gui_room.room)
+            mapobj.del_room(room)
+            self.hoverLeaveEvent()
             need_scene_recreate = True
 
         # Update, if need be
@@ -629,7 +666,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
             # If we're a label, only show our name, using the notes style
             self.notes = GUIRoomTitleAsNotesTextItem(self)
 
-        else:
+        elif room.type != Room.TYPE_CONNHELPER:
 
             # Show our notes, if we need to
             if self.room.notes and self.room.notes != '':
@@ -737,6 +774,24 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.mapobj = None
         self.set_dimensions(1, 1)
 
+        # Keep track of what's currently hovering in the scene
+        self.hover_current = None
+
+    def hover_start(self, new_hover):
+        """
+        Make `new_hover` our current hover object.  If there's already
+        something being hovered, clear out its hover vars.
+        """
+        if self.hover_current:
+            self.hover_current.hoverLeaveEvent()
+        self.hover_current = new_hover
+
+    def hover_end(self):
+        """
+        Mark that we're no longer hovering over our current hover
+        """
+        self.hover_current = None
+
     def set_dimensions(self, w, h):
         """
         Sets our dimensions in terms of rooms
@@ -764,11 +819,12 @@ class MapScene(QtWidgets.QGraphicsScene):
         hovering on the specified object.
         """
         self.clear()
+        self.hover_end()
         for room in self.mapobj.rooms.values():
             guiroom = GUIRoom(room, self.parent().mainwindow)
             self.addItem(guiroom)
             if room == keep_hover:
-                guiroom.hover_obj.hoverEnterEvent(None)
+                guiroom.hover_obj.hoverEnterEvent()
 
 class MapArea(QtWidgets.QGraphicsView):
 
