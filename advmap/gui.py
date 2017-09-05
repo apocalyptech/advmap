@@ -473,53 +473,56 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         # TODO: readonly checks
         key = event.text().lower()
         scene = self.scene()
-        mapobj = scene.mapobj
-        room = self.gui_room.room
-        need_scene_recreate = False
-        keep_hover = None
-        if key == 'r':
-            room.increment_color()
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 't':
-            room.increment_type()
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'h':
-            room.offset_x = not room.offset_x
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'v':
-            room.offset_y = not room.offset_y
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'w':
-            mapobj.move_room(room, DIR_N)
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'a':
-            mapobj.move_room(room, DIR_W)
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 's':
-            mapobj.move_room(room, DIR_S)
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'd':
-            mapobj.move_room(room, DIR_E)
-            need_scene_recreate = True
-            keep_hover = room
-        elif key == 'x':
-            if len(mapobj.rooms) < 2:
-                # TODO: notification
-                return
-            mapobj.del_room(room)
-            self.hoverLeaveEvent()
-            need_scene_recreate = True
+        if scene.has_selections():
+            scene.process_multi_action(key)
+        else:
+            mapobj = scene.mapobj
+            room = self.gui_room.room
+            need_scene_recreate = False
+            keep_hover = None
+            if key == 'r':
+                room.increment_color()
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 't':
+                room.increment_type()
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'h':
+                room.offset_x = not room.offset_x
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'v':
+                room.offset_y = not room.offset_y
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'w':
+                mapobj.move_room(room, DIR_N)
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'a':
+                mapobj.move_room(room, DIR_W)
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 's':
+                mapobj.move_room(room, DIR_S)
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'd':
+                mapobj.move_room(room, DIR_E)
+                need_scene_recreate = True
+                keep_hover = room
+            elif key == 'x':
+                if len(mapobj.rooms) < 2:
+                    # TODO: notification
+                    return
+                mapobj.del_room(room)
+                self.hoverLeaveEvent()
+                need_scene_recreate = True
 
-        # Update, if need be
-        if need_scene_recreate:
-            scene.recreate(keep_hover)
+            # Update, if need be
+            if need_scene_recreate:
+                scene.recreate(keep_hover)
 
     def mousePressEvent(self, event):
         """
@@ -722,6 +725,14 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         Handle a mouse release event
         """
         self.scene().stop_dragging()
+
+    def keyPressEvent(self, event):
+        """
+        Handle a key press event
+        """
+        # TODO: adding a new room, obvs.
+        key = event.text().lower()
+        self.scene().process_multi_action(key)
 
 class GUINewRoom(QtWidgets.QGraphicsRectItem):
 
@@ -968,6 +979,10 @@ class MapScene(QtWidgets.QGraphicsScene):
                     if keep_hover == (x, y):
                         newroom.hover_obj.hoverEnterEvent()
 
+        # If we haven't re-hovered anything, revert to our default hover text
+        if not self.hover_current:
+            self.default_actions()
+
     def default_actions(self):
         """
         Actions to show when we're not hovering on anything.
@@ -1074,6 +1089,111 @@ class MapScene(QtWidgets.QGraphicsScene):
             actions.append(('T', 'change types'))
             actions.append(('R', 'change colors'))
         return actions
+
+    def keyPressEvent(self, event):
+        """
+        Keyboard input
+        """
+        if self.has_selections():
+            self.process_multi_action(event.text().lower())
+        else:
+            super().keyPressEvent(event)
+
+    def process_multi_action(self, key):
+        """
+        Processes an action operating on (hypothetically) more than one
+        selected room.
+        """
+        if self.has_selections():
+            need_scene_recreate = False
+            if (key == 'h'):
+                need_scene_recreate = True
+                num_offset = 0
+                num_not_offset = 0
+                for room in self.selected:
+                    if room.offset_x:
+                        num_offset += 1
+                    else:
+                        num_not_offset += 1
+                # Invert whatever the current majority is.  In the event of
+                # a tie, we'll default to making everything offset.
+                if num_offset > num_not_offset:
+                    set_value = False
+                else:
+                    set_value = True
+                for room in self.selected:
+                    room.offset_x = set_value
+            elif (key == 'v'):
+                need_scene_recreate = True
+                num_offset = 0
+                num_not_offset = 0
+                for room in self.selected:
+                    if room.offset_y:
+                        num_offset += 1
+                    else:
+                        num_not_offset += 1
+                # Invert whatever the current majority is.  In the event of
+                # a tie, we'll default to making everything offset.
+                if num_offset > num_not_offset:
+                    set_value = False
+                else:
+                    set_value = True
+                for room in self.selected:
+                    room.offset_y = set_value
+            elif (key == 't'):
+                need_scene_recreate = True
+                type_hist = {}
+                type_to_room = {}
+                max_rooms_in_single_type = 0
+                room_to_increment = None
+                for room in self.selected:
+                    if room.type in type_hist:
+                        type_hist[room.type] += 1
+                    else:
+                        type_hist[room.type] = 1
+                        type_to_room[room.type] = room
+                    if type_hist[room.type] > max_rooms_in_single_type:
+                        max_rooms_in_single_type = type_hist[room.type]
+                        room_to_increment = room
+                if room_to_increment:
+                    room_to_increment.increment_type()
+                    for room in self.selected:
+                        room.type = room_to_increment.type
+            elif (key == 'r'):
+                need_scene_recreate = True
+                color_hist = {}
+                color_to_room = {}
+                max_rooms_in_single_color = 0
+                room_to_increment = None
+                for room in self.selected:
+                    if room.color in color_hist:
+                        color_hist[room.color] += 1
+                    else:
+                        color_hist[room.color] = 1
+                        color_to_room[room.color] = room
+                    if color_hist[room.color] > max_rooms_in_single_color:
+                        max_rooms_in_single_color = color_hist[room.color]
+                        room_to_increment = room
+                if room_to_increment:
+                    room_to_increment.increment_color()
+                    for room in self.selected:
+                        room.color = room_to_increment.color
+            elif (key == 'w'):
+                if self.mapobj.nudge(DIR_N, self.selected):
+                    need_scene_recreate = True
+            elif (key == 'a'):
+                if self.mapobj.nudge(DIR_W, self.selected):
+                    need_scene_recreate = True
+            elif (key == 's'):
+                if self.mapobj.nudge(DIR_S, self.selected):
+                    need_scene_recreate = True
+            elif (key == 'd'):
+                if self.mapobj.nudge(DIR_E, self.selected):
+                    need_scene_recreate = True
+
+            # Update, if need be
+            if need_scene_recreate:
+                self.recreate()
 
 class MapArea(QtWidgets.QGraphicsView):
 
