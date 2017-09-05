@@ -202,6 +202,69 @@ class Constants(object):
                 },
         }
 
+class MainStatusBar(QtWidgets.QStatusBar):
+    """
+    Main status bar for our app.  Basically we're adding in a QVBoxLayout which
+    includes both a QLabel and a QStatusBar, and passing through statusbar-related
+    functions to the inner status bar
+    """
+
+    def __init__(self, parent):
+
+        super().__init__(parent)
+
+        self.vbox = QtWidgets.QVBoxLayout()
+        self.vbox.setSpacing(0)
+        self.vbox.setContentsMargins(0, 0, 0, 0)
+        self.hover_label = QtWidgets.QLabel(self)
+        self.hover_label.setAlignment(QtCore.Qt.AlignHCenter)
+        self.inner_sb = QtWidgets.QStatusBar(self)
+        self.secondary_hover = QtWidgets.QLabel(self)
+        self.inner_sb.addPermanentWidget(self.secondary_hover)
+        # TODO: I would like to figure out a way to remove the padding around the
+        # QStatusBar but have been unable to do so.  Couldn't find CSS that worked,
+        # either.
+        #self.inner_sb.setContentsMargins(0, 0, 0, 0)
+        #self.inner_sb.layout().setContentsMargins(0, 0, 0, 0)
+        self.vbox.addWidget(self.hover_label)
+        self.vbox.addWidget(self.inner_sb)
+        self.widget = QtWidgets.QWidget()
+        self.widget.setLayout(self.vbox)
+        self.addWidget(self.widget, 1)
+
+        # Setting size policy; this generally didn't seem to actually do anything
+        # while I was playing with spacing here, keeping it commented just for
+        # reference, though.
+        #self.widget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
+
+    def currentMessage(self):
+        """
+        Returns our current message on the inner status bar
+        """
+        return self.inner_sb.currentMessage()
+
+    def showMessage(self, message, timeout=0):
+        """
+        Shows the given message on our inner statusbar
+        """
+        return self.inner_sb.showMessage(message, timeout)
+
+    def set_hover_actions(self, actions=None, prefix=None):
+        """
+        Displays a list of actions on our hover_label
+        """
+        hover_text = ''
+        if not actions:
+            actions = []
+        if len(actions) == 0:
+            if prefix:
+                hover_text = prefix
+        else:
+            hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
+            if prefix is not None:
+                hover_text = '%s - %s' % (prefix, hover_text)
+        self.hover_label.setText(hover_text)
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window.
@@ -213,8 +276,9 @@ class GUI(QtWidgets.QMainWindow):
 
     def initUI(self, initfile, readonly):
 
-        # Set up a stats bar
-        self.statusbar = self.statusBar()
+        # Set up a status bar
+        self.statusbar = MainStatusBar(self)
+        self.setStatusBar(self.statusbar)
 
         # Set up some constants which we can't do directly in Constants
         # because of Reasons.  First up: title font padding
@@ -356,6 +420,13 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
+        actions = []
+        actions.append(('X', 'delete'))
+        actions.append(('R', 'change color'))
+        self.gui_room.mainwindow.statusbar.set_hover_actions(
+            actions=actions,
+            prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
+            )
 
     def hoverLeaveEvent(self, event):
         """
@@ -364,12 +435,31 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
+        self.gui_room.mainwindow.statusbar.set_hover_actions()
 
     def keyPressEvent(self, event):
         """
         Keyboard input
         """
-        print('{}: Received {}'.format(self.gui_room.room.name, event.text()))
+        # TODO: readonly checks
+        key = event.text().lower()
+        scene = self.scene()
+        need_scene_recreate = False
+        keep_hover = None
+        if key == 'r':
+            self.gui_room.room.increment_color()
+            need_scene_recreate = True
+            keep_hover = self.gui_room.room
+        elif key == 'x':
+            if len(scene.mapobj.rooms) < 2:
+                # TODO: notification
+                return
+            scene.mapobj.del_room(self.gui_room.room)
+            need_scene_recreate = True
+
+        # Update, if need be
+        if need_scene_recreate:
+            scene.recreate(keep_hover)
 
 class GUIRoomTitleAsNotesTextItem(QtWidgets.QGraphicsTextItem):
     """
@@ -506,9 +596,10 @@ class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
 
 class GUIRoom(QtWidgets.QGraphicsRectItem):
 
-    def __init__(self, parent, room):
+    def __init__(self, room, mainwindow):
         super().__init__()
         self.room = room
+        self.mainwindow = mainwindow
         self.set_position()
         self.setZValue(Constants.z_value_room)
 
@@ -654,9 +745,24 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.mapobj = mapobj
         self.set_dimensions(self.mapobj.w, self.mapobj.h)
-        for room in mapobj.rooms.values():
-            guiroom = GUIRoom(self, room)
+        self.recreate()
+
+    def recreate(self, keep_hover=None):
+        """
+        Recreates the entire scene based on our mapobj object.  This is
+        totally the nuclear option - a more subtle program would keep
+        track of what's changed and just update those elements, but I'm
+        doing it this way for now.  Less to keep track off, less chance
+        of a subtle bug causing a disconnect between the data objects
+        and the GUI representation.  Pass in `keep_hover` to retain
+        hovering on the specified object.
+        """
+        self.clear()
+        for room in self.mapobj.rooms.values():
+            guiroom = GUIRoom(room, self.parent().mainwindow)
             self.addItem(guiroom)
+            if room == keep_hover:
+                guiroom.hover_obj.hoverEnterEvent(None)
 
 class MapArea(QtWidgets.QGraphicsView):
 
@@ -665,6 +771,7 @@ class MapArea(QtWidgets.QGraphicsView):
     def __init__(self, parent):
 
         super().__init__(parent)
+        self.mainwindow = parent
         self.scene = MapScene(self)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))
