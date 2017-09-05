@@ -202,6 +202,11 @@ class Constants(object):
                 },
         }
 
+    # Some convenience objects which will get populated as the GUI
+    # gets built.  This is stretching the definition of "Constant"
+    # pretty terribly, but I do not feel bad about this.
+    statusbar = None
+
 class MainStatusBar(QtWidgets.QStatusBar):
     """
     Main status bar for our app.  Basically we're adding in a QVBoxLayout which
@@ -279,6 +284,7 @@ class GUI(QtWidgets.QMainWindow):
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
         self.setStatusBar(self.statusbar)
+        Constants.statusbar = self.statusbar
 
         # Set up some constants which we can't do directly in Constants
         # because of Reasons.  First up: title font padding
@@ -423,7 +429,7 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         actions = []
         actions.append(('X', 'delete'))
         actions.append(('R', 'change color'))
-        self.gui_room.mainwindow.statusbar.set_hover_actions(
+        Constants.statusbar.set_hover_actions(
             actions=actions,
             prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
             )
@@ -435,7 +441,7 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
-        self.gui_room.mainwindow.statusbar.set_hover_actions()
+        Constants.statusbar.set_hover_actions()
 
     def keyPressEvent(self, event):
         """
