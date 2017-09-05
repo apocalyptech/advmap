@@ -59,6 +59,23 @@ class Constants(object):
     icon_label_space = 3
     icon_space_between = 4
 
+    # Ladder connection vars
+    ladder_width = 12
+    ladder_rung_spacing = 7
+    ladder_line_width = 4
+
+    # Connection offsets - where to find the given connection based on
+    # the room's initial (x,y) coord.
+    connection_offset = {}
+    connection_offset[DIR_N] = (room_size_half, 0)
+    connection_offset[DIR_NE] = (room_size, 0)
+    connection_offset[DIR_E] = (room_size, room_size_half)
+    connection_offset[DIR_SE] = (room_size, room_size)
+    connection_offset[DIR_S] = (room_size_half, room_size)
+    connection_offset[DIR_SW] = (0, room_size)
+    connection_offset[DIR_W] = (0, room_size_half)
+    connection_offset[DIR_NW] = (0, 0)
+
     # Various room text spacing constants.  Some of these actually rely on
     # values we get from querying QFont and QFontMetrics data directly,
     # which will segfault the app if there's not a full Qt environment up
@@ -120,6 +137,7 @@ class Constants(object):
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
+    c_connection = QtGui.QColor(0, 0, 0, 255)
     c_borders = QtGui.QColor(0, 0, 0, 255)
     c_label = QtGui.QColor(178, 178, 178, 255)
     c_highlight = QtGui.QColor(127, 255, 127, 51)
@@ -897,6 +915,199 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setPos(self.gfx_x, self.gfx_y)
 
+    def get_global_connection_xy(self, direction):
+        """
+        Returns the global Scene positioning of a connection at the given direction.
+        Will return a tuple of `(x, y)`
+        """
+        return (
+                self.gfx_x + Constants.connection_offset[direction][0],
+                self.gfx_y + Constants.connection_offset[direction][1],
+            )
+
+class GUIConnLine(QtWidgets.QGraphicsLineItem):
+    
+    def __init__(self, x1, y1, x2, y2, width=1, dashed=False):
+        super().__init__(x1, y1, x2, y2)
+        self.setZValue(Constants.z_value_connection)
+        pen = QtGui.QPen(Constants.c_connection)
+        pen.setWidthF(width)
+        if dashed:
+            dash_len = 3/width
+            pen.setDashPattern([dash_len, dash_len])
+        self.setPen(pen)
+
+class GUIConnectionFactory(object):
+    """
+    It's a bit stupid to have this as a class, but I'd like it to be contained
+    as well as possible.
+    """
+
+    def __init__(self, scene):
+        self.scene = scene
+
+    def line(self, x1, y1, x2, y2, width=1, dashed=False):
+        """
+        Draws a line from `(x1, y1)` to `(x2, y2)`
+        """
+        line_obj = GUIConnLine(x1, y1, x2, y2, width=width, dashed=dashed)
+        self.scene.addItem(line_obj)
+
+    def is_primary_adjacent(self, conn):
+        """
+        Returns True if the primary connection between two rooms are
+        "exactly" adjacent to each other (and implied that the
+        connection "lines up" evenly as well).  False if not.  This
+        will only act on the primary set of ConnectionEnds (in fact,
+        it doens't need to consider Ends since the primary dirs are
+        outside of that), and will only return True if the directions
+        are opposite from each other.
+
+        This becomes problematic when factoring in the "offset" values
+        for rooms - maps like my AMFV attempt end up with very wrong-looking
+        connections if you're strict about each room's x+y coordinates
+        being "proper," and it feels very wrong to put in gigantic if/elif
+        blocks to try and deal with all possible permutations.  Instead,
+        we're just going to compute the DISTANCE of the connection which
+        would have to be drawn.  Anything more than a room's width away
+        and we'll consider them to be nonadjacent.  Since this is sort of
+        a GUI concern, that's why it's here instead of in the Connection
+        class, which is where it would otherwise make more sense.
+        """
+
+        # First off, if we're not connecting on opposite directions, we're
+        # not considered adjacent
+        if conn.dir1 != DIR_OPP[conn.dir2]:
+            return False
+
+        # Now figure out how far apart we are.
+        coords_r1 = self.scene.room_to_gui[conn.r1].get_global_connection_xy(conn.dir1)
+        coords_r2 = self.scene.room_to_gui[conn.r2].get_global_connection_xy(conn.dir2)
+        distance = math.sqrt((coords_r1[0]-coords_r2[0])**2 + (coords_r1[1]-coords_r2[1])**2)
+
+        # ... aaaand there we go.
+        return (distance <= Constants.room_size and distance <= Constants.room_size)
+
+    def ladder_coords(self, x1, y1, x2, y2):
+        """
+        Given two points `(x1, y1)` and `(x2, y2)`, this will provide
+        coordinates necessary to draw a ladder between the two.
+        It'll return a list of 2-element tuples, each of which is a
+        2-element tuple with `(x, y)` coordinates.
+        """
+        width = Constants.ladder_width
+        rung_spacing = Constants.ladder_rung_spacing
+        width_h = width/2
+        dx_orig = x2-x1
+        dy_orig = y2-y1
+        dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        if dist < 1:
+            # Prevent some division-by-zero errors
+            dist = 1
+        dx = dx_orig / dist
+        dy = dy_orig / dist
+        coord_list = []
+
+        # First, the two side members
+        coord_list.append(
+                ((x1+(width_h*dy), y1-(width_h*dx)),
+                 (x2+(width_h*dy), y2-(width_h*dx)))
+                )
+        coord_list.append(
+                ((x1-(width_h*dy), y1+(width_h*dx)),
+                 (x2-(width_h*dy), y2+(width_h*dx)))
+                )
+
+        # Now the rungs
+        rungcount = int(dist / rung_spacing) - 1
+        if rungcount == 0:
+            rungcount = 1
+        x_spacing = dx_orig/float(rungcount)
+        y_spacing = dy_orig/float(rungcount)
+        cur_x = x1 + (x_spacing/2)
+        cur_y = y1 + (y_spacing/2)
+        for i in range(rungcount):
+            coord_list.append(
+                    ((cur_x+(width_h*dy), cur_y-(width_h*dx)),
+                    (cur_x-(width_h*dy), cur_y+(width_h*dx)))
+                )
+            cur_x += x_spacing
+            cur_y += y_spacing
+
+        return coord_list
+
+    def draw_conn_segment(self, x1, y1, x2, y2, end):
+        """
+        Draws a connection segment from `(x1, y1)` to `(x2, y2)`, using the
+        style provided by the passed-in ConnectionEnd `end`.  Ordinarily
+        this is just a single line, but if `is_ladder` is True, then it'll
+        build a Ladder graphic between the two, instead.
+        """
+        if end.is_ladder():
+            coords = self.ladder_coords(x1, y1, x2, y2)
+            for coord in coords:
+                self.line(coord[0][0], coord[0][1],
+                        coord[1][0], coord[1][1],
+                        width=Constants.ladder_line_width)
+        else:
+            self.line(x1, y1, x2, y2, dashed=end.is_dotted())
+
+    def draw_connection(self, conn):
+        """
+        Draws a connection onto a QGraphicsScene
+        """
+
+        first_is_connhelper = False
+        room1 = conn.r1
+        dir1 = conn.dir1
+        end_close = conn.ends1[dir1]
+        gui_room1 = self.scene.room_to_gui[room1]
+
+        second_is_connhelper = False
+        room2 = conn.r2
+        dir2 = conn.dir2
+        end_far = conn.ends2[dir2]
+        gui_room2 = self.scene.room_to_gui[room2]
+
+        # First up - draw the primary connection.  This has the chance of being
+        # "adjacent", which will draw a simple line between the two rather than
+        # our stubs w/ varying render types.  This will only be the case if
+        # the primary conn directions are opposite of each other, and only if
+        # the rooms are close enough.  In practice you can get away with one
+        # room being offset vertically or horizontally, but not both.  Anything
+        # else will get the full stub/etc treatment below
+
+        # Secondary midpoints which extra ends will draw towards
+        secondary_midpoints = {}
+
+        if self.is_primary_adjacent(conn):
+
+            if room1.type == Room.TYPE_CONNHELPER:
+                first_is_connhelper = True
+            if room2.type == Room.TYPE_CONNHELPER:
+                second_is_connhelper = True
+
+            # Drawing our primary connection as a simple "adjacent" link
+            if first_is_connhelper:
+                x1 = gui_room1.gfx_x + Constants.room_size_half
+                y1 = gui_room1.gfx_y + Constants.room_size_half
+            else:
+                (x1, y1) = gui_room1.get_global_connection_xy(dir1)
+            if second_is_connhelper:
+                x2 = gui_room2.gfx_x + Constants.room_size_half
+                y2 = gui_room2.gfx_y + Constants.room_size_half
+            else:
+                (x2, y2) = gui_room2.get_global_connection_xy(dir2)
+            secondary_midpoints[room1] = (x2, y2)
+            secondary_midpoints[room2] = (x1, y1)
+            if end_close.conn_type == end_far.conn_type:
+                self.draw_conn_segment(x1, y1, x2, y2, end_close)
+            else:
+                midpoint_x = (x1 + x2) / 2
+                midpoint_y = (y1 + y2) / 2
+                self.draw_conn_segment(x1, y1, midpoint_x, midpoint_y, end_close)
+                self.draw_conn_segment(midpoint_x, midpoint_y, x2, y2, end_far)
+
 class MapScene(QtWidgets.QGraphicsScene):
 
     def __init__(self, parent):
@@ -963,14 +1174,18 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.clear()
         self.hover_end()
+
         # TODO: It shouldn't be possible to have selected rooms disappear
         # on us, but it wouldn't hurt to check for it
+        # First render our rooms
+        self.room_to_gui = {}
         for x in range(self.mapobj.w):
             for y in range(self.mapobj.h):
                 room = self.mapobj.get_room_at(x, y)
                 if room:
                     guiroom = GUIRoom(room, self.parent().mainwindow)
                     self.addItem(guiroom)
+                    self.room_to_gui[room] = guiroom
                     if keep_hover == room:
                         guiroom.hover_obj.hoverEnterEvent()
                 else:
@@ -978,6 +1193,11 @@ class MapScene(QtWidgets.QGraphicsScene):
                     self.addItem(newroom)
                     if keep_hover == (x, y):
                         newroom.hover_obj.hoverEnterEvent()
+
+        # Next all the connections
+        cf = GUIConnectionFactory(self)
+        for conn in self.mapobj.conns:
+            cf.draw_connection(conn)
 
         # If we haven't re-hovered anything, revert to our default hover text
         if not self.hover_current:
