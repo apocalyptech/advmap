@@ -109,12 +109,14 @@ class Constants(object):
     # makes connection+room rendering show up in a consistent way.
     (z_value_background,
         z_value_group,
+        z_value_new_room,
         z_value_connection,
+        z_value_new_room_hover,
         z_value_room,
         z_value_room_hover,
         z_value_connection_hover,
         z_value_edge_hover,
-        ) = range(7)
+        ) = range(9)
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
@@ -504,6 +506,18 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         if need_scene_recreate:
             scene.recreate(keep_hover)
 
+    def mousePressEvent(self, event):
+        """
+        What to do when the mouse is pressed
+        """
+        mods = event.modifiers()
+        if (mods & QtCore.Qt.ShiftModifier) == QtCore.Qt.ShiftModifier:
+            scene = self.scene()
+            room = self.gui_room.room
+            scene.select_room(room)
+            scene.recreate(room)
+
+
 class GUIRoomTitleAsNotesTextItem(QtWidgets.QGraphicsTextItem):
     """
     A text field used for showing "full" room names, for Label type rooms
@@ -647,7 +661,7 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
-        self.setZValue(Constants.z_value_room_hover)
+        self.setZValue(Constants.z_value_new_room_hover)
 
     def hoverEnterEvent(self, event=None):
         """
@@ -696,7 +710,7 @@ class GUINewRoom(QtWidgets.QGraphicsRectItem):
         self.mainwindow = mainwindow
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
-        self.setZValue(Constants.z_value_room)
+        self.setZValue(Constants.z_value_new_room)
         self.set_position()
 
         # Also add a Hover object for ourselves
@@ -767,9 +781,21 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                     cur_y += graphic.height() + Constants.icon_space_between
 
         # Set our background/border coloration
-        # TODO: be sure to draw connhelper background if we're selected
+        border_pen = QtGui.QPen(self.color_border)
+        if self.mainwindow.scene.is_selected(self.room):
+            border_pen.setWidth(3)
+            if room.type == Room.TYPE_DARK:
+                self.setBrush(QtGui.QBrush(self.color_bg.lighter(150)))
+            else:
+                self.setBrush(QtGui.QBrush(self.color_bg.darker(110)))
+        else:
+            border_pen.setWidth(1)
+            if room.type == Room.TYPE_CONNHELPER:
+                self.setBrush(QtGui.QBrush(Constants.c_transparent))
+            else:
+                self.setBrush(QtGui.QBrush(self.color_bg))
+
         if room.type == Room.TYPE_CONNHELPER:
-            self.setBrush(QtGui.QBrush(Constants.c_transparent))
             self.setPen(QtGui.QPen(Constants.c_transparent))
             for (x1, y1, x2, y2) in [
                     # NW corner
@@ -786,13 +812,12 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                     (Constants.room_size, Constants.room_size, Constants.room_size, Constants.room_size-Constants.connhelper_corner_length),
                     ]:
                 line = QtWidgets.QGraphicsLineItem(x1, y1, x2, y2, self)
-                line.setPen(QtGui.QPen(self.color_border))
+                line.setPen(border_pen)
         else:
-            self.setBrush(QtGui.QBrush(self.color_bg))
-            pen = QtGui.QPen(self.color_border)
             if pretend_label:
-                pen.setDashPattern([9, 9])
-            self.setPen(pen)
+                dash_len = 9/border_pen.width()
+                border_pen.setDashPattern([dash_len, dash_len])
+            self.setPen(border_pen)
         
         # Also add a Hover object for ourselves
         self.hover_obj = GUIRoomHover(self)
@@ -854,6 +879,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Keep track of whether we're currently dragging
         self.dragging = False
 
+        # Keep track of current room selection
+        self.selected = set()
+
         # Default actions
         self.default_actions()
 
@@ -884,6 +912,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Sets the current map in use
         """
+        self.selected = set()
         self.mapobj = mapobj
         self.set_dimensions(self.mapobj.w, self.mapobj.h)
         self.recreate()
@@ -900,6 +929,8 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.clear()
         self.hover_end()
+        # TODO: It shouldn't be possible to have selected rooms disappear
+        # on us, but it wouldn't hurt to check for it
         for x in range(self.mapobj.w):
             for y in range(self.mapobj.h):
                 room = self.mapobj.get_room_at(x, y)
@@ -975,6 +1006,31 @@ class MapScene(QtWidgets.QGraphicsScene):
                     sb.setValue(new_y)
         else:
             super().mouseMoveEvent(event)
+
+    def has_selections(self):
+        """
+        Returns `True` or `False` for whether we have any rooms selected
+        or not
+        """
+        return (len(self.selected) > 0)
+
+    def select_room(self, room):
+        """
+        Adds or removes the given room to our selection list
+        """
+        if room in self.selected:
+            self.selected.remove(room)
+        else:
+            self.selected.add(room)
+
+    def is_selected(self, room):
+        """
+        Checks to see if the given Room is selected
+        """
+        if room in self.selected:
+            return True
+        else:
+            return False
 
 class MapArea(QtWidgets.QGraphicsView):
 
