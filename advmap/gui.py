@@ -334,6 +334,14 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_icon_width = Constants.gfx_door_in.width()
         Constants.other_max_width = Constants.room_size - Constants.room_text_padding*2 - Constants.gfx_icon_width - Constants.icon_label_space
 
+        # Set up our main widgets
+        self.maparea = MapArea(self)
+        self.scene = self.maparea.scene
+        self.setCentralWidget(self.maparea)
+        self.maparea.statusbar[str].connect(self.statusbar.showMessage)
+        self.resize(1000, 700)
+        self.setWindowTitle('Adventure Game Mapper')
+
         # Load the specified game, or create a blank map
         self.curfile = None
         if initfile:
@@ -344,14 +352,7 @@ class GUI(QtWidgets.QMainWindow):
         if not self.curfile:
             self.create_new_game()
 
-        self.maparea = MapArea(self)
-        self.scene = self.maparea.scene
-        self.setCentralWidget(self.maparea)
-
-        self.maparea.statusbar[str].connect(self.statusbar.showMessage)
-
-        self.resize(1000, 700)
-        self.setWindowTitle('Adventure Game Mapper')
+        # Show ourselves
         self.show()
 
         self.scene.set_map(self.mapobj)
@@ -425,17 +426,31 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         """
         We've entered hovering
         """
-        # TODO: multi-select actions, of course
-        self.scene().hover_start(self)
+        scene = self.scene()
+        scene.hover_start(self)
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
+        self.show_actions()
+
+    def show_actions(self):
+        """
+        Show all appropriate actions when we're hovering
+        """
+        scene = self.scene()
         actions = []
-        actions.append(('WASD', 'nudge room'))
-        actions.append(('X', 'delete'))
-        actions.append(('H/V', 'toggle horiz/vert offset'))
-        actions.append(('R', 'change color'))
-        actions.append(('T', 'change type'))
+        if scene.is_selected(self.gui_room.room):
+            actions.append(('shift-click', 'deselect'))
+        else:
+            actions.append(('shift-click', 'select'))
+        if scene.has_selections():
+            actions.extend(scene.multi_select_actions())
+        else:
+            actions.append(('WASD', 'nudge room'))
+            actions.append(('X', 'delete'))
+            actions.append(('H/V', 'toggle horiz/vert offset'))
+            actions.append(('T', 'change type'))
+            actions.append(('R', 'change color'))
         Constants.statusbar.set_hover_actions(
             actions=actions,
             prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
@@ -672,8 +687,15 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
+        self.show_actions()
+
+    def show_actions(self):
+        """
+        Show all valid actions while we're hovering
+        """
         actions = []
         actions.append(('LMB', 'click-and-drag'))
+        actions.extend(self.scene().multi_select_actions())
         Constants.statusbar.set_hover_actions(
             actions=actions,
             prefix='({}, {})'.format(self.gui_newroom.x+1, self.gui_newroom.y+1),
@@ -878,6 +900,7 @@ class MapScene(QtWidgets.QGraphicsScene):
 
         # Keep track of whether we're currently dragging
         self.dragging = False
+        self.dragged = False
 
         # Keep track of current room selection
         self.selected = set()
@@ -951,6 +974,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         actions = []
         actions.append(('LMB', 'click-and-drag'))
+        actions.extend(self.multi_select_actions())
         Constants.statusbar.set_hover_actions(actions=actions)
 
     def mousePressEvent(self, event):
@@ -984,6 +1008,11 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.dragging = False
         self.parent().unsetCursor()
+        if not self.dragged and len(self.selected) > 0:
+            self.selected = set()
+            self.recreate()
+            if not self.hover_current:
+                self.default_actions()
 
     def mouseMoveEvent(self, event):
         """
@@ -995,11 +1024,13 @@ class MapScene(QtWidgets.QGraphicsScene):
             delta_x = last.x() - pos.x()
             delta_y = last.y() - pos.y()
             if delta_x != 0:
+                self.dragged = True
                 sb = self.parent().horizontalScrollBar()
                 new_x = sb.value() + delta_x
                 if new_x >= sb.minimum() and new_x <= sb.maximum():
                     sb.setValue(new_x)
             if delta_y != 0:
+                self.dragged = True
                 sb = self.parent().verticalScrollBar()
                 new_y = sb.value() + delta_y
                 if new_y >= sb.minimum() and new_y <= sb.maximum():
@@ -1031,6 +1062,18 @@ class MapScene(QtWidgets.QGraphicsScene):
             return True
         else:
             return False
+
+    def multi_select_actions(self):
+        """
+        Return a list of multi-select actions, if appropriate.
+        """
+        actions = []
+        if self.has_selections():
+            actions.append(('WASD', 'nudge rooms'))
+            actions.append(('H/V', 'toggle horiz/vert offsets'))
+            actions.append(('T', 'change types'))
+            actions.append(('R', 'change colors'))
+        return actions
 
 class MapArea(QtWidgets.QGraphicsView):
 
