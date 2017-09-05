@@ -441,7 +441,7 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
     def hoverLeaveEvent(self, event=None):
         """
-        We've entered hovering
+        We've left hovering
         """
         self.scene().hover_end()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
@@ -637,6 +637,80 @@ class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
                 y - Constants.other_padding_y[font_size]
             )
 
+class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
+
+    def __init__(self, gui_newroom):
+        super().__init__(gui_newroom)
+        self.gui_newroom = gui_newroom
+        self.setAcceptHoverEvents(True)
+        self.setFlags(self.ItemIsFocusable)
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.setRect(0, 0, Constants.room_size, Constants.room_size)
+        self.setZValue(Constants.z_value_room_hover)
+
+    def hoverEnterEvent(self, event=None):
+        """
+        We've entered hovering
+        """
+        # TODO: multi-select actions, of course
+        self.scene().hover_start(self)
+        self.setBrush(QtGui.QBrush(Constants.c_highlight))
+        self.setPen(QtGui.QPen(Constants.c_highlight))
+        self.setFocus()
+        actions = []
+        actions.append(('LMB', 'click-and-drag'))
+        Constants.statusbar.set_hover_actions(
+            actions=actions,
+            prefix='({}, {})'.format(self.gui_newroom.x+1, self.gui_newroom.y+1),
+            )
+
+    def hoverLeaveEvent(self, event=None):
+        """
+        We've left hovering
+        """
+        self.scene().hover_end()
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.clearFocus()
+        Constants.statusbar.set_hover_actions()
+
+    def mousePressEvent(self, event):
+        """
+        Handle a mouse press event
+        """
+        self.scene().start_dragging()
+
+    def mouseReleaseEvent(self, event):
+        """
+        Handle a mouse release event
+        """
+        self.scene().stop_dragging()
+
+class GUINewRoom(QtWidgets.QGraphicsRectItem):
+
+    def __init__(self, x, y, mainwindow):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.mainwindow = mainwindow
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.setZValue(Constants.z_value_room)
+        self.set_position()
+
+        # Also add a Hover object for ourselves
+        self.hover_obj = GUINewRoomHover(self)
+
+    def set_position(self):
+        """
+        Sets our position within the scene, based on our room coords
+        """
+        self.gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.x
+        self.gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.y
+        self.setRect(0, 0, Constants.room_size, Constants.room_size)
+        self.setPos(self.gfx_x, self.gfx_y)
+
 class GUIRoom(QtWidgets.QGraphicsRectItem):
 
     def __init__(self, room, mainwindow):
@@ -777,6 +851,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Keep track of what's currently hovering in the scene
         self.hover_current = None
 
+        # Keep track of whether we're currently dragging
+        self.dragging = False
+
     def hover_start(self, new_hover):
         """
         Make `new_hover` our current hover object.  If there's already
@@ -820,11 +897,73 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.clear()
         self.hover_end()
-        for room in self.mapobj.rooms.values():
-            guiroom = GUIRoom(room, self.parent().mainwindow)
-            self.addItem(guiroom)
-            if room == keep_hover:
-                guiroom.hover_obj.hoverEnterEvent()
+        for x in range(self.mapobj.w):
+            for y in range(self.mapobj.h):
+                room = self.mapobj.get_room_at(x, y)
+                if room:
+                    guiroom = GUIRoom(room, self.parent().mainwindow)
+                    self.addItem(guiroom)
+                    if keep_hover == room:
+                        guiroom.hover_obj.hoverEnterEvent()
+                else:
+                    newroom = GUINewRoom(x, y, self.parent().mainwindow)
+                    self.addItem(newroom)
+                    if keep_hover == (x, y):
+                        newroom.hover_obj.hoverEnterEvent()
+
+    def mousePressEvent(self, event):
+        """
+        Handle a mouse press event
+        """
+        if self.hover_current:
+            super().mousePressEvent(event)
+        else:
+            self.start_dragging()
+
+    def mouseReleaseEvent(self, event):
+        """
+        Handle a mouse release event
+        """
+        if self.hover_current:
+            super().mouseReleaseEvent(event)
+        else:
+            self.stop_dragging()
+
+    def start_dragging(self):
+        """
+        Start dragging the scene around
+        """
+        self.dragging = True
+        self.parent().setCursor(QtCore.Qt.ClosedHandCursor)
+
+    def stop_dragging(self):
+        """
+        Stop dragging the scene around
+        """
+        self.dragging = False
+        self.parent().unsetCursor()
+
+    def mouseMoveEvent(self, event):
+        """
+        Mouse Movement
+        """
+        if self.dragging:
+            last = event.lastScreenPos()
+            pos = event.screenPos()
+            delta_x = last.x() - pos.x()
+            delta_y = last.y() - pos.y()
+            if delta_x != 0:
+                sb = self.parent().horizontalScrollBar()
+                new_x = sb.value() + delta_x
+                if new_x >= sb.minimum() and new_x <= sb.maximum():
+                    sb.setValue(new_x)
+            if delta_y != 0:
+                sb = self.parent().verticalScrollBar()
+                new_y = sb.value() + delta_y
+                if new_y >= sb.minimum() and new_y <= sb.maximum():
+                    sb.setValue(new_y)
+        else:
+            super().mouseMoveEvent(event)
 
 class MapArea(QtWidgets.QGraphicsView):
 
