@@ -925,6 +925,29 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                 self.gfx_y + Constants.connection_offset[direction][1],
             )
 
+    def get_opposite_room_conn_point(self, direction):
+        """
+        Returns the global Scene positioning of a hypothetical remote endpoint of
+        a room immediately adjacent to us (factoring in our x/y offsets).  Basically
+        just used in our "stub" and loopback drawings, so we know where to build the
+        line out towards.
+        """
+        other_x = self.gfx_x
+        other_y = self.gfx_y
+        step = Constants.room_size + Constants.room_space
+        if direction in [DIR_NW, DIR_N, DIR_NE]:
+            other_y -= step
+        if direction in [DIR_NW, DIR_W, DIR_SW]:
+            other_x -= step
+        if direction in [DIR_SW, DIR_S, DIR_SE]:
+            other_y += step
+        if direction in [DIR_NE, DIR_E, DIR_SE]:
+            other_x += step
+        return (
+                other_x + Constants.connection_offset[DIR_OPP[direction]][0],
+                other_y + Constants.connection_offset[DIR_OPP[direction]][1],
+            )
+
 class GUIConnLine(QtWidgets.QGraphicsLineItem):
     
     def __init__(self, x1, y1, x2, y2, width=1, dashed=False):
@@ -1036,6 +1059,83 @@ class GUIConnectionFactory(object):
 
         return coord_list
 
+    def arrow_coords(self, x1, y1, x2, y2):
+        """
+        Given two points (x1, y1) and (x2, y2), this will provide
+        coordinates necessary to draw an arrowhead centered on (x1, y1)
+        It'll return a list with two 2-element tuples, representing
+        the (x, y) coordinates.
+        """
+
+        # TODO: Figure out a decent name for this var and get it in
+        # Constants
+        width_h = 8
+        dx_orig = x2-x1
+        dy_orig = y2-y1
+        dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        dx = dx_orig / dist
+        dy = dy_orig / dist
+        coord_list = []
+
+        x_spacing = dx_orig * .5
+        y_spacing = dy_orig * .5
+        cur_x = x1 + (x_spacing/2)
+        cur_y = y1 + (y_spacing/2)
+
+        coord_list.append( (cur_x+(width_h*dy), cur_y-(width_h*dx)) )
+        coord_list.append( (cur_x-(width_h*dy), cur_y+(width_h*dx)) )
+
+        return coord_list
+
+    def draw_stub_conn(self, room, direction, conn):
+        """
+        Draws a "stub" connection from the given room, in the given
+        direction.  Returns the "remote" endpoint.  The stubs are used 
+        for nonadjacent rooms.
+        """
+        end = conn.get_end(room, direction)
+        if not end:
+            return None
+
+        gui_room = self.scene.room_to_gui[room]
+
+        # Basic src/dst as if we were connecting immediately adjacent
+        (src_x, src_y) = gui_room.get_global_connection_xy(direction)
+        (dst_x, dst_y) = gui_room.get_opposite_room_conn_point(direction)
+
+        # Now apply our stub_length
+        if end.stub_length > 1:
+            dx = src_x - dst_x
+            dy = src_y - dst_y
+            dst_x = src_x + (dx*end.stub_length)
+            dst_y = src_y + (dy*end.stub_length)
+
+        # aaaand we actually only want to render a line half this long.
+        dst_x = (src_x+dst_x)/2
+        dst_y = (src_y+dst_y)/2
+
+        # If we're a connhelper connection, the source endpoint will
+        # actually be in the very center of the room.
+        if room.type == Room.TYPE_CONNHELPER:
+            src_x = gui_room.gfx_x + Constants.room_size_half
+            src_y = gui_room.gfx_y + Constants.room_size_half
+
+        # draw one-way connections.  This will look weird if it's going
+        # into a connhelper room, but then again that's probably not
+        # what you'd want to be doing anyway
+        if conn.is_oneway_a() and room == conn.r1:
+            for coord in self.arrow_coords(src_x, src_y, dst_x, dst_y):
+                self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
+        if conn.is_oneway_b() and room == conn.r2:
+            for coord in self.arrow_coords(src_x, src_y, dst_x, dst_y):
+                self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
+
+        # Draw the actual stub
+        self.draw_conn_segment(src_x, src_y, dst_x, dst_y, end)
+
+        # ... and return the destination point
+        return (dst_x, dst_y)
+
     def draw_conn_segment(self, x1, y1, x2, y2, end):
         """
         Draws a connection segment from `(x1, y1)` to `(x2, y2)`, using the
@@ -1057,13 +1157,11 @@ class GUIConnectionFactory(object):
         Draws a connection onto a QGraphicsScene
         """
 
-        first_is_connhelper = False
         room1 = conn.r1
         dir1 = conn.dir1
         end_close = conn.ends1[dir1]
         gui_room1 = self.scene.room_to_gui[room1]
 
-        second_is_connhelper = False
         room2 = conn.r2
         dir2 = conn.dir2
         end_far = conn.ends2[dir2]
@@ -1084,8 +1182,13 @@ class GUIConnectionFactory(object):
 
             if room1.type == Room.TYPE_CONNHELPER:
                 first_is_connhelper = True
+            else:
+                first_is_connhelper = False
+
             if room2.type == Room.TYPE_CONNHELPER:
                 second_is_connhelper = True
+            else:
+                second_is_connhelper = False
 
             # Drawing our primary connection as a simple "adjacent" link
             if first_is_connhelper:
@@ -1107,6 +1210,19 @@ class GUIConnectionFactory(object):
                 midpoint_y = (y1 + y2) / 2
                 self.draw_conn_segment(x1, y1, midpoint_x, midpoint_y, end_close)
                 self.draw_conn_segment(midpoint_x, midpoint_y, x2, y2, end_far)
+            if conn.is_oneway_a():
+                for coord in self.arrow_coords(x1, y1, x2, y2):
+                    self.draw_conn_segment(coord[0], coord[1], x1, y1, end_close)
+            elif conn.is_oneway_b():
+                for coord in self.arrow_coords(x2, y2, x1, y1):
+                    self.draw_conn_segment(coord[0], coord[1], x2, y2, end_far)
+
+        else:
+
+            # Drawing our primary connection with stubs coming off the rooms and then
+            # based on its render_type
+            stub1 = self.draw_stub_conn(room1, dir1, conn)
+            stub2 = self.draw_stub_conn(room2, dir2, conn)
 
 class MapScene(QtWidgets.QGraphicsScene):
 
