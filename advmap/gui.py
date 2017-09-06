@@ -1107,8 +1107,8 @@ class GUIConnectionFactory(object):
         if end.stub_length > 1:
             dx = src_x - dst_x
             dy = src_y - dst_y
-            dst_x = src_x + (dx*end.stub_length)
-            dst_y = src_y + (dy*end.stub_length)
+            dst_x = src_x - (dx*end.stub_length)
+            dst_y = src_y - (dy*end.stub_length)
 
         # aaaand we actually only want to render a line half this long.
         dst_x = (src_x+dst_x)/2
