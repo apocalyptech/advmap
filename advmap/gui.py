@@ -314,6 +314,11 @@ class MapCombo(QtWidgets.QComboBox):
         self.clear()
         for (mapname, mapidx) in maplist:
             self.addItem(mapname, mapidx)
+        # This is hokey but prevents qdockwidget resizing.  We'll
+        # actually probably want to base this off our buttons, or
+        # maybe at least the max of the two...
+        self.parent().setMaximumHeight(self.height())
+        self.parent().setMinimumHeight(self.height())
         self.loading = False
 
     def index_changed(self, index):
@@ -338,7 +343,6 @@ class MainDocks(QtWidgets.QDockWidget):
 
         self.mapcombo = MapCombo(self, parent)
         hbox.addWidget(self.mapcombo, 0, QtCore.Qt.AlignRight)
-
 
 class GUI(QtWidgets.QMainWindow):
     """
