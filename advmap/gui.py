@@ -79,7 +79,7 @@ class Constants(object):
     # Percentage along a connection line where secondary conns will meet
     # up with the primary
     conn_secondary_connect_midpoint = .75
-    conn_secondary_connect_regular = .75
+    conn_secondary_connect_regular = .40
 
     # Various room text spacing constants.  Some of these actually rely on
     # values we get from querying QFont and QFontMetrics data directly,
@@ -1285,6 +1285,26 @@ class GUIConnectionFactory(object):
                         midpoint_y = (stub1[1] + stub2[1]) / 2
                         self.draw_conn_segment(stub1[0], stub1[1], midpoint_x, midpoint_y, end_close)
                         self.draw_conn_segment(midpoint_x, midpoint_y, stub2[0], stub2[1], end_far)
+
+        # And now draw any additional ends which may exist.  These will
+        # always have stubs coming off of them, and will have their own
+        # render_type describing how to connect to the main connection
+        for end in conn.get_all_extra_ends():
+
+            # First the stub
+            stub = self.draw_stub_conn(end.room, end.direction, conn)
+
+            # And then the rest of the connection
+            if end.room in secondary_midpoints:
+                (mid_x, mid_y) = secondary_midpoints[end.room]
+                if end.is_render_midpoint_a():
+                    self.draw_conn_segment(stub[0], mid_y, stub[0], stub[1], end)
+                    self.draw_conn_segment(stub[0], mid_y, mid_x, mid_y, end)
+                elif end.is_render_midpoint_b():
+                    self.draw_conn_segment(mid_x, stub[1], stub[0], stub[1], end)
+                    self.draw_conn_segment(mid_x, stub[1], mid_x, mid_y, end)
+                else:
+                    self.draw_conn_segment(stub[0], stub[1], mid_x, mid_y, end)
 
 class MapScene(QtWidgets.QGraphicsScene):
 
