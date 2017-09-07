@@ -50,6 +50,7 @@ class Constants(object):
     room_space = 30
     room_space_half = room_space/2
     connhelper_corner_length = room_size_half*.2
+    group_padding = 10
 
     # Border around the room where we theoretically want to not have text
     room_text_padding = 6
@@ -186,7 +187,6 @@ class Constants(object):
             Group.STYLE_FAINT: QtGui.QColor(242, 242, 242, 255),
             Group.STYLE_DARK: QtGui.QColor(165, 165, 165, 255),
         }
-    c_group_default = c_group_map[Group.STYLE_NORMAL]
 
     # Entries here are tuples with the following:
     #   1) Foreground color for borderse
@@ -632,7 +632,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
     one spot, rather than having to check them in multiple ways.
     """
 
-    def __init__(self, parent, mainwindow, x=None, y=None):
+    def __init__(self, parent, mainwindow, x=None, y=None, multi=False):
         super().__init__(parent)
         self.mainwindow = mainwindow
         self.setAcceptHoverEvents(True)
@@ -645,6 +645,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         else:
             self.prefix = '({}, {})'.format(x+1, y+1)
         self.actions_initialized = False
+        self.multi = multi
 
     def add_label_action(self, report_keys, report_text):
         """
@@ -669,7 +670,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         and *not* add the keyboard action in that case.
         """
         scene = self.scene()
-        if scene.has_selections():
+        if not self.multi and scene.has_selections():
             return
         self.actionlist.append((report_keys, report_text))
         if action is not None:
@@ -689,7 +690,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         if button is not None and action is not None and action_args is not None:
             self.mouse_actions_by_button[button] = (action, action_args)
 
-    def show_actions(self):
+    def show_actions(self, scene=None):
         """
         Update our statusbar with the actions that we'll take.  If our actions aren't
         initialized yet, do so now.  Will add in our scene's multi-select actions if
@@ -697,9 +698,10 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         """
         if not self.actions_initialized:
             self.set_up_actions()
-            scene = self.scene()
-            if scene.has_selections():
-                for (key, text) in scene.multi_select_actions():
+            if not scene:
+                scene = self.scene()
+            if not self.multi and scene.has_selections():
+                for (key, text) in scene.multi_select_actions.actionlist:
                     self.add_label_action(key, text)
             self.actions_initialized = True
         Constants.statusbar.set_hover_actions(actions=self.actionlist, prefix=self.prefix)
@@ -799,6 +801,11 @@ class GUIRoomHover(HoverArea):
                 self.toggle_offset, [[False], [True]])
             self.add_key_action('T', 'change type', ['t'], self.change_type, [[]])
             self.add_key_action('R', 'change color', ['r'], self.change_color, [[]])
+            if self.gui_room.room.group:
+                self.add_key_action('G', 'change group render', ['g'],
+                        self.change_group_render, [[]])
+                self.add_key_action('O', 'remove from group', ['o'],
+                        self.remove_from_group, [[]])
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -862,6 +869,24 @@ class GUIRoomHover(HoverArea):
         mapobj.del_room(room)
         self.hoverLeaveEvent()
         scene.recreate()
+
+    def change_group_render(self):
+        """
+        Changes the style of the group our room is in
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        room.group.increment_style()
+        scene.recreate(room)
+
+    def remove_from_group(self):
+        """
+        Removes ourself from any group we may be in.
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        if scene.mapobj.remove_room_from_group(room):
+            scene.recreate(room)
 
     def view_details(self):
         """
@@ -1632,6 +1657,48 @@ class GUIConnectionFactory(object):
                 else:
                     self.draw_conn_segment(stub[0], stub[1], mid_x, mid_y, end)
 
+class GUIGroup(QtWidgets.QGraphicsRectItem):
+    """
+    GUI representation of one of our room groups.
+    """
+
+    def __init__(self, group, scene):
+        super().__init__()
+        self.group = group
+        self.scene = scene
+
+        # Figure out the group geometry
+        max_x = 0
+        max_y = 0
+        min_x = 9999
+        min_y = 9999
+        for room in group.get_rooms():
+            gui_room = scene.room_to_gui[room]
+            x = gui_room.gfx_x
+            y = gui_room.gfx_y
+            if (x < min_x):
+                min_x = x
+            if (x > max_x):
+                max_x = x
+            if (y < min_y):
+                min_y = y
+            if (y > max_y):
+                max_y = y
+        min_x -= Constants.group_padding
+        min_y -= Constants.group_padding
+        max_x += Constants.group_padding + Constants.room_size
+        max_y += Constants.group_padding + Constants.room_size
+
+        # And set our attributes
+        if group.style in Constants.c_group_map:
+            color = Constants.c_group_map[group.style]
+        else:
+            color = Constants.c_group_map[Group.STYLE_NORMAL]
+        self.setRect(0, 0, max_x-min_x, max_y-min_y)
+        self.setPos(min_x, min_y)
+        self.setBrush(QtGui.QBrush(color))
+        self.setPen(QtGui.QPen(color))
+
 class MapScene(QtWidgets.QGraphicsScene):
 
     def __init__(self, parent, mainwindow):
@@ -1698,6 +1765,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.parent().viewport().update()
         self.hover_end()
 
+        # Recreate our available multi-select options, if we have any
+        self.populate_multi_select_actions()
+
         # Set our scene size
         total_w = (Constants.room_space + Constants.room_size)*self.mapobj.w + Constants.room_space
         total_h = (Constants.room_space + Constants.room_size)*self.mapobj.h + Constants.room_space
@@ -1720,7 +1790,7 @@ class MapScene(QtWidgets.QGraphicsScene):
                 l.setZValue(Constants.z_value_background)
 
         # TODO: It shouldn't be possible to have selected rooms disappear
-        # on us, but it wouldn't hurt to check for it
+        # on us during a recreate, but it wouldn't hurt to check for it
         # First render our rooms
         self.room_to_gui = {}
         for x in range(self.mapobj.w):
@@ -1743,6 +1813,11 @@ class MapScene(QtWidgets.QGraphicsScene):
         for conn in self.mapobj.conns:
             cf.draw_connection(conn)
 
+        # Draw in our room groups
+        for group in self.mapobj.groups:
+            guigroup = GUIGroup(group, self)
+            self.addItem(guigroup)
+
         # If we haven't re-hovered anything, revert to our default hover text
         if not self.hover_current:
             self.default_actions()
@@ -1751,10 +1826,11 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Actions to show when we're not hovering on anything.
         """
-        actions = []
-        actions.append(('LMB', 'click-and-drag'))
-        actions.extend(self.multi_select_actions())
-        Constants.statusbar.set_hover_actions(actions=actions)
+        # Abusing our HoverArea class to do this; it'll pull in multi-select
+        # options automatically
+        actions = HoverArea(None, self.mainwindow)
+        actions.add_label_action('LMB', 'click-and-drag')
+        actions.show_actions(self)
 
     def mousePressEvent(self, event):
         """
@@ -1818,6 +1894,27 @@ class MapScene(QtWidgets.QGraphicsScene):
         else:
             super().mouseMoveEvent(event)
 
+    def get_group_info(self, roomset):
+        """
+        Given a set of rooms, return some information about the aggregate group
+        membership of the rooms.  Specifically, we will return a tuple with the
+        following:
+
+            1) Number of rooms with no group
+            2) Number of unique groups seen
+            3) One of the groups seen, if possible
+        """
+        seen_groups = set()
+        no_groups = 0
+        group = None
+        for room in roomset:
+            if room.group:
+                seen_groups.add(room.group)
+                group = room.group
+            else:
+                no_groups += 1
+        return (no_groups, len(seen_groups), group)
+
     def has_selections(self):
         """
         Returns `True` or `False` for whether we have any rooms selected
@@ -1843,122 +1940,163 @@ class MapScene(QtWidgets.QGraphicsScene):
         else:
             return False
 
-    def multi_select_actions(self):
+    def populate_multi_select_actions(self):
         """
-        Return a list of multi-select actions, if appropriate.
+        Populates our list of multi-select actions, if appropriate.  We're
+        abusing our HoverArea object a little bit to do this
         """
-        actions = []
+        self.multi_select_actions = HoverArea(None, self.mainwindow, multi=True)
         if self.has_selections() and not self.mainwindow.is_readonly():
-            actions.append(('WASD', 'nudge rooms'))
-            actions.append(('H/V', 'toggle horiz/vert offsets'))
-            actions.append(('T', 'change types'))
-            actions.append(('R', 'change colors'))
-        return actions
+            self.multi_select_actions.add_key_action('WASD', 'nudge rooms',
+                    ['w', 'a', 's', 'd'], self.multi_nudge_rooms,
+                    [[DIR_N], [DIR_W], [DIR_S], [DIR_E]])
+            self.multi_select_actions.add_key_action('H/V', 'toggle horiz/vert offsets',
+                    ['h', 'v'], self.multi_toggle_offsets, [[False], [True]])
+            self.multi_select_actions.add_key_action('T', 'change types',
+                    ['t'], self.multi_change_types, [[]])
+            self.multi_select_actions.add_key_action('R', 'change colors',
+                    ['r'], self.multi_change_colors, [[]])
+            if len(self.selected) > 1:
+                (num_nogroup, num_unique_groups, group) = self.get_group_info(self.selected)
+                if num_nogroup == 0:
+                    if num_unique_groups == 1:
+                        self.multi_select_actions.add_key_action('G', 'change group render',
+                                ['g'], self.multi_change_group_render, [[group]])
+                else:
+                    if num_unique_groups < 2:
+                        self.multi_select_actions.add_key_action('G', 'group selected',
+                                ['g'], self.multi_group_selected, [[group]])
+
+                if num_unique_groups > 0:
+                    self.multi_select_actions.add_key_action('O', 'ungroup selected',
+                            ['o'], self.multi_ungroup_selected, [[]])
+            else:
+                selected_room = next(iter(self.selected))
+                if selected_room.group:
+                    self.multi_select_actions.add_key_action('G', 'change group render',
+                            ['g'], self.multi_change_group_render, [[group]])
+                    self.multi_select_actions.add_key_action('O', 'ungroup selected',
+                            ['o'], self.multi_ungroup_selected, [[]])
 
     def keyPressEvent(self, event):
         """
         Keyboard input
         """
         if self.has_selections():
-            self.process_multi_action(event.text().lower())
+            self.multi_select_actions.keyPressEvent(event)
         else:
             super().keyPressEvent(event)
 
-    def process_multi_action(self, key):
+    def multi_nudge_rooms(self, direction):
         """
-        Processes an action operating on (hypothetically) more than one
-        selected room.
+        Nudge our selected rooms in the specified direction
         """
-        if self.has_selections() and not self.mainwindow.is_readonly():
-            need_scene_recreate = False
-            if (key == 'h'):
-                need_scene_recreate = True
-                num_offset = 0
-                num_not_offset = 0
-                for room in self.selected:
-                    if room.offset_x:
-                        num_offset += 1
-                    else:
-                        num_not_offset += 1
-                # Invert whatever the current majority is.  In the event of
-                # a tie, we'll default to making everything offset.
-                if num_offset > num_not_offset:
-                    set_value = False
-                else:
-                    set_value = True
-                for room in self.selected:
-                    room.offset_x = set_value
-            elif (key == 'v'):
-                need_scene_recreate = True
-                num_offset = 0
-                num_not_offset = 0
-                for room in self.selected:
-                    if room.offset_y:
-                        num_offset += 1
-                    else:
-                        num_not_offset += 1
-                # Invert whatever the current majority is.  In the event of
-                # a tie, we'll default to making everything offset.
-                if num_offset > num_not_offset:
-                    set_value = False
-                else:
-                    set_value = True
-                for room in self.selected:
-                    room.offset_y = set_value
-            elif (key == 't'):
-                need_scene_recreate = True
-                type_hist = {}
-                type_to_room = {}
-                max_rooms_in_single_type = 0
-                room_to_increment = None
-                for room in self.selected:
-                    if room.type in type_hist:
-                        type_hist[room.type] += 1
-                    else:
-                        type_hist[room.type] = 1
-                        type_to_room[room.type] = room
-                    if type_hist[room.type] > max_rooms_in_single_type:
-                        max_rooms_in_single_type = type_hist[room.type]
-                        room_to_increment = room
-                if room_to_increment:
-                    room_to_increment.increment_type()
-                    for room in self.selected:
-                        room.type = room_to_increment.type
-            elif (key == 'r'):
-                need_scene_recreate = True
-                color_hist = {}
-                color_to_room = {}
-                max_rooms_in_single_color = 0
-                room_to_increment = None
-                for room in self.selected:
-                    if room.color in color_hist:
-                        color_hist[room.color] += 1
-                    else:
-                        color_hist[room.color] = 1
-                        color_to_room[room.color] = room
-                    if color_hist[room.color] > max_rooms_in_single_color:
-                        max_rooms_in_single_color = color_hist[room.color]
-                        room_to_increment = room
-                if room_to_increment:
-                    room_to_increment.increment_color()
-                    for room in self.selected:
-                        room.color = room_to_increment.color
-            elif (key == 'w'):
-                if self.mapobj.nudge(DIR_N, self.selected):
-                    need_scene_recreate = True
-            elif (key == 'a'):
-                if self.mapobj.nudge(DIR_W, self.selected):
-                    need_scene_recreate = True
-            elif (key == 's'):
-                if self.mapobj.nudge(DIR_S, self.selected):
-                    need_scene_recreate = True
-            elif (key == 'd'):
-                if self.mapobj.nudge(DIR_E, self.selected):
-                    need_scene_recreate = True
+        if self.mapobj.nudge(direction, self.selected):
+            self.recreate()
 
-            # Update, if need be
-            if need_scene_recreate:
-                self.recreate()
+    def multi_toggle_offsets(self, vertical=False):
+        """
+        Toggles x/y offsets on selected rooms, defaulting to horizontal
+        unless `vertical` is passed in as `True`.
+        """
+        num_offset = 0
+        num_not_offset = 0
+        for room in self.selected:
+            if vertical:
+                if room.offset_y:
+                    num_offset += 1
+                else:
+                    num_not_offset += 1
+            else:
+                if room.offset_x:
+                    num_offset += 1
+                else:
+                    num_not_offset += 1
+        # Invert whatever the current majority is.  In the event of
+        # a tie, we'll default to making everything offset.
+        if num_offset > num_not_offset:
+            set_value = False
+        else:
+            set_value = True
+        for room in self.selected:
+            if vertical:
+                room.offset_y = set_value
+            else:
+                room.offset_x = set_value
+        self.recreate()
+
+    def multi_change_types(self):
+        """
+        Change the room type of all our selected rooms
+        """
+        type_hist = {}
+        type_to_room = {}
+        max_rooms_in_single_type = 0
+        room_to_increment = None
+        for room in self.selected:
+            if room.type in type_hist:
+                type_hist[room.type] += 1
+            else:
+                type_hist[room.type] = 1
+                type_to_room[room.type] = room
+            if type_hist[room.type] > max_rooms_in_single_type:
+                max_rooms_in_single_type = type_hist[room.type]
+                room_to_increment = room
+        if room_to_increment:
+            room_to_increment.increment_type()
+            for room in self.selected:
+                room.type = room_to_increment.type
+        self.recreate()
+
+    def multi_change_colors(self):
+        """
+        Change the room color of all our selected rooms
+        """
+        color_hist = {}
+        color_to_room = {}
+        max_rooms_in_single_color = 0
+        room_to_increment = None
+        for room in self.selected:
+            if room.color in color_hist:
+                color_hist[room.color] += 1
+            else:
+                color_hist[room.color] = 1
+                color_to_room[room.color] = room
+            if color_hist[room.color] > max_rooms_in_single_color:
+                max_rooms_in_single_color = color_hist[room.color]
+                room_to_increment = room
+        if room_to_increment:
+            room_to_increment.increment_color()
+            for room in self.selected:
+                room.color = room_to_increment.color
+        self.recreate()
+
+    def multi_change_group_render(self, group):
+        """
+        Change the group render style for the group
+        """
+        group.increment_style()
+        self.recreate()
+
+    def multi_group_selected(self, group):
+        """
+        Groups the selected rooms together into the given
+        group.
+        """
+        for room in self.selected:
+            group.add_room(room)
+        self.recreate()
+
+    def multi_ungroup_selected(self):
+        """
+        Ungroup the selected rooms
+        """
+        need_gfx_update = False
+        for room in self.selected:
+            if self.mapobj.remove_room_from_group(room):
+                need_gfx_update = True
+        if need_gfx_update:
+            self.recreate()
 
 class MapArea(QtWidgets.QGraphicsView):
 
