@@ -76,6 +76,11 @@ class Constants(object):
     connection_offset[DIR_W] = (0, room_size_half)
     connection_offset[DIR_NW] = (0, 0)
 
+    # Percentage along a connection line where secondary conns will meet
+    # up with the primary
+    conn_secondary_connect_midpoint = .75
+    conn_secondary_connect_regular = .75
+
     # Various room text spacing constants.  Some of these actually rely on
     # values we get from querying QFont and QFontMetrics data directly,
     # which will segfault the app if there's not a full Qt environment up
@@ -1087,6 +1092,19 @@ class GUIConnectionFactory(object):
 
         return coord_list
 
+    def get_point_along_line(self, x1, y1, x2, y2, percent):
+        """
+        Given a line defined by (x1, y1) and (x2, y2), return
+        the point along that line which is `percent` percent of
+        the way between the first and second points.  `percent`
+        should be a float from 0.0 to 1.0.  Returns a tuple
+        of `(x, y)`
+        """
+        return (
+                x1 + int((x2 - x1) * percent),
+                y1 + int((y2 - y1) * percent),
+            )
+
     def draw_stub_conn(self, room, direction, conn):
         """
         Draws a "stub" connection from the given room, in the given
@@ -1234,6 +1252,39 @@ class GUIConnectionFactory(object):
             # based on its render_type
             stub1 = self.draw_stub_conn(room1, dir1, conn)
             stub2 = self.draw_stub_conn(room2, dir2, conn)
+            if stub1 and stub2:
+                if end_close.is_render_midpoint_a():
+                    secondary_midpoints[room1] = self.get_point_along_line(stub1[0], stub1[1],
+                            stub1[0], stub2[1],
+                            Constants.conn_secondary_connect_midpoint)
+                    secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                            stub1[0], stub2[1],
+                            Constants.conn_secondary_connect_midpoint)
+                    self.draw_conn_segment(stub1[0], stub2[1], stub1[0], stub1[1], end_close)
+                    self.draw_conn_segment(stub1[0], stub2[1], stub2[0], stub2[1], end_far)
+                elif end_close.is_render_midpoint_b():
+                    secondary_midpoints[room1] = self.get_point_along_line(stub1[0], stub1[1],
+                            stub2[0], stub1[1],
+                            Constants.conn_secondary_connect_midpoint)
+                    secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                            stub2[0], stub1[1],
+                            Constants.conn_secondary_connect_midpoint)
+                    self.draw_conn_segment(stub2[0], stub1[1], stub1[0], stub1[1], end_close)
+                    self.draw_conn_segment(stub2[0], stub1[1], stub2[0], stub2[1], end_far)
+                else:
+                    secondary_midpoints[room1] = self.get_point_along_line(stub1[0], stub1[1],
+                            stub2[0], stub2[1],
+                            Constants.conn_secondary_connect_regular)
+                    secondary_midpoints[room2] = self.get_point_along_line(stub2[0], stub2[1],
+                            stub1[0], stub1[1],
+                            Constants.conn_secondary_connect_regular)
+                    if end_close.conn_type == end_far.conn_type:
+                        self.draw_conn_segment(stub1[0], stub1[1], stub2[0], stub2[1], end_close)
+                    else:
+                        midpoint_x = (stub1[0] + stub2[0]) / 2
+                        midpoint_y = (stub1[1] + stub2[1]) / 2
+                        self.draw_conn_segment(stub1[0], stub1[1], midpoint_x, midpoint_y, end_close)
+                        self.draw_conn_segment(midpoint_x, midpoint_y, stub2[0], stub2[1], end_far)
 
 class MapScene(QtWidgets.QGraphicsScene):
 

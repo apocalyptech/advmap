@@ -1,1 +1,1 @@
-coverage2 run --source=advmap ./runtests.py && coverage2 report -m
+coverage run --source=advmap ./runtests.py && coverage report -m

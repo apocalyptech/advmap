@@ -81,7 +81,7 @@ DIR_2_TXT = {
         DIR_NW: 'NW'
     }
 
-SAVEFILE_VER = 8
+SAVEFILE_VER = 9
 
 class Group(object):
     """
@@ -1464,6 +1464,23 @@ class Map(object):
                     stub_length = df.readuchar()
                     for end in ends:
                         end.stub_length = stub_length
+
+            # Prior to v9, our "midpoint" render_types turned out to accidentally be
+            # dependent on the order in which rooms were returned from Room.roomlist(),
+            # which due to implementation chance happened to be consistent, but we
+            # shouldn't have been relying on it.  During the port to PyQt, our rendering
+            # methods have changed, which broke that consistency.  So, this fixes the
+            # render_type where appropriate, so it's consistent for all future versions.
+            if version < 9:
+                if conn.r2.idnum < conn.r1.idnum:
+                    end1 = conn.ends1[conn.dir1]
+                    end2 = conn.ends2[conn.dir2]
+                    if end1.is_render_midpoint_a():
+                        end1.set_render_midpoint_b()
+                        end2.set_render_midpoint_b()
+                    elif end1.is_render_midpoint_b():
+                        end1.set_render_midpoint_a()
+                        end2.set_render_midpoint_a()
 
         # Now load groups
         for i in range(num_groups):

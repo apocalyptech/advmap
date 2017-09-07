@@ -231,3 +231,8 @@ is current, of course) but will always save in the most recent:
 * Added "Connection Helper" room type which just serves as a passthrough
   for more complex connection paths.  No text is drawn for Connection Helpers.
 * Added Orange as a color.
+
+**v9**
+
+* No format differences - version bump used to fix some internal data
+  inconsistency.
