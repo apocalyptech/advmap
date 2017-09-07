@@ -142,6 +142,7 @@ class Constants(object):
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
+    c_background_out_of_scene = QtGui.QColor(200, 200, 200)
     c_connection = QtGui.QColor(0, 0, 0, 255)
     c_borders = QtGui.QColor(0, 0, 0, 255)
     c_label = QtGui.QColor(178, 178, 178, 255)
@@ -1442,6 +1443,13 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.parent().viewport().update()
         self.hover_end()
 
+        # First draw a white background
+        rect = self.addRect(0, 0, self.width(), self.height(),
+            QtGui.QPen(Constants.c_background),
+            QtGui.QBrush(Constants.c_background),
+            )
+        rect.setZValue(Constants.z_value_background)
+
         # TODO: It shouldn't be possible to have selected rooms disappear
         # on us, but it wouldn't hurt to check for it
         # First render our rooms
@@ -1695,7 +1703,7 @@ class MapArea(QtWidgets.QGraphicsView):
         self.setRenderHints(QtGui.QPainter.Antialiasing)
         self.scene = MapScene(self)
         self.setScene(self.scene)
-        self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))
+        self.setBackgroundBrush(QtGui.QBrush(Constants.c_background_out_of_scene))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
 class Application(QtWidgets.QApplication):
