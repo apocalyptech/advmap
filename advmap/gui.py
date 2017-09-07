@@ -623,13 +623,126 @@ class GUI(QtWidgets.QMainWindow):
         self.toolbar.toggle_readonly_actions()
         self.scene.recreate()
 
-class GUIRoomHover(QtWidgets.QGraphicsRectItem):
+class HoverArea(QtWidgets.QGraphicsRectItem):
+    """
+    Class to handle some generalized functions related to our hover areas.
+    Namely, this is a way to consolidate what actions are available in
+    one spot, rather than having to check them in multiple ways.
+    """
 
-    def __init__(self, gui_room):
-        super().__init__(gui_room)
-        self.gui_room = gui_room
+    def __init__(self, parent, mainwindow, x=None, y=None):
+        super().__init__(parent)
+        self.mainwindow = mainwindow
         self.setAcceptHoverEvents(True)
         self.setFlags(self.ItemIsFocusable)
+        self.key_actions_by_key = {}
+        self.mouse_actions_by_button = {}
+        self.actionlist = []
+        if x is None or y is None:
+            self.prefix = None
+        else:
+            self.prefix = '({}, {})'.format(x+1, y+1)
+        self.actions_initialized = False
+
+    def add_key_action(self, report_keys, report_text, keylist, action, action_args):
+        """
+        Adds a possible keyboard action that we can take.  `report_keys`
+        is what the user will see as the available action, and `report_text`
+        is how the action will be described.  `keylist` should be a list of
+        keys which map to this action.  `action` is the function itself, to call.
+        `action_args` should be a list corresponding to `keylist`, with the
+        optional argument(s) to send to the function.
+        """
+        self.actionlist.append((report_keys, report_text))
+        if action is not None:
+            for (key, args) in zip(keylist, action_args):
+                self.key_actions_by_key[key] = (action, args)
+
+    def add_mouse_action(self, report_button, report_text, button=None, action=None, action_args=None):
+        """
+        Adds a possible keyboard action that we can take.  `report_button`
+        is what the user will see as the available action, and `report_text`
+        is how the action will be described.  `button` should be the mouse
+        button which maps to this action.  `action` is the function itself, to call.
+        `action_args` should be a list of optional argument(s) to send to the
+        function.
+
+        `button`, `action` and `action_args` can be `None`, in which case the
+        specified action is only shown to the user, and must be handled in the
+        implementing class by implementing the `mousePressEvent` method.  Be
+        sure to pass through to this class, though, if the custom conditions
+        aren't met.
+        """
+        self.actionlist.append((report_button, report_text))
+        if button is not None and action is not None and action_args is not None:
+            self.mouse_actions_by_button[button] = (action, action_args)
+
+    def show_actions(self):
+        """
+        Update our statusbar with the actions that we'll take.  If our actions aren't
+        initialized yet, do so now.
+        """
+        if not self.actions_initialized:
+            self.set_up_actions()
+            self.actions_initialized = True
+        Constants.statusbar.set_hover_actions(actions=self.actionlist, prefix=self.prefix)
+
+    def has_key_action(self, key):
+        """
+        Returns `True` or `False`, depending on if we have an action for the specified
+        key
+        """
+        return (key in self.key_actions_by_key)
+
+    def do_key_action(self, key):
+        """
+        Activates the given keyboard action
+        """
+        if self.has_key_action(key):
+            (action, args) = self.key_actions_by_key[key]
+            return action(*args)
+
+    def has_mouse_action(self, button):
+        """
+        Returns `True` or `False`, depending on if we have an action for the specified
+        mouse button
+        """
+        return (button in self.mouse_actions_by_button)
+
+    def do_mouse_action(self, button):
+        """
+        Activates the given mouse action
+        """
+        if self.has_mouse_action(button):
+            (action, args) = self.mouse_actions_by_button[button]
+            return action(*args)
+
+    def set_up_actions(self):
+        """
+        Sets up our available hover actions.  This should be overridden by the
+        implementing class.
+        """
+        pass
+
+    def keyPressEvent(self, event):
+        """
+        Keyboard input
+        """
+        key = event.text().lower()
+        self.do_key_action(key)
+
+    def mousePressEvent(self, event):
+        """
+        Mouse input
+        """
+        button = event.button()
+        self.do_mouse_action(button)
+
+class GUIRoomHover(HoverArea):
+
+    def __init__(self, gui_room):
+        super().__init__(gui_room, gui_room.mainwindow, x=gui_room.room.x, y=gui_room.room.y)
+        self.gui_room = gui_room
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
@@ -644,35 +757,36 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
-        self.gui_room.mainwindow.maparea.setFocus()
+        self.mainwindow.maparea.setFocus()
         self.show_actions()
 
-    def show_actions(self):
+    def set_up_actions(self):
         """
-        Show all appropriate actions when we're hovering
+        Sets up the actions we can take at the moment.
         """
         scene = self.scene()
-        actions = []
-        if self.gui_room.mainwindow.is_readonly():
-            actions.append(('LMB', 'view details'))
+        if self.mainwindow.is_readonly():
+            self.add_mouse_action('LMB', 'view details', QtCore.Qt.LeftButton,
+                    self.view_details, [])
         else:
-            actions.append(('LMB', 'edit room'))
+            self.add_mouse_action('LMB', 'edit room', QtCore.Qt.LeftButton,
+                    self.edit_room, [])
             if scene.is_selected(self.gui_room.room):
-                actions.append(('shift-click', 'deselect'))
+                self.add_mouse_action('shift-click', 'deselect')
             else:
-                actions.append(('shift-click', 'select'))
+                self.add_mouse_action('shift-click', 'select')
             if scene.has_selections():
-                actions.extend(scene.multi_select_actions())
+                # TODO: multi-selects, again!
+                #actions.extend(scene.multi_select_actions())
+                pass
             else:
-                actions.append(('WASD', 'nudge room'))
-                actions.append(('X', 'delete'))
-                actions.append(('H/V', 'toggle horiz/vert offset'))
-                actions.append(('T', 'change type'))
-                actions.append(('R', 'change color'))
-        Constants.statusbar.set_hover_actions(
-            actions=actions,
-            prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
-            )
+                self.add_key_action('WASD', 'nudge room', ['w', 'a', 's', 'd'],
+                    self.nudge_room, [[DIR_N], [DIR_W], [DIR_S], [DIR_E]])
+                self.add_key_action('X', 'delete', ['x'], self.delete_room, [[]])
+                self.add_key_action('H/V', 'toggle horiz/vert offset', ['h', 'v'],
+                    self.toggle_offset, [[False], [True]])
+                self.add_key_action('T', 'change type', ['t'], self.change_type, [[]])
+                self.add_key_action('R', 'change color', ['r'], self.change_color, [[]])
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -684,79 +798,88 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.clearFocus()
         self.scene().default_actions()
 
-    def keyPressEvent(self, event):
+    def nudge_room(self, direction):
         """
-        Keyboard input
+        Nudges our room in the specified direction
         """
-        # None of our keyboard events would be active if we're
-        # in readonly
-        if self.gui_room.mainwindow.is_readonly():
-            return
-
-        key = event.text().lower()
         scene = self.scene()
-        if scene.has_selections():
-            scene.process_multi_action(key)
-        else:
-            mapobj = scene.mapobj
-            room = self.gui_room.room
-            need_scene_recreate = False
-            keep_hover = None
-            if key == 'r':
-                room.increment_color()
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 't':
-                room.increment_type()
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'h':
-                room.offset_x = not room.offset_x
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'v':
-                room.offset_y = not room.offset_y
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'w':
-                mapobj.move_room(room, DIR_N)
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'a':
-                mapobj.move_room(room, DIR_W)
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 's':
-                mapobj.move_room(room, DIR_S)
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'd':
-                mapobj.move_room(room, DIR_E)
-                need_scene_recreate = True
-                keep_hover = room
-            elif key == 'x':
-                if len(mapobj.rooms) < 2:
-                    # TODO: notification
-                    return
-                mapobj.del_room(room)
-                self.hoverLeaveEvent()
-                need_scene_recreate = True
+        room = self.gui_room.room
+        scene.mapobj.move_room(room, direction)
+        scene.recreate(room)
 
-            # Update, if need be
-            if need_scene_recreate:
-                scene.recreate(keep_hover)
+    def change_type(self):
+        """
+        Changes our room type
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        room.increment_type()
+        scene.recreate(room)
+
+    def change_color(self):
+        """
+        Changes our room color
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        room.increment_color()
+        scene.recreate(room)
+
+    def toggle_offset(self, vertical=False):
+        """
+        Toggles one of our x/y offset vars, depending on `vertical`
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        if vertical:
+            room.offset_y = not room.offset_y
+        else:
+            room.offset_x = not room.offset_x
+        scene.recreate(room)
+
+    def delete_room(self):
+        """
+        Deletes our room
+        """
+        scene = self.scene()
+        room = self.gui_room.room
+        mapobj = scene.mapobj
+        if len(mapobj.rooms) < 2:
+            # TODO: notification
+            return
+        mapobj.del_room(room)
+        self.hoverLeaveEvent()
+        scene.recreate()
+
+    def view_details(self):
+        """
+        Viewing room details (on account of being in readonly mode)
+        """
+        print('Viewing details...')
+
+    def edit_room(self):
+        """
+        Editing the room
+        """
+        print('Editing room...')
 
     def mousePressEvent(self, event):
         """
-        What to do when the mouse is pressed
+        What to do when the mouse is pressed - overriding a bit
+        here to support our multi-select process.
         """
         mods = event.modifiers()
-        if (mods & QtCore.Qt.ShiftModifier) == QtCore.Qt.ShiftModifier:
+        if (event.button() == QtCore.Qt.LeftButton and
+                (mods & QtCore.Qt.ShiftModifier) == QtCore.Qt.ShiftModifier):
             scene = self.scene()
             room = self.gui_room.room
             scene.select_room(room)
             scene.recreate(room)
+            return
 
+        # If we didn't capture a special-case, just pass through to the
+        # main handlers
+        super().mousePressEvent(event)
 
 class GUIRoomTitleAsNotesTextItem(QtWidgets.QGraphicsTextItem):
     """
@@ -891,13 +1014,11 @@ class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
                 y - Constants.other_padding_y[font_size]
             )
 
-class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
+class GUINewRoomHover(HoverArea):
 
     def __init__(self, gui_newroom):
-        super().__init__(gui_newroom)
+        super().__init__(gui_newroom, gui_newroom.mainwindow, x=gui_newroom.x, y=gui_newroom.y)
         self.gui_newroom = gui_newroom
-        self.setAcceptHoverEvents(True)
-        self.setFlags(self.ItemIsFocusable)
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
@@ -907,25 +1028,23 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         """
         We've entered hovering
         """
-        # TODO: multi-select actions, of course
         self.scene().hover_start(self)
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
-        self.gui_newroom.mainwindow.maparea.setFocus()
+        self.mainwindow.maparea.setFocus()
         self.show_actions()
 
-    def show_actions(self):
+    def set_up_actions(self):
         """
-        Show all valid actions while we're hovering
+        Sets up the actions we can take at the moment
         """
-        actions = []
-        actions.append(('LMB', 'click-and-drag'))
-        actions.extend(self.scene().multi_select_actions())
-        Constants.statusbar.set_hover_actions(
-            actions=actions,
-            prefix='({}, {})'.format(self.gui_newroom.x+1, self.gui_newroom.y+1),
-            )
+        scene = self.scene()
+        self.add_mouse_action('LMB', 'click-and-drag')
+        if not self.mainwindow.is_readonly():
+            self.add_key_action('N', 'new room', ['n'], self.new_room, [[]])
+        # TODO: multi-selects, again!
+        #actions.extend(self.scene().multi_select_actions())
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -949,13 +1068,11 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         """
         self.scene().stop_dragging()
 
-    def keyPressEvent(self, event):
+    def new_room(self):
         """
-        Handle a key press event
+        Create a new room
         """
-        # TODO: adding a new room, obvs.
-        key = event.text().lower()
-        self.scene().process_multi_action(key)
+        print('Adding a new room...')
 
 class GUINewRoom(QtWidgets.QGraphicsRectItem):
 
