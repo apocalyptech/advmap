@@ -295,6 +295,51 @@ class MainStatusBar(QtWidgets.QStatusBar):
                 hover_text = '%s - %s' % (prefix, hover_text)
         self.hover_label.setText(hover_text)
 
+class MapCombo(QtWidgets.QComboBox):
+
+    def __init__(self, parent, maingui):
+        super().__init__(parent)
+        self.maingui = maingui
+        self.currentIndexChanged.connect(self.index_changed)
+        self.loading = False
+
+    def set_maplist(self, maplist):
+        """
+        Sets our contents.  `maplist` should be a list of
+        tuples, with the following indexes:
+            1) Map name
+            2) Map index
+        """
+        self.loading = True
+        self.clear()
+        for (mapname, mapidx) in maplist:
+            self.addItem(mapname, mapidx)
+        self.loading = False
+
+    def index_changed(self, index):
+        """
+        The user selected a new map to display
+        """
+        self.maingui.set_current_map(self.currentData())
+
+class MainDocks(QtWidgets.QDockWidget):
+    """
+    Main dock widget
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setFeatures(self.NoDockWidgetFeatures)
+        w = QtWidgets.QWidget()
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 10, 0)
+        w.setLayout(hbox)
+        self.setWidget(w)
+
+        self.mapcombo = MapCombo(self, parent)
+        hbox.addWidget(self.mapcombo, 0, QtCore.Qt.AlignRight)
+
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window.
@@ -310,6 +355,10 @@ class GUI(QtWidgets.QMainWindow):
         self.statusbar = MainStatusBar(self)
         self.setStatusBar(self.statusbar)
         Constants.statusbar = self.statusbar
+
+        # Set up our dock widget
+        self.docks = MainDocks(self)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.docks)
 
         # Set up some constants which we can't do directly in Constants
         # because of Reasons.  First up: title font padding
@@ -362,6 +411,7 @@ class GUI(QtWidgets.QMainWindow):
         self.scene = self.maparea.scene
         self.setCentralWidget(self.maparea)
         self.maparea.statusbar[str].connect(self.statusbar.showMessage)
+        self.setMinimumSize(1000, 700)
         self.resize(1000, 700)
         self.setWindowTitle('Adventure Game Mapper')
 
@@ -378,7 +428,7 @@ class GUI(QtWidgets.QMainWindow):
         # Show ourselves
         self.show()
 
-        self.scene.set_map(self.mapobj)
+        #self.scene.set_map(self.mapobj)
 
     def set_status(self, status_str):
         """
@@ -395,11 +445,25 @@ class GUI(QtWidgets.QMainWindow):
         """
         game = Game.load(filename)
         self.game = game
-        self.mapobj = self.game.maps[0]
-        self.map_idx = 0
         self.curfile = filename
         self.set_status('Editing %s' % filename)
+        self.set_mapcombo()
         return True
+
+    def set_mapcombo(self):
+        """
+        Sets up our mapcombo
+        """
+        self.docks.mapcombo.set_maplist([(r.name, idx) for (idx, r) in enumerate(self.game.maps)])
+        self.set_current_map(0)
+
+    def set_current_map(self, mapindex):
+        """
+        Sets the current map to the specified index
+        """
+        self.mapobj = self.game.maps[mapindex]
+        self.map_idx = mapindex
+        self.scene.set_map(self.mapobj)
 
     def create_new_game(self):
         """
@@ -408,7 +472,7 @@ class GUI(QtWidgets.QMainWindow):
         self.curfile = None
         self.game = Game('New Game')
         self.mapobj = self.create_new_map('Starting Map')
-        self.map_idx = self.game.add_map_obj(self.mapobj)
+        self.set_mapcombo()
         self.set_status('Editing a new game')
 
     def create_new_map(self, name):
@@ -1371,6 +1435,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         hovering on the specified object.
         """
         self.clear()
+        self.parent().viewport().update()
         self.hover_end()
 
         # TODO: It shouldn't be possible to have selected rooms disappear
