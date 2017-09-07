@@ -145,6 +145,8 @@ class Constants(object):
     gfx_resize_left = None
     gfx_resize_right = None
 
+    gfx_grid = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -371,6 +373,11 @@ class MainToolBar(QtWidgets.QToolBar):
         self.addAction(QtGui.QIcon(Constants.gfx_resize_right), 'Add column to right of map', lambda: parent.resize_map(DIR_E))
         self.addSeparator()
 
+        # Grid
+        self.grid_toggle = self.addAction(QtGui.QIcon(Constants.gfx_grid), 'Toggle map grid', parent.toggle_grid)
+        self.grid_toggle.setCheckable(True)
+        self.addSeparator()
+
         # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
         self.addWidget(self.mapcombo)
@@ -443,6 +450,7 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_resize_down = QtGui.QPixmap(self.resfile('dir_exp_down.png'))
         Constants.gfx_resize_left = QtGui.QPixmap(self.resfile('dir_exp_left.png'))
         Constants.gfx_resize_right = QtGui.QPixmap(self.resfile('dir_exp_right.png'))
+        Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
 
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
@@ -558,6 +566,12 @@ class GUI(QtWidgets.QMainWindow):
         """
         if self.mapobj.resize(direction):
             self.scene.recreate()
+
+    def toggle_grid(self):
+        """
+        Toggles whether our background grid will be drawn
+        """
+        self.scene.recreate()
 
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
@@ -1432,11 +1446,12 @@ class GUIConnectionFactory(object):
 
 class MapScene(QtWidgets.QGraphicsScene):
 
-    def __init__(self, parent):
+    def __init__(self, parent, mainwindow):
 
         super().__init__(parent)
 
         self.mapobj = None
+        self.mainwindow = mainwindow
 
         # Keep track of what's currently hovering in the scene
         self.hover_current = None
@@ -1499,6 +1514,15 @@ class MapScene(QtWidgets.QGraphicsScene):
             QtGui.QBrush(Constants.c_background),
             )
         rect.setZValue(Constants.z_value_background)
+
+        # Now grid lines, if we've been told to
+        if self.mainwindow.toolbar.grid_toggle.isChecked():
+            for x in [Constants.room_space_half + i*(Constants.room_size + Constants.room_space) for i in range(self.mapobj.w+1)]:
+                l = self.addLine(x, 0, x, total_h, QtGui.QPen(Constants.c_grid))
+                l.setZValue(Constants.z_value_background)
+            for y in [Constants.room_space_half + i*(Constants.room_size + Constants.room_space) for i in range(self.mapobj.h+1)]:
+                l = self.addLine(0, y, total_w, y, QtGui.QPen(Constants.c_grid))
+                l.setZValue(Constants.z_value_background)
 
         # TODO: It shouldn't be possible to have selected rooms disappear
         # on us, but it wouldn't hurt to check for it
@@ -1751,7 +1775,7 @@ class MapArea(QtWidgets.QGraphicsView):
         # If we notice issues with text rendering in the
         # future, 'or' in the TextAntialiasing hint too
         self.setRenderHints(QtGui.QPainter.Antialiasing)
-        self.scene = MapScene(self)
+        self.scene = MapScene(self, parent)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(Constants.c_background_out_of_scene))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
