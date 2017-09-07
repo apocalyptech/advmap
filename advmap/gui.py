@@ -64,6 +64,11 @@ class Constants(object):
     ladder_rung_spacing = 7
     ladder_line_width = 4
 
+    # How "wide" to draw the arrowhead for one-way connections.  This is
+    # the number of pixels from the centerline which each half of the arrow
+    # will be drawn, not the space between them.
+    arrow_head_width = 8
+
     # Connection offsets - where to find the given connection based on
     # the room's initial (x,y) coord.
     connection_offset = {}
@@ -1141,9 +1146,6 @@ class GUIConnectionFactory(object):
         the (x, y) coordinates.
         """
 
-        # TODO: Figure out a decent name for this var and get it in
-        # Constants
-        width_h = 8
         dx_orig = x2-x1
         dy_orig = y2-y1
         dist = math.sqrt(dx_orig**2 + dy_orig**2)
@@ -1156,6 +1158,7 @@ class GUIConnectionFactory(object):
         cur_x = x1 + (x_spacing/2)
         cur_y = y1 + (y_spacing/2)
 
+        width_h = Constants.arrow_head_width
         coord_list.append( (cur_x+(width_h*dy), cur_y-(width_h*dx)) )
         coord_list.append( (cur_x-(width_h*dy), cur_y+(width_h*dx)) )
 
