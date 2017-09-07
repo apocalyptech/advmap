@@ -1110,6 +1110,17 @@ class GUIConnectionFactory(object):
             dst_x = src_x - (dx*end.stub_length)
             dst_y = src_y - (dy*end.stub_length)
 
+        # When drawing arrows, we want to render based on the length of
+        # the stub *before* we cut it in half, just so it's more noticeable.
+        # This is most important for ladder one-way connections with short
+        # stublengths.
+        # TODO: really what we should do is enforce a minimum+maximum here
+        # rather than doing this blindly - longer stublengths make for weird
+        # looking arrows.  And as for ladders, the BEST thing to do would be
+        # to make those look better anyway
+        ladder_dst_x = dst_x
+        ladder_dst_y = dst_y
+
         # aaaand we actually only want to render a line half this long.
         dst_x = (src_x+dst_x)/2
         dst_y = (src_y+dst_y)/2
@@ -1124,10 +1135,10 @@ class GUIConnectionFactory(object):
         # into a connhelper room, but then again that's probably not
         # what you'd want to be doing anyway
         if conn.is_oneway_a() and room == conn.r1:
-            for coord in self.arrow_coords(src_x, src_y, dst_x, dst_y):
+            for coord in self.arrow_coords(src_x, src_y, ladder_dst_x, ladder_dst_y):
                 self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
         if conn.is_oneway_b() and room == conn.r2:
-            for coord in self.arrow_coords(src_x, src_y, dst_x, dst_y):
+            for coord in self.arrow_coords(src_x, src_y, ladder_dst_x, ladder_dst_y):
                 self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
 
         # Draw the actual stub
@@ -1539,6 +1550,9 @@ class MapArea(QtWidgets.QGraphicsView):
 
         super().__init__(parent)
         self.mainwindow = parent
+        # If we notice issues with text rendering in the
+        # future, 'or' in the TextAntialiasing hint too
+        self.setRenderHints(QtGui.QPainter.Antialiasing)
         self.scene = MapScene(self)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))
