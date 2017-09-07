@@ -1792,6 +1792,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             self.recreate()
             if not self.hover_current:
                 self.default_actions()
+        self.dragged = False
 
     def mouseMoveEvent(self, event):
         """
