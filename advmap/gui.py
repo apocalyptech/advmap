@@ -911,8 +911,8 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         """
         Sets our position within the scene, based on our room coords
         """
-        self.gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.x
-        self.gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.room.y
+        self.gfx_x = Constants.room_space + (Constants.room_size+Constants.room_space)*self.room.x
+        self.gfx_y = Constants.room_space + (Constants.room_size+Constants.room_space)*self.room.y
         if self.room.offset_x:
             self.gfx_x += Constants.room_size_half + Constants.room_space_half
         if self.room.offset_y:
@@ -1327,8 +1327,8 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Sets our dimensions in terms of rooms
         """
-        total_w = (Constants.room_space + Constants.room_size)*w
-        total_h = (Constants.room_space + Constants.room_size)*h
+        total_w = (Constants.room_space + Constants.room_size)*w + Constants.room_space
+        total_h = (Constants.room_space + Constants.room_size)*h + Constants.room_space
         self.setSceneRect(QtCore.QRectF(0, 0, total_w, total_h))
 
     def set_map(self, mapobj):
