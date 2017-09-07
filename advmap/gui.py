@@ -140,6 +140,11 @@ class Constants(object):
     gfx_nudge_sw = None
     gfx_nudge_w = None
 
+    gfx_resize_down = None
+    gfx_resize_up = None
+    gfx_resize_left = None
+    gfx_resize_right = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -357,7 +362,13 @@ class MainToolBar(QtWidgets.QToolBar):
         self.addAction(QtGui.QIcon(Constants.gfx_nudge_sw), 'Shift map to the southwest', lambda: parent.nudge_map(DIR_SW))
         self.addAction(QtGui.QIcon(Constants.gfx_nudge_w), 'Shift map to the west', lambda: parent.nudge_map(DIR_W))
         self.addAction(QtGui.QIcon(Constants.gfx_nudge_nw), 'Shift map to the northwest', lambda: parent.nudge_map(DIR_NW))
+        self.addSeparator()
 
+        # Map resizing
+        self.addAction(QtGui.QIcon(Constants.gfx_resize_up), 'Cut off bottom row of map', lambda: parent.resize_map(DIR_N))
+        self.addAction(QtGui.QIcon(Constants.gfx_resize_down), 'Add row to bottom of map', lambda: parent.resize_map(DIR_S))
+        self.addAction(QtGui.QIcon(Constants.gfx_resize_left), 'Cut off rightmost column of map', lambda: parent.resize_map(DIR_W))
+        self.addAction(QtGui.QIcon(Constants.gfx_resize_right), 'Add column to right of map', lambda: parent.resize_map(DIR_E))
         self.addSeparator()
 
         # Map Selection Combo
@@ -428,6 +439,10 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_nudge_s = QtGui.QPixmap(self.resfile('dir_s.png'))
         Constants.gfx_nudge_sw = QtGui.QPixmap(self.resfile('dir_sw.png'))
         Constants.gfx_nudge_w = QtGui.QPixmap(self.resfile('dir_w.png'))
+        Constants.gfx_resize_up = QtGui.QPixmap(self.resfile('dir_exp_up.png'))
+        Constants.gfx_resize_down = QtGui.QPixmap(self.resfile('dir_exp_down.png'))
+        Constants.gfx_resize_left = QtGui.QPixmap(self.resfile('dir_exp_left.png'))
+        Constants.gfx_resize_right = QtGui.QPixmap(self.resfile('dir_exp_right.png'))
 
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
@@ -535,6 +550,13 @@ class GUI(QtWidgets.QMainWindow):
         Attempts to nudge the current scene in the given direction
         """
         if self.mapobj.nudge(direction):
+            self.scene.recreate()
+
+    def resize_map(self, direction):
+        """
+        Attempts to resize the current scene in the given direction
+        """
+        if self.mapobj.resize(direction):
             self.scene.recreate()
 
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
@@ -1415,7 +1437,6 @@ class MapScene(QtWidgets.QGraphicsScene):
         super().__init__(parent)
 
         self.mapobj = None
-        self.set_dimensions(1, 1)
 
         # Keep track of what's currently hovering in the scene
         self.hover_current = None
@@ -1445,21 +1466,12 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.hover_current = None
 
-    def set_dimensions(self, w, h):
-        """
-        Sets our dimensions in terms of rooms
-        """
-        total_w = (Constants.room_space + Constants.room_size)*w + Constants.room_space
-        total_h = (Constants.room_space + Constants.room_size)*h + Constants.room_space
-        self.setSceneRect(QtCore.QRectF(0, 0, total_w, total_h))
-
     def set_map(self, mapobj):
         """
         Sets the current map in use
         """
         self.selected = set()
         self.mapobj = mapobj
-        self.set_dimensions(self.mapobj.w, self.mapobj.h)
         self.recreate()
 
     def recreate(self, keep_hover=None):
@@ -1475,6 +1487,11 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.clear()
         self.parent().viewport().update()
         self.hover_end()
+
+        # Set our scene size
+        total_w = (Constants.room_space + Constants.room_size)*self.mapobj.w + Constants.room_space
+        total_h = (Constants.room_space + Constants.room_size)*self.mapobj.h + Constants.room_space
+        self.setSceneRect(QtCore.QRectF(0, 0, total_w, total_h))
 
         # First draw a white background
         rect = self.addRect(0, 0, self.width(), self.height(),
