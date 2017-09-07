@@ -146,6 +146,7 @@ class Constants(object):
     gfx_resize_right = None
 
     gfx_grid = None
+    gfx_readonly = None
 
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
@@ -354,23 +355,36 @@ class MainToolBar(QtWidgets.QToolBar):
         self.setFloatable(False)
         self.setMovable(False)
         self.setIconSize(Constants.gfx_nudge_n.size())
+        self.readonly_actions = []
 
         # Nudge buttons
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_n), 'Shift map to the north', lambda: parent.nudge_map(DIR_N))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_ne), 'Shift map to the northeast', lambda: parent.nudge_map(DIR_NE))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_e), 'Shift map to the east', lambda: parent.nudge_map(DIR_E))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_se), 'Shift map to the southeast', lambda: parent.nudge_map(DIR_SE))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_s), 'Shift map to the south', lambda: parent.nudge_map(DIR_S))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_sw), 'Shift map to the southwest', lambda: parent.nudge_map(DIR_SW))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_w), 'Shift map to the west', lambda: parent.nudge_map(DIR_W))
-        self.addAction(QtGui.QIcon(Constants.gfx_nudge_nw), 'Shift map to the northwest', lambda: parent.nudge_map(DIR_NW))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_n),
+            'Shift map to the north', lambda: parent.nudge_map(DIR_N)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_ne),
+            'Shift map to the northeast', lambda: parent.nudge_map(DIR_NE)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_e),
+            'Shift map to the east', lambda: parent.nudge_map(DIR_E)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_se),
+            'Shift map to the southeast', lambda: parent.nudge_map(DIR_SE)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_s),
+            'Shift map to the south', lambda: parent.nudge_map(DIR_S)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_sw),
+            'Shift map to the southwest', lambda: parent.nudge_map(DIR_SW)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_w),
+            'Shift map to the west', lambda: parent.nudge_map(DIR_W)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_nudge_nw),
+            'Shift map to the northwest', lambda: parent.nudge_map(DIR_NW)))
         self.addSeparator()
 
         # Map resizing
-        self.addAction(QtGui.QIcon(Constants.gfx_resize_up), 'Cut off bottom row of map', lambda: parent.resize_map(DIR_N))
-        self.addAction(QtGui.QIcon(Constants.gfx_resize_down), 'Add row to bottom of map', lambda: parent.resize_map(DIR_S))
-        self.addAction(QtGui.QIcon(Constants.gfx_resize_left), 'Cut off rightmost column of map', lambda: parent.resize_map(DIR_W))
-        self.addAction(QtGui.QIcon(Constants.gfx_resize_right), 'Add column to right of map', lambda: parent.resize_map(DIR_E))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_resize_up),
+            'Cut off bottom row of map', lambda: parent.resize_map(DIR_N)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_resize_down),
+            'Add row to bottom of map', lambda: parent.resize_map(DIR_S)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_resize_left),
+            'Cut off rightmost column of map', lambda: parent.resize_map(DIR_W)))
+        self.readonly_actions.append(self.addAction(QtGui.QIcon(Constants.gfx_resize_right),
+            'Add column to right of map', lambda: parent.resize_map(DIR_E)))
         self.addSeparator()
 
         # Grid
@@ -378,9 +392,26 @@ class MainToolBar(QtWidgets.QToolBar):
         self.grid_toggle.setCheckable(True)
         self.addSeparator()
 
+        # Readonly
+        self.readonly_toggle = self.addAction(QtGui.QIcon(Constants.gfx_readonly), 'Toggle readonly', parent.toggle_readonly)
+        self.readonly_toggle.setCheckable(True)
+        self.addSeparator()
+
         # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
         self.addWidget(self.mapcombo)
+
+    def toggle_readonly_actions(self):
+        """
+        Disable or enable our readonly-sensitive actions, depending on the current
+        state of our readonly checkbox.
+        """
+        if self.readonly_toggle.isChecked():
+            enabled = False
+        else:
+            enabled = True
+        for action in self.readonly_actions:
+            action.setEnabled(enabled)
 
 class GUI(QtWidgets.QMainWindow):
     """
@@ -451,6 +482,7 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_resize_left = QtGui.QPixmap(self.resfile('dir_exp_left.png'))
         Constants.gfx_resize_right = QtGui.QPixmap(self.resfile('dir_exp_right.png'))
         Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
+        Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
 
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
@@ -479,6 +511,11 @@ class GUI(QtWidgets.QMainWindow):
                 print(e)
         if not self.curfile:
             self.create_new_game()
+
+        # Set our readonly state, if we've been told to
+        if readonly:
+            self.toolbar.readonly_toggle.setChecked(True)
+            self.toggle_readonly()
 
         # Show ourselves
         self.show()
@@ -573,6 +610,19 @@ class GUI(QtWidgets.QMainWindow):
         """
         self.scene.recreate()
 
+    def is_readonly(self):
+        """
+        Returns `True` or `False` depending on if we're in readonly mode
+        """
+        return self.toolbar.readonly_toggle.isChecked()
+
+    def toggle_readonly(self):
+        """
+        Toggles our readonly state
+        """
+        self.toolbar.toggle_readonly_actions()
+        self.scene.recreate()
+
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
     def __init__(self, gui_room):
@@ -594,6 +644,7 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
+        self.gui_room.mainwindow.maparea.setFocus()
         self.show_actions()
 
     def show_actions(self):
@@ -602,18 +653,22 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         """
         scene = self.scene()
         actions = []
-        if scene.is_selected(self.gui_room.room):
-            actions.append(('shift-click', 'deselect'))
+        if self.gui_room.mainwindow.is_readonly():
+            actions.append(('LMB', 'view details'))
         else:
-            actions.append(('shift-click', 'select'))
-        if scene.has_selections():
-            actions.extend(scene.multi_select_actions())
-        else:
-            actions.append(('WASD', 'nudge room'))
-            actions.append(('X', 'delete'))
-            actions.append(('H/V', 'toggle horiz/vert offset'))
-            actions.append(('T', 'change type'))
-            actions.append(('R', 'change color'))
+            actions.append(('LMB', 'edit room'))
+            if scene.is_selected(self.gui_room.room):
+                actions.append(('shift-click', 'deselect'))
+            else:
+                actions.append(('shift-click', 'select'))
+            if scene.has_selections():
+                actions.extend(scene.multi_select_actions())
+            else:
+                actions.append(('WASD', 'nudge room'))
+                actions.append(('X', 'delete'))
+                actions.append(('H/V', 'toggle horiz/vert offset'))
+                actions.append(('T', 'change type'))
+                actions.append(('R', 'change color'))
         Constants.statusbar.set_hover_actions(
             actions=actions,
             prefix='({}, {})'.format(self.gui_room.room.x+1, self.gui_room.room.y+1),
@@ -633,7 +688,11 @@ class GUIRoomHover(QtWidgets.QGraphicsRectItem):
         """
         Keyboard input
         """
-        # TODO: readonly checks
+        # None of our keyboard events would be active if we're
+        # in readonly
+        if self.gui_room.mainwindow.is_readonly():
+            return
+
         key = event.text().lower()
         scene = self.scene()
         if scene.has_selections():
@@ -853,6 +912,7 @@ class GUINewRoomHover(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
+        self.gui_newroom.mainwindow.maparea.setFocus()
         self.show_actions()
 
     def show_actions(self):
