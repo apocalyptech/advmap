@@ -131,6 +131,15 @@ class Constants(object):
     gfx_ladder_down_rev = None
     gfx_icon_width = None
 
+    gfx_nudge_nw = None
+    gfx_nudge_n = None
+    gfx_nudge_ne = None
+    gfx_nudge_e = None
+    gfx_nudge_se = None
+    gfx_nudge_s = None
+    gfx_nudge_sw = None
+    gfx_nudge_w = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -320,11 +329,6 @@ class MapCombo(QtWidgets.QComboBox):
         self.clear()
         for (mapname, mapidx) in maplist:
             self.addItem(mapname, mapidx)
-        # This is hokey but prevents qdockwidget resizing.  We'll
-        # actually probably want to base this off our buttons, or
-        # maybe at least the max of the two...
-        self.parent().setMaximumHeight(self.height())
-        self.parent().setMinimumHeight(self.height())
         self.loading = False
 
     def index_changed(self, index):
@@ -333,22 +337,32 @@ class MapCombo(QtWidgets.QComboBox):
         """
         self.maingui.set_current_map(self.currentData())
 
-class MainDocks(QtWidgets.QDockWidget):
+class MainToolBar(QtWidgets.QToolBar):
     """
     Main dock widget
     """
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setFeatures(self.NoDockWidgetFeatures)
-        w = QtWidgets.QWidget()
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.setContentsMargins(0, 0, 10, 0)
-        w.setLayout(hbox)
-        self.setWidget(w)
+        self.setFloatable(False)
+        self.setMovable(False)
+        self.setIconSize(Constants.gfx_nudge_n.size())
 
+        # Nudge buttons
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_n), 'Shift map to the north', lambda: parent.nudge_map(DIR_N))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_ne), 'Shift map to the northeast', lambda: parent.nudge_map(DIR_NE))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_e), 'Shift map to the east', lambda: parent.nudge_map(DIR_E))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_se), 'Shift map to the southeast', lambda: parent.nudge_map(DIR_SE))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_s), 'Shift map to the south', lambda: parent.nudge_map(DIR_S))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_sw), 'Shift map to the southwest', lambda: parent.nudge_map(DIR_SW))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_w), 'Shift map to the west', lambda: parent.nudge_map(DIR_W))
+        self.addAction(QtGui.QIcon(Constants.gfx_nudge_nw), 'Shift map to the northwest', lambda: parent.nudge_map(DIR_NW))
+
+        self.addSeparator()
+
+        # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
-        hbox.addWidget(self.mapcombo, 0, QtCore.Qt.AlignRight)
+        self.addWidget(self.mapcombo)
 
 class GUI(QtWidgets.QMainWindow):
     """
@@ -360,15 +374,6 @@ class GUI(QtWidgets.QMainWindow):
         self.initUI(initfile, readonly)
 
     def initUI(self, initfile, readonly):
-
-        # Set up a status bar
-        self.statusbar = MainStatusBar(self)
-        self.setStatusBar(self.statusbar)
-        Constants.statusbar = self.statusbar
-
-        # Set up our dock widget
-        self.docks = MainDocks(self)
-        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.docks)
 
         # Set up some constants which we can't do directly in Constants
         # because of Reasons.  First up: title font padding
@@ -415,6 +420,23 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_ladder_down_rev = QtGui.QPixmap(self.resfile('ladder_down_rev.png'))
         Constants.gfx_icon_width = Constants.gfx_door_in.width()
         Constants.other_max_width = Constants.room_size - Constants.room_text_padding*2 - Constants.gfx_icon_width - Constants.icon_label_space
+        Constants.gfx_nudge_nw = QtGui.QPixmap(self.resfile('dir_nw.png'))
+        Constants.gfx_nudge_n = QtGui.QPixmap(self.resfile('dir_n.png'))
+        Constants.gfx_nudge_ne = QtGui.QPixmap(self.resfile('dir_ne.png'))
+        Constants.gfx_nudge_e = QtGui.QPixmap(self.resfile('dir_e.png'))
+        Constants.gfx_nudge_se = QtGui.QPixmap(self.resfile('dir_se.png'))
+        Constants.gfx_nudge_s = QtGui.QPixmap(self.resfile('dir_s.png'))
+        Constants.gfx_nudge_sw = QtGui.QPixmap(self.resfile('dir_sw.png'))
+        Constants.gfx_nudge_w = QtGui.QPixmap(self.resfile('dir_w.png'))
+
+        # Set up a status bar
+        self.statusbar = MainStatusBar(self)
+        self.setStatusBar(self.statusbar)
+        Constants.statusbar = self.statusbar
+
+        # Set up our dock widget
+        self.toolbar = MainToolBar(self)
+        self.addToolBar(self.toolbar)
 
         # Set up our main widgets
         self.maparea = MapArea(self)
@@ -464,7 +486,7 @@ class GUI(QtWidgets.QMainWindow):
         """
         Sets up our mapcombo
         """
-        self.docks.mapcombo.set_maplist([(r.name, idx) for (idx, r) in enumerate(self.game.maps)])
+        self.toolbar.mapcombo.set_maplist([(r.name, idx) for (idx, r) in enumerate(self.game.maps)])
         self.set_current_map(0)
 
     def set_current_map(self, mapindex):
@@ -474,6 +496,7 @@ class GUI(QtWidgets.QMainWindow):
         self.mapobj = self.game.maps[mapindex]
         self.map_idx = mapindex
         self.scene.set_map(self.mapobj)
+        self.setWindowTitle('Adventure Game Mapper | {} | {}'.format(self.game.name, self.mapobj.name))
 
     def create_new_game(self):
         """
@@ -506,6 +529,13 @@ class GUI(QtWidgets.QMainWindow):
         Returns a proper full path to a file in our resource directory, given the base filename
         """
         return os.path.join(self.reldir('res'), filename)
+
+    def nudge_map(self, direction):
+        """
+        Attempts to nudge the current scene in the given direction
+        """
+        if self.mapobj.nudge(direction):
+            self.scene.recreate()
 
 class GUIRoomHover(QtWidgets.QGraphicsRectItem):
 
@@ -850,8 +880,8 @@ class GUINewRoom(QtWidgets.QGraphicsRectItem):
         """
         Sets our position within the scene, based on our room coords
         """
-        self.gfx_x = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.x
-        self.gfx_y = Constants.room_space_half + (Constants.room_size+Constants.room_space)*self.y
+        self.gfx_x = Constants.room_space + (Constants.room_size+Constants.room_space)*self.x
+        self.gfx_y = Constants.room_space + (Constants.room_size+Constants.room_space)*self.y
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setPos(self.gfx_x, self.gfx_y)
 
