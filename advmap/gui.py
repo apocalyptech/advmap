@@ -616,10 +616,20 @@ class GUI(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.Question)
+        self.activateWindow()
         if res == QtWidgets.QMessageBox.Yes:
             return True
         else:
             return False
+
+    def dialog_error(self, message, infotext=None):
+        """
+        Shows an error dialog to the user
+        """
+        self.dialog_user(message, infotext,
+                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.Critical)
 
     def set_status(self, status_str):
         """
@@ -634,6 +644,7 @@ class GUI(QtWidgets.QMainWindow):
         exception, which should be caught by anything attempting
         the load.
         """
+        # TODO: center on map
         game = Game.load(filename)
         self.game = game
         self.curfile = filename
@@ -673,6 +684,7 @@ class GUI(QtWidgets.QMainWindow):
         """
         Creates our default new map, with a single room in the center
         """
+        # TODO: center
         mapobj = Map(name)
         room = mapobj.add_room_at(4, 4, 'Starting Room')
         room.color = Room.COLOR_GREEN
@@ -745,7 +757,29 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Open" action.
         """
-        print('Open')
+        if self.curfile:
+            path = os.path.dirname(os.path.realpath(self.curfile))
+        else:
+            path = self.reldir('data')
+
+        rundialog = True
+        while rundialog:
+            rundialog = False
+            (filename, filefilter) = QtWidgets.QFileDialog.getOpenFileName(self,
+                    'Open Game Map File...',
+                    path,
+                    'Game Map Files (*.adv);;All Files (*.*)')
+
+            if filename and filename != '':
+                try:
+                    self.load_from_file(filename)
+                except Exception as e:
+                    self.dialog_error('Error opening file', str(e))
+                    path = os.path.dirname(filename)
+                    rundialog = True
+
+        # Re-focus the main window
+        self.activateWindow()
 
     def action_revert(self):
         """
@@ -1170,6 +1204,7 @@ class GUIConnectionHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+        self.gui_room.mainwindow.activateWindow()
 
     def new_connection_step_one(self):
         """
@@ -1395,6 +1430,7 @@ class GUIRoomHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+        self.gui_room.mainwindow.activateWindow()
 
     def keyPressEvent(self, event):
         """
@@ -1628,6 +1664,7 @@ class GUINewRoomHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+        self.gui_newroom.mainwindow.activateWindow()
 
 class GUINewRoom(QtWidgets.QGraphicsRectItem):
 
@@ -2293,6 +2330,9 @@ class NewEditRoomDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setModal(True)
         self.setSizeGripEnabled(True)
+        # This attribute seems to be needed before we can return focus to the main
+        # window...
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setMinimumSize(560, 670)
         self.editing = editing
         self.room = room
