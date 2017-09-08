@@ -830,6 +830,15 @@ class GUIConnectionHover(HoverArea):
             self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
             self.add_key_action('E', 'add extra', ['e'], self.add_extra_step_one, [[]])
             self.add_key_action('T', 'type', ['t'], self.cycle_type, [[]])
+            self.add_key_action('P', 'path', ['p'], self.cycle_render_type, [[]])
+            self.add_key_action('O', 'orientation', ['o'], self.cycle_passage, [[]])
+            self.add_key_action('L', 'stub length', ['l'], self.cycle_stub_length, [[]])
+            if self.conn.symmetric:
+                self.add_key_action('S','symmetric OFF', ['s'], self.toggle_symmetric, [[]])
+            else:
+                self.add_key_action('S','symmetric ON', ['s'], self.toggle_symmetric, [[]])
+            if not self.conn.is_primary(self.room, self.direction):
+                self.add_key_action('R', 'set primary', ['r'], self.set_primary, [[]])
 
     def remove_connection(self):
         """
@@ -861,6 +870,41 @@ class GUIConnectionHover(HoverArea):
         Cycles the type of our connection end
         """
         self.conn.cycle_conn_type(self.room, self.direction)
+        self.scene().recreate((self.room, self.direction))
+
+    def cycle_render_type(self):
+        """
+        Cycles the render type of our connection end
+        """
+        self.conn.cycle_render_type(self.room, self.direction)
+        self.scene().recreate((self.room, self.direction))
+
+    def cycle_passage(self):
+        """
+        Cycles the passage type of our connection end
+        """
+        self.conn.cycle_passage()
+        self.scene().recreate((self.room, self.direction))
+
+    def cycle_stub_length(self):
+        """
+        Cycles the stub length our connection end
+        """
+        self.conn.increment_stub_length(self.room, self.direction)
+        self.scene().recreate((self.room, self.direction))
+
+    def toggle_symmetric(self):
+        """
+        Toggles connection symmetry
+        """
+        self.conn.toggle_symmetric(self.room, self.direction)
+        self.scene().recreate((self.room, self.direction))
+
+    def set_primary(self):
+        """
+        Sets this end to be the primary end
+        """
+        self.conn.set_primary(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
 
     def mousePressEvent(self, event):
