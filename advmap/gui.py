@@ -780,6 +780,7 @@ class GUIConnectionHover(HoverArea):
         self.direction = direction
         self.gui_room = gui_room
         self.room = gui_room.room
+        self.conn = self.room.get_conn(self.direction)
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setZValue(Constants.z_value_connection_hover)
@@ -821,14 +822,14 @@ class GUIConnectionHover(HoverArea):
         bother checking for that.
         """
         scene = self.scene()
-        conn = self.room.get_conn(self.direction)
         if self.room.get_loopback(self.direction):
             self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection, [[]])
-        elif conn:
+        elif self.conn:
             self.add_mouse_action('RMB', 'move connection', QtCore.Qt.RightButton,
                     self.move_connection_step_one, [])
             self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
             self.add_key_action('E', 'add extra', ['e'], self.add_extra_step_one, [[]])
+            self.add_key_action('T', 'type', ['t'], self.cycle_type, [[]])
 
     def remove_connection(self):
         """
@@ -854,6 +855,13 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.two_step_add_extra = (self.room, self.direction)
         self.gui_room.mainwindow.statusbar.set_two_step_text('E again to add an extra connection to the same room')
+
+    def cycle_type(self):
+        """
+        Cycles the type of our connection end
+        """
+        self.conn.cycle_conn_type(self.room, self.direction)
+        self.scene().recreate((self.room, self.direction))
 
     def mousePressEvent(self, event):
         """
@@ -1400,9 +1408,28 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         self.hover_obj = GUIRoomHover(self)
 
         # And we'll need hovers for all our connection points.
+        self.connhovers = {}
         if not self.mainwindow.is_readonly():
             for direction in DIR_LIST:
-                connhover = GUIConnectionHover(self, direction)
+                self.connhovers[direction] = GUIConnectionHover(self, direction)
+
+    def check_keep_hover_connections(self, keep_hover):
+        """
+        Checks our `keep_hover` to see if we should resume hovering on
+        one of our GUIConnectionHover objects
+        """
+        if keep_hover:
+            try:
+                keep_room = keep_hover[0]
+                keep_dir = keep_hover[1]
+                if self.room == keep_room:
+                    for direction in DIR_LIST:
+                        if keep_dir == direction:
+                            self.connhovers[direction].hoverEnterEvent()
+                            break
+            except TypeError as e:
+                # keep_hover may not be a Tuple
+                pass
 
     @staticmethod
     def get_title_font(size=Constants.title_font_sizes[0]):
@@ -2017,6 +2044,7 @@ class MapScene(QtWidgets.QGraphicsScene):
                 if room:
                     guiroom = GUIRoom(room, self.parent().mainwindow)
                     self.addItem(guiroom)
+                    guiroom.check_keep_hover_connections(keep_hover)
                     self.room_to_gui[room] = guiroom
                     if keep_hover == room:
                         guiroom.hover_obj.hoverEnterEvent()
