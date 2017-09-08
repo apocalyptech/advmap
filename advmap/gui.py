@@ -773,6 +773,26 @@ class GUI(QtWidgets.QMainWindow):
             self.scene.clear_selected()
         self.scene.recreate()
 
+    def import_maps_from_file(self, filename):
+        """
+        Imports maps from another adventure file into this one.
+        Returns the number of new maps added.
+        """
+        seen_names = set()
+        for mapobj in self.game.maps:
+            seen_names.add(mapobj.name)
+        game = Game.load(filename)
+        for mapobj in game.maps:
+            base_mapname = mapobj.name
+            mapname = base_mapname
+            idx = 1
+            while mapname in seen_names:
+                idx += 1
+                mapname = '%s (%d)' % (base_mapname, idx)
+            mapobj.name = mapname
+            self.game.add_map_obj(mapobj)
+        return len(game.maps)
+
     def action_new(self):
         """
         Handle our "New" action.
@@ -865,7 +885,37 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Import" action.
         """
-        print('Import')
+        if self.curfile:
+            path = os.path.dirname(os.path.realpath(self.curfile))
+        else:
+            path = self.reldir('data')
+
+        rundialog = True
+        imported = 0
+        while rundialog:
+            rundialog = False
+            (filename, filefilter) = QtWidgets.QFileDialog.getOpenFileName(self,
+                    'Import Game Map File...',
+                    path,
+                    'Game Map Files (*.adv);;All Files (*.*)')
+            if filename and filename != '':
+                try:
+                    imported = self.import_maps_from_file(filename)
+                except Exception as e:
+                    self.errordialog('Error importing maps', str(e))
+                    rundialog = True
+
+        # Report on any maps imported
+        if imported > 0:
+            self.set_mapcombo()
+            if imported == 1:
+                plural = ''
+            else:
+                plural = 's'
+            self.dialog_info('Imported Maps', '{} map{} imported'.format(imported, plural))
+
+        # Re-focus the main window
+        self.activateWindow()
 
     def action_export(self):
         """
