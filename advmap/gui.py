@@ -825,9 +825,10 @@ class GUIConnectionHover(HoverArea):
         if self.room.get_loopback(self.direction):
             self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection, [[]])
         elif conn:
-            self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
             self.add_mouse_action('RMB', 'move connection', QtCore.Qt.RightButton,
                     self.move_connection_step_one, [])
+            self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
+            self.add_key_action('E', 'add extra', ['e'], self.add_extra_step_one, [[]])
 
     def remove_connection(self):
         """
@@ -844,6 +845,15 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.two_step_move_connection = (self.room, self.direction)
         self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to move connection')
+
+    def add_extra_step_one(self):
+        """
+        We've selected a connection for which we're looking to add
+        an extra end
+        """
+        scene = self.scene()
+        scene.two_step_add_extra = (self.room, self.direction)
+        self.gui_room.mainwindow.statusbar.set_two_step_text('E again to add an extra connection to the same room')
 
     def mousePressEvent(self, event):
         """
@@ -863,6 +873,28 @@ class GUIConnectionHover(HoverArea):
                     scene.recreate()
                 return
         super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        """
+        Key press event - will generally pass this through, unless
+        we happen to have a two-step action we're in the middle of
+        """
+        scene = self.scene()
+        if scene.two_step_add_extra:
+            key = event.text().lower()
+            if key == 'e':
+                (orig_room, orig_dir) = scene.two_step_add_extra
+                conn = orig_room.get_conn(orig_dir)
+                new_room = self.room
+                new_dir = self.direction
+                scene.clear_two_step_actions()
+                try:
+                    conn.connect_extra(new_room, new_dir)
+                except Exception as e:
+                    pass
+                scene.recreate()
+                return
+        super().keyPressEvent(event)
 
 class GUIRoomHover(HoverArea):
 
@@ -2134,6 +2166,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.two_step_group_first = None
         self.two_step_move_connection = None
+        self.two_step_add_extra = None
         self.mainwindow.statusbar.clear_two_step_text()
 
     def have_two_step_action(self):
@@ -2142,7 +2175,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         a two-step operation or not.
         """
         return (self.two_step_group_first is not None or
-                self.two_step_move_connection is not None)
+                self.two_step_move_connection is not None or
+                self.two_step_add_extra is not None
+                )
 
     def populate_multi_select_actions(self):
         """
