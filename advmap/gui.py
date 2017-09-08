@@ -839,6 +839,13 @@ class GUIConnectionHover(HoverArea):
                 self.add_key_action('S','symmetric ON', ['s'], self.toggle_symmetric, [[]])
             if not self.conn.is_primary(self.room, self.direction):
                 self.add_key_action('R', 'set primary', ['r'], self.set_primary, [[]])
+        else:
+            self.add_mouse_action('LMB', 'new room', QtCore.Qt.LeftButton,
+                    self.new_connection_room, [])
+            self.add_mouse_action('RMB', 'new connection', QtCore.Qt.RightButton,
+                    self.new_connection_step_one, [])
+            self.add_mouse_action('MMB', 'new loopback', QtCore.Qt.MiddleButton,
+                    self.new_loopback, [])
 
     def remove_connection(self):
         """
@@ -907,6 +914,28 @@ class GUIConnectionHover(HoverArea):
         self.conn.set_primary(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
 
+    def new_connection_room(self):
+        """
+        Sets up a new connection to a new room
+        """
+        print('New connection to new room...')
+
+    def new_connection_step_one(self):
+        """
+        User has initiated setting up a new connection between arbitrary
+        points.
+        """
+        scene = self.scene()
+        scene.two_step_new_connection = (self.room, self.direction)
+        self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to link to existing room')
+
+    def new_loopback(self):
+        """
+        Adds a new loopback
+        """
+        self.room.set_loopback(self.direction)
+        self.scene().recreate((self.room, self.direction))
+
     def mousePressEvent(self, event):
         """
         Handle mouse press event - mostly just looking for the second part of
@@ -922,6 +951,17 @@ class GUIConnectionHover(HoverArea):
                 scene.clear_two_step_actions()
                 conn = orig_room.get_conn(orig_dir)
                 if conn.move_end(orig_room, orig_dir, new_room, new_dir):
+                    scene.recreate()
+                return
+        if scene.two_step_new_connection:
+            button = event.button()
+            if button == QtCore.Qt.RightButton:
+                new_room = self.room
+                new_dir = self.direction
+                (orig_room, orig_dir) = scene.two_step_new_connection
+                scene.clear_two_step_actions()
+                if new_room != orig_room:
+                    scene.mapobj.connect(orig_room, orig_dir, new_room, new_dir)
                     scene.recreate()
                 return
         super().mousePressEvent(event)
@@ -2239,6 +2279,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.two_step_group_first = None
         self.two_step_move_connection = None
         self.two_step_add_extra = None
+        self.two_step_new_connection = None
         self.mainwindow.statusbar.clear_two_step_text()
 
     def have_two_step_action(self):
@@ -2246,9 +2287,10 @@ class MapScene(QtWidgets.QGraphicsScene):
         Returns a boolean to indicate whether we're in the middle of
         a two-step operation or not.
         """
-        return (self.two_step_group_first is not None or
-                self.two_step_move_connection is not None or
-                self.two_step_add_extra is not None
+        return (self.two_step_group_first is not None
+                or self.two_step_move_connection is not None
+                or self.two_step_add_extra is not None
+                or self.two_step_new_connection is not None
                 )
 
     def populate_multi_select_actions(self):
