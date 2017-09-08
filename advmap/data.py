@@ -234,6 +234,9 @@ class Room(object):
             COLOR_ORANGE: 'Orange',
         }
 
+    # Magic string indicating we're unexplored
+    unexplored_text = '(unexplored)'
+
     def __init__(self, idnum, x, y):
         self.idnum = idnum
         self.x = x
@@ -273,11 +276,18 @@ class Room(object):
             newroom.loopbacks[direction] = value
         return newroom
 
+    def name_sort_key(self):
+        """
+        A method which can be used to sort a list of rooms by name first,
+        then coordinate.
+        """
+        return '{}_{:03d}_{:03d}'.format(self.name.lower(), self.y, self.x)
+
     def unexplored(self):
         """
         Special-case magic string here.  Yay!
         """
-        return (self.name == '(unexplored)')
+        return (self.name == self.unexplored_text)
 
     def set_loopback(self, direction):
         """

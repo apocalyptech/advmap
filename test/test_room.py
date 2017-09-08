@@ -2,6 +2,7 @@
 # vim: set expandtab tabstop=4 shiftwidth=4:
 
 import unittest
+import operator
 from advmap.data import Room, Group, Map, Connection, ConnectionEnd
 from advmap.data import DIR_N, DIR_NE, DIR_E, DIR_SE, DIR_S, DIR_SW, DIR_W, DIR_NW
 from advmap.file import Savefile
@@ -89,6 +90,42 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(len(r2.loopbacks), 1)
         self.assertIn(DIR_S, r2.loopbacks)
         self.assertEqual(r2.loopbacks[DIR_S], True)
+
+    def test_name_sort_key_alphabetic(self):
+        """
+        Test sorting rooms using our name_sort_key method - should sort by room name
+        before anything else.
+        """
+        r1 = Room(1, 2, 3)
+        r1.name = 'Z Room'
+        r2 = Room(4, 5, 6)
+        r2.name = 'A Room'
+        sortlist = sorted([r1, r2], key=operator.methodcaller('name_sort_key'))
+        self.assertEqual(sortlist, [r2, r1])
+
+    def test_name_sort_key_yval(self):
+        """
+        Test sorting rooms using our name_sort_key method - should sort by Y value
+        if name matches
+        """
+        r1 = Room(1, 2, 3)
+        r1.name = 'A Room'
+        r2 = Room(4, 1, 1)
+        r2.name = 'A Room'
+        sortlist = sorted([r1, r2], key=operator.methodcaller('name_sort_key'))
+        self.assertEqual(sortlist, [r2, r1])
+
+    def test_name_sort_key_xval(self):
+        """
+        Test sorting rooms using our name_sort_key method - should sort by X value
+        if both name and Y value matches
+        """
+        r1 = Room(1, 2, 3)
+        r1.name = 'A Room'
+        r2 = Room(4, 1, 3)
+        r2.name = 'A Room'
+        sortlist = sorted([r1, r2], key=operator.methodcaller('name_sort_key'))
+        self.assertEqual(sortlist, [r2, r1])
 
     def test_unexplored_true(self):
         """

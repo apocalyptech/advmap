@@ -18,8 +18,9 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import os.path
 import math
+import os.path
+import operator
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from advmap.data import *
@@ -665,6 +666,8 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         self.key_actions_by_key = {}
         self.mouse_actions_by_button = {}
         self.actionlist = []
+        self.x = x
+        self.y = y
         if x is None or y is None:
             self.prefix = None
         else:
@@ -997,7 +1000,11 @@ class GUIConnectionHover(HoverArea):
         """
         Sets up a new connection to a new room
         """
-        print('New connection to new room...')
+        d = NewEditRoomDialog(self.gui_room.mainwindow, editing=False,
+                room=self.room, from_direction=self.direction)
+        res = d.exec()
+        if res == d.Accepted:
+            self.scene().recreate()
 
     def new_connection_step_one(self):
         """
@@ -1219,7 +1226,10 @@ class GUIRoomHover(HoverArea):
         """
         Editing the room
         """
-        print('Editing room...')
+        d = NewEditRoomDialog(self.gui_room.mainwindow, editing=True, room=self.gui_room.room)
+        res = d.exec()
+        if res == d.Accepted:
+            self.scene().recreate()
 
     def keyPressEvent(self, event):
         """
@@ -1394,8 +1404,10 @@ class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
 class GUINewRoomHover(HoverArea):
 
     def __init__(self, gui_newroom):
-        super().__init__(gui_newroom, gui_newroom.mainwindow, x=gui_newroom.x, y=gui_newroom.y)
+        super().__init__(gui_newroom, gui_newroom.mainwindow)
         self.gui_newroom = gui_newroom
+        self.x = gui_newroom.x
+        self.y = gui_newroom.y
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
@@ -1447,7 +1459,10 @@ class GUINewRoomHover(HoverArea):
         """
         Create a new room
         """
-        print('Adding a new room...')
+        d = NewEditRoomDialog(self.gui_newroom.mainwindow, editing=False, x=self.x, y=self.y)
+        res = d.exec()
+        if res == d.Accepted:
+            self.scene().recreate()
 
 class GUINewRoom(QtWidgets.QGraphicsRectItem):
 
@@ -1514,7 +1529,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                 self.title = GUIRoomTitleTextItem(self)
 
         # Draw any in/out/up/down labels we might have
-        if room.type != Room.TYPE_CONNHELPER and room.type != Room.TYPE_LABEL:
+        if room.type != Room.TYPE_CONNHELPER and not pretend_label:
             cur_y = Constants.icon_start_y
             for (label, (graphic_light, graphic_dark)) in [
                     (room.up, (Constants.gfx_ladder_up, Constants.gfx_ladder_up_rev)),
@@ -2100,6 +2115,506 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(color))
         self.setPen(QtGui.QPen(color))
         self.setZValue(Constants.z_value_group)
+
+class NewEditRoomDialog(QtWidgets.QDialog):
+    """
+    Main dialog for either adding a new room or editing an existing room.  Some
+    fields in here depend on what "mode" we're in, though the majority of them
+    are the same regardless.
+    """
+
+    def __init__(self, parent, editing=False, room=None, from_direction=None,
+            x=None, y=None):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setMinimumSize(560, 670)
+        self.editing = editing
+        self.room = room
+        self.from_direction = from_direction
+        self.x = x
+        self.y = y
+        if self.editing:
+            window_title = 'Edit Room'
+        else:
+            window_title = 'New Room'
+        self.setWindowTitle(window_title)
+        self.cur_row = -1
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Dialog Title
+        title = QtWidgets.QLabel('{}'.format(window_title), self)
+        title.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title, 0, QtCore.Qt.AlignCenter)
+
+        # Main Scrollarea
+        scrollarea = QtWidgets.QScrollArea(self)
+        scrollarea.setFrameShadow(scrollarea.Sunken)
+        scrollarea.setFrameShape(scrollarea.Panel)
+        scrollarea.setLineWidth(2)
+        scrollarea.setMidLineWidth(2)
+        scrollarea.setWidgetResizable(True)
+        layout.addWidget(scrollarea, 1)
+
+        # Button box
+        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel |
+            QtWidgets.QDialogButtonBox.Ok, parent=self)
+        self.buttonbox.accepted.connect(self.accept)
+        self.buttonbox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+
+        # Main grid inside the scrollarea
+        self.gridlayout = QtWidgets.QGridLayout(scrollarea)
+        grid = QtWidgets.QWidget(scrollarea)
+        grid.setLayout(self.gridlayout)
+        scrollarea.setWidget(grid)
+
+        # Contents - Room Name
+        self.add_label('Room Name')
+        self.input_roomname = self.add_textbox(200)
+
+        # Room Type
+        self.add_label('Room Type')
+        self.add_type_radios()
+
+        # Room Color
+        self.add_label('Room Color')
+        self.add_color_radios()
+
+        # Some connection-related data we'll only render when linking from an
+        # existing room.
+        if not editing and from_direction is not None:
+
+            # Connect to direction
+            self.add_label('Connect to Direction')
+            self.input_connect_to_direction = self.add_connect_to_direction()
+
+            # Connection Type
+            self.add_label('Connection Type')
+            self.add_conntype_radios()
+
+            # Passage
+            self.add_label('Passage')
+            self.add_passage_radios()
+
+        # Width options
+        self.add_label('Width Options')
+        self.input_offset_x = self.add_checkbox('Offset (shift to the right)')
+
+        # Height options
+        self.add_label('Height Options')
+        self.input_offset_y = self.add_checkbox('Offset (shift down)')
+
+        # Grouping widget choice depends on what exactly we're doing
+        if not editing and from_direction is not None:
+
+            # Group with previous
+            self.add_label('Grouping')
+            self.input_group_with_previous = self.add_checkbox('Group with previous room?')
+
+        else:
+
+            # Group dropdown
+            self.add_label('Group With')
+            self.input_group_with_dropdown = self.add_group_with_dropdown()
+
+        # Up
+        self.add_label('"Up" Direction')
+        self.input_up = self.add_textbox(150)
+
+        # Down
+        self.add_label('"Down" Direction')
+        self.input_down = self.add_textbox(150)
+
+        # In
+        self.add_label('"In" Direction')
+        self.input_in = self.add_textbox(150)
+
+        # Out
+        self.add_label('"Out" Direction')
+        self.input_out = self.add_textbox(150)
+
+        # Notes
+        self.add_label('Notes')
+        self.input_notes = self.add_plaintext_edit(310, 150)
+
+        # Fix some grid sizing parameters
+        self.gridlayout.setColumnStretch(1, 1)
+        self.gridlayout.setRowStretch(self.cur_row, 1)
+
+        # Set defaults
+        if editing:
+
+            self.input_roomname.setText(room.name)
+
+            # Room Type
+            if room.type == Room.TYPE_FAINT:
+                self.input_roomtype_faint.setChecked(True)
+            elif room.type == Room.TYPE_DARK:
+                self.input_roomtype_dark.setChecked(True)
+            elif room.type == Room.TYPE_LABEL:
+                self.input_roomtype_label.setChecked(True)
+            elif room.type == Room.TYPE_CONNHELPER:
+                self.input_roomtype_connhelper.setChecked(True)
+            else:
+                self.input_roomtype_normal.setChecked(True)
+
+            # Room Color
+            if room.color == Room.COLOR_GREEN:
+                self.input_roomcolor_green.setChecked(True)
+            elif room.color == Room.COLOR_BLUE:
+                self.input_roomcolor_blue.setChecked(True)
+            elif room.color == Room.COLOR_RED:
+                self.input_roomcolor_red.setChecked(True)
+            elif room.color == Room.COLOR_YELLOW:
+                self.input_roomcolor_yellow.setChecked(True)
+            elif room.color == Room.COLOR_PURPLE:
+                self.input_roomcolor_purple.setChecked(True)
+            elif room.color == Room.COLOR_CYAN:
+                self.input_roomcolor_cyan.setChecked(True)
+            elif room.color == Room.COLOR_ORANGE:
+                self.input_roomcolor_orange.setChecked(True)
+            else:
+                self.input_roomcolor_bw.setChecked(True)
+
+            # Offsets
+            if room.offset_x:
+                self.input_offset_x.setChecked(True)
+            if room.offset_y:
+                self.input_offset_y.setChecked(True)
+
+            # Group membership
+            if room.group:
+                for group_room in room.group.get_rooms():
+                    if group_room != room:
+                        break
+                idx = self.input_group_with_dropdown.findData(group_room)
+                self.input_group_with_dropdown.setCurrentIndex(idx)
+
+            # Text labels
+            self.input_up.setText(room.up)
+            self.input_down.setText(room.down)
+            self.input_in.setText(room.door_in)
+            self.input_out.setText(room.door_out)
+            self.input_notes.setPlainText(room.notes)
+
+            # Default focus to room name if it's still '(unexplored)', or
+            # the notes field, otherwise.
+            if room.unexplored():
+                self.input_roomname.setFocus()
+            else:
+                self.input_notes.setFocus()
+                curs = self.input_notes.textCursor()
+                curs.movePosition(curs.End, curs.MoveAnchor)
+                self.input_notes.setTextCursor(curs)
+
+        else:
+            self.input_roomname.setFocus()
+            self.input_roomname.setText(Room.unexplored_text)
+            self.input_roomtype_normal.setChecked(True)
+            self.input_roomcolor_bw.setChecked(True)
+            if from_direction is not None:
+                self.input_connect_to_direction.setCurrentIndex(DIR_OPP[from_direction])
+                self.input_conntype_regular.setChecked(True)
+                self.input_passage_twoway.setChecked(True)
+            if room is not None:
+                if room.offset_x:
+                    self.input_offset_x.setChecked(True)
+                if room.offset_y:
+                    self.input_offset_y.setChecked(True)
+                if room.group:
+                    self.input_group_with_previous.setChecked(True)
+
+    def add_label(self, text):
+        """
+        Adds a label to the lefthand side of our grid
+        """
+        self.cur_row += 1
+        label = QtWidgets.QLabel('{}:'.format(text), self)
+        label.setMargin(3)
+        self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
+        return label
+
+    def add_textbox(self, width=None):
+        """
+        Adds a textbox at the current row
+        """
+        edit = QtWidgets.QLineEdit(self)
+        # Our actual max length for strings in our file format is 65536
+        edit.setMaxLength(200)
+        if width:
+            edit.setFixedWidth(width)
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return edit
+
+    def add_checkbox(self, text):
+        """
+        Adds a checkbox at the current row
+        """
+        cb = QtWidgets.QCheckBox(text, self)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return cb
+
+    def add_plaintext_edit(self, width, height):
+        """
+        Adds a plaintext edit box
+        """
+        edit = QtWidgets.QPlainTextEdit(self)
+        edit.setMinimumSize(QtCore.QSize(width, height))
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return edit
+
+    def add_type_radios(self):
+        """
+        Adds our Room Type radio buttons
+        """
+        w = QtWidgets.QWidget(self)
+        l = QtWidgets.QGridLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        w.setLayout(l)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+
+        self.input_roomtype_normal = QtWidgets.QRadioButton('Normal', w)
+        l.addWidget(self.input_roomtype_normal, 0, 0)
+
+        self.input_roomtype_faint = QtWidgets.QRadioButton('Faint', w)
+        l.addWidget(self.input_roomtype_faint, 0, 1)
+
+        self.input_roomtype_dark = QtWidgets.QRadioButton('Dark', w)
+        l.addWidget(self.input_roomtype_dark, 0, 2)
+
+        # Mmf, I wish QRadioButtons supported rich text so I could italicize the parenthetical.
+        self.input_roomtype_label = QtWidgets.QRadioButton('Label (Only Room Name is shown)', w)
+        l.addWidget(self.input_roomtype_label, 1, 0, 1, 3)
+
+        self.input_roomtype_connhelper = QtWidgets.QRadioButton('Connection Helper (no text is shown)', w)
+        l.addWidget(self.input_roomtype_connhelper, 2, 0, 1, 3)
+
+    def add_color_radios(self):
+        """
+        Adds our Room Color radio buttons
+        """
+        w = QtWidgets.QWidget(self)
+        l = QtWidgets.QGridLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        w.setLayout(l)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+
+        self.input_roomcolor_bw = QtWidgets.QRadioButton('B/W', w)
+        l.addWidget(self.input_roomcolor_bw, 0, 0)
+
+        self.input_roomcolor_green = QtWidgets.QRadioButton('Green', w)
+        l.addWidget(self.input_roomcolor_green, 0, 1)
+
+        self.input_roomcolor_blue = QtWidgets.QRadioButton('Blue', w)
+        l.addWidget(self.input_roomcolor_blue, 0, 2)
+
+        self.input_roomcolor_red = QtWidgets.QRadioButton('Red', w)
+        l.addWidget(self.input_roomcolor_red, 0, 3)
+
+        self.input_roomcolor_yellow = QtWidgets.QRadioButton('Yellow', w)
+        l.addWidget(self.input_roomcolor_yellow, 1, 0)
+
+        self.input_roomcolor_purple = QtWidgets.QRadioButton('Purple', w)
+        l.addWidget(self.input_roomcolor_purple, 1, 1)
+
+        self.input_roomcolor_cyan = QtWidgets.QRadioButton('Cyan', w)
+        l.addWidget(self.input_roomcolor_cyan, 1, 2)
+
+        self.input_roomcolor_orange = QtWidgets.QRadioButton('Orange', w)
+        l.addWidget(self.input_roomcolor_orange, 1, 3)
+
+    def add_connect_to_direction(self):
+        """
+        Adds our connect-to-direction dropdown.  This is used when we've clicked
+        on an empty connection on the side of a room, and will end up defaulting
+        to the opposite direction.
+        """
+        cb = QtWidgets.QComboBox(self)
+        for direction in DIR_LIST:
+            cb.addItem(DIR_2_TXT[direction], direction)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return cb
+
+    def add_conntype_radios(self):
+        """
+        Adds our Connection Type radio buttons
+        """
+        w = QtWidgets.QWidget(self)
+        l = QtWidgets.QGridLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        w.setLayout(l)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+
+        self.input_conntype_regular = QtWidgets.QRadioButton('Regular', w)
+        l.addWidget(self.input_conntype_regular, 0, 0)
+
+        self.input_conntype_ladder = QtWidgets.QRadioButton('Ladder', w)
+        l.addWidget(self.input_conntype_ladder, 0, 1)
+
+        self.input_conntype_dotted = QtWidgets.QRadioButton('Dotted', w)
+        l.addWidget(self.input_conntype_dotted, 0, 2)
+
+        self.input_conntype_none = QtWidgets.QRadioButton('None', w)
+        l.addWidget(self.input_conntype_none, 0, 3)
+
+    def add_passage_radios(self):
+        """
+        Adds our Passage radio buttons
+        """
+        w = QtWidgets.QWidget(self)
+        l = QtWidgets.QGridLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        w.setLayout(l)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+
+        self.input_passage_twoway = QtWidgets.QRadioButton('Two-Way', w)
+        l.addWidget(self.input_passage_twoway, 0, 0)
+
+        self.input_passage_oneway_in = QtWidgets.QRadioButton('One-Way Into New Room', w)
+        l.addWidget(self.input_passage_oneway_in, 0, 1)
+
+        self.input_passage_oneway_out = QtWidgets.QRadioButton('One-Way Out', w)
+        l.addWidget(self.input_passage_oneway_out, 0, 2)
+
+    def add_group_with_dropdown(self):
+        """
+        Adds a group-with dropdown.  This will omit any rooms already in
+        a different group than us.
+        """
+        # TODO: Hrmph.  I'm miffed that Qt doesn't actually support rich/html text
+        # inside QComboBoxes (or QCheckBoxes, for that matter).  There's some ways to
+        # hack it in, though for now it's defeated me.  One way is to set up a
+        # QAbstractItemDelegate class, overriding paint() and sizeHint(), and use
+        # an internal QTextDocument there to paint the dropdown selection.  That's
+        # not too bad, but you've also got to render the mouseovers, which I've not
+        # investigated how to do, and there were some strange rendering glitches I
+        # hadn't sorted out, and that doesn't actaully alter how it shows up once you
+        # *have* selected an item (ie: the combobox then just shows the HTML tags).
+        # Another post at here: https://stackoverflow.com/questions/22435712/how-to-display-superscript-in-qcombobox-item
+        # suggests that you may be able to override the style of QComboBox using
+        # a QProxyStyle class, but as with all the other suggestions as well, I've
+        # never actually seen a working example anywhere.  I suspect that very few
+        # people, if any, have actually tried to implement this and succeeded.
+        # Anyway, for now I'm just going to deal with plaintext and sulk.
+        scene = self.parent().scene
+        cb = QtWidgets.QComboBox(self)
+        cb.addItem('-', None)
+        cur_group = None
+        if self.room:
+            cur_group = self.room.group
+        for room in sorted(scene.mapobj.roomlist(), key=operator.methodcaller('name_sort_key')):
+            if room == self.room:
+                continue
+            if room.group and cur_group and room.group != cur_group:
+                continue
+            cb.addItem('{}, at ({}, {})'.format(room.name, room.x+1, room.y+1), room)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return cb
+
+    def accept(self):
+        """
+        User hit "OK", so go ahead and change whatever needs changing.
+        """
+        scene = self.parent().scene
+        if self.editing:
+            oper_room = self.room
+            oper_room.name = self.input_roomname.text()
+        else:
+            if self.room:
+                (self.x, self.y) = scene.mapobj.dir_coord(self.room, self.from_direction)
+
+            # Create the new room
+            try:
+                oper_room = scene.mapobj.add_room_at(self.x, self.y, self.input_roomname.text())
+            except Exception as e:
+                # TODO: notification!
+                return self.reject()
+
+            # If we started with a room, link the two (if told to)
+            if self.room:
+                if not self.input_conntype_none.isChecked():
+                    new_dir = self.input_connect_to_direction.currentData()
+                    newconn = scene.mapobj.connect(self.room, self.from_direction, oper_room, new_dir)
+
+                    # Connection type
+                    if self.input_conntype_ladder.isChecked():
+                        newconn.set_ladder(oper_room, new_dir)
+                    elif self.input_conntype_dotted.isChecked():
+                        newconn.set_dotted(oper_room, new_dir)
+
+                    # Passage
+                    if self.input_passage_oneway_in.isChecked():
+                        newconn.set_oneway_b()
+                    elif self.input_passage_oneway_out.isChecked():
+                        newconn.set_oneway_a()
+
+        # Room Type
+        if self.input_roomtype_faint.isChecked():
+            oper_room.type = Room.TYPE_FAINT
+        elif self.input_roomtype_dark.isChecked():
+            oper_room.type = Room.TYPE_DARK
+        elif self.input_roomtype_label.isChecked():
+            oper_room.type = Room.TYPE_LABEL
+        elif self.input_roomtype_connhelper.isChecked():
+            oper_room.type = Room.TYPE_CONNHELPER
+        else:
+            oper_room.type = Room.TYPE_NORMAL
+
+        # Room Color
+        if self.input_roomcolor_green.isChecked():
+            oper_room.color = Room.COLOR_GREEN
+        elif self.input_roomcolor_blue.isChecked():
+            oper_room.color = Room.COLOR_BLUE
+        elif self.input_roomcolor_red.isChecked():
+            oper_room.color = Room.COLOR_RED
+        elif self.input_roomcolor_yellow.isChecked():
+            oper_room.color = Room.COLOR_YELLOW
+        elif self.input_roomcolor_purple.isChecked():
+            oper_room.color = Room.COLOR_PURPLE
+        elif self.input_roomcolor_cyan.isChecked():
+            oper_room.color = Room.COLOR_CYAN
+        elif self.input_roomcolor_orange.isChecked():
+            oper_room.color = Room.COLOR_ORANGE
+        else:
+            oper_room.color = Room.COLOR_BW
+
+        # Offsets
+        oper_room.offset_x = self.input_offset_x.isChecked()
+        oper_room.offset_y = self.input_offset_y.isChecked()
+
+        # Assign group membership
+        if self.editing:
+            # Previously-existing room.
+            group_room = self.input_group_with_dropdown.currentData()
+            if group_room:
+                # Room specified - do the grouping
+                scene.mapobj.group_rooms(oper_room, group_room)
+            else:
+                # No room selected in dropdown - remove group if one exists
+                scene.mapobj.remove_room_from_group(oper_room)
+        else:
+            if self.room is None:
+                # Completely new room grouping to another room - just go ahead and do it
+                group_room = self.input_group_with_dropdown.currentData()
+                if group_room:
+                    scene.mapobj.group_rooms(oper_room, group_room)
+            else:
+                # Grouping a new room to the previous room's group - just go ahead and do it
+                if self.input_group_with_previous.isChecked():
+                    scene.mapobj.group_rooms(self.room, oper_room)
+
+        # Text Labels
+        oper_room.up = self.input_up.text()
+        oper_room.down = self.input_down.text()
+        oper_room.door_in = self.input_in.text()
+        oper_room.door_out = self.input_out.text()
+        oper_room.notes = self.input_notes.toPlainText()
+
+        super().accept()
 
 class MapScene(QtWidgets.QGraphicsScene):
     """
