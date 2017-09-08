@@ -540,7 +540,8 @@ class GUI(QtWidgets.QMainWindow):
                 '&New', self.action_new, 'Ctrl+N')
         filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogOpenButton),
                 '&Open', self.action_open, 'Ctrl+O')
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_MediaSeekBackward),
+        self.revert_menu_item = filemenu.addAction(
+                style.standardIcon(QtWidgets.QStyle.SP_MediaSeekBackward),
                 '&Revert', self.action_revert, 'Ctrl+R')
         filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogSaveButton),
                 '&Save', self.action_save, 'Ctrl+S')
@@ -676,6 +677,7 @@ class GUI(QtWidgets.QMainWindow):
         self.curfile = filename
         self.set_status('Editing %s' % filename)
         self.set_mapcombo()
+        self.revert_menu_item.setEnabled(True)
         return True
 
     def set_mapcombo(self):
@@ -714,6 +716,7 @@ class GUI(QtWidgets.QMainWindow):
         mapobj = Map(name)
         room = mapobj.add_room_at(4, 4, 'Starting Room')
         room.color = Room.COLOR_GREEN
+        self.revert_menu_item.setEnabled(False)
         return mapobj
 
     def reldir(self, directory):
@@ -826,13 +829,37 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Save" action.
         """
-        print('Save')
+        if self.curfile:
+            self.game.save(self.curfile)
+            self.set_temporary_status('Game saved to {}'.format(self.curfile))
+        else:
+            self.action_save_as()
 
     def action_save_as(self):
         """
         Handle our "Save As" action.
         """
-        print('Save As')
+        if self.curfile:
+            path = os.path.dirname(os.path.realpath(self.curfile))
+        else:
+            path = self.reldir('data')
+        (filename, filefilter) = QtWidgets.QFileDialog.getSaveFileName(self,
+                'Save Game File...',
+                path,
+                'Game Map Files (*.adv);;All Files (*.*)')
+
+        if filename and filename != '':
+            if filename [-4:] != '.adv':
+                filename = '{}.adv'.format(filename)
+            self.curfile = filename
+            self.game.save(self.curfile)
+            self.set_status('Editing %s' % self.curfile)
+            self.set_temporary_status('Game saved to {}'.format(self.curfile))
+            self.revert_menu_item.setEnabled(True)
+
+        # Re-focus the main window
+        self.activateWindow()
+
 
     def action_import(self):
         """
