@@ -268,6 +268,7 @@ class MainStatusBar(QtWidgets.QStatusBar):
 
         super().__init__(parent)
 
+        self.setSizeGripEnabled(False)
         self.vbox = QtWidgets.QVBoxLayout()
         self.vbox.setSpacing(0)
         self.vbox.setContentsMargins(0, 0, 0, 0)
@@ -276,6 +277,8 @@ class MainStatusBar(QtWidgets.QStatusBar):
         self.inner_sb = QtWidgets.QStatusBar(self)
         self.two_step_hover = QtWidgets.QLabel(self)
         self.inner_sb.addPermanentWidget(self.two_step_hover)
+        self.normal = QtWidgets.QLabel(self)
+        self.inner_sb.addWidget(self.normal)
         # TODO: I would like to figure out a way to remove the padding around the
         # QStatusBar but have been unable to do so.  Couldn't find CSS that worked,
         # either.
@@ -303,6 +306,12 @@ class MainStatusBar(QtWidgets.QStatusBar):
         Shows the given message on our inner statusbar
         """
         return self.inner_sb.showMessage(message, timeout)
+
+    def setNormalMessage(self, text):
+        """
+        Sets text as a "normal" message, rather than a temporary one
+        """
+        self.normal.setText(text)
 
     def set_hover_actions(self, actions=None, prefix=None):
         """
@@ -567,7 +576,7 @@ class GUI(QtWidgets.QMainWindow):
         self.maparea = MapArea(self)
         self.scene = self.maparea.scene
         self.setCentralWidget(self.maparea)
-        self.maparea.statusbar[str].connect(self.statusbar.showMessage)
+        self.maparea.statusbar[str].connect(self.statusbar.setNormalMessage)
         self.setMinimumSize(1000, 700)
         self.resize(1000, 700)
         self.setWindowTitle('Adventure Game Mapper')
@@ -630,12 +639,29 @@ class GUI(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.Ok,
                 QtWidgets.QMessageBox.Ok,
                 QtWidgets.QMessageBox.Critical)
+        self.activateWindow()
+
+    def dialog_info(self, message, infotext=None):
+        """
+        Shows an informational dialog to the user
+        """
+        self.dialog_user(message, infotext,
+                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.Information)
+        self.activateWindow()
 
     def set_status(self, status_str):
         """
         Sets our status
         """
-        self.statusbar.showMessage(status_str)
+        self.statusbar.setNormalMessage(status_str)
+
+    def set_temporary_status(self, status_str, seconds=5):
+        """
+        Sets a temporary message on our statusbar.
+        """
+        self.statusbar.showMessage(status_str, seconds*1000)
 
     def load_from_file(self, filename):
         """
@@ -785,7 +811,16 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Revert" action.
         """
-        print('Revert')
+        # TODO: some confirmation would be nice.
+        if self.curfile:
+            try:
+                self.load_from_file(self.curfile)
+                #self.set_temporary_status('Reverted to on-disk state')
+                self.dialog_info('Reverted to on-disk version of file')
+            except Exception as e:
+                self.dialog_error('Unable to Revert file', str(e))
+        else:
+            self.dialog_error('Unable to Revert file', 'This map has never been saved to disk')
 
     def action_save(self):
         """
