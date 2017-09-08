@@ -778,6 +778,7 @@ class GUIConnectionHover(HoverArea):
     def __init__(self, gui_room, direction):
         super().__init__(gui_room, gui_room.mainwindow, x=gui_room.room.x, y=gui_room.room.y)
         self.direction = direction
+        self.gui_room = gui_room
         self.room = gui_room.room
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
@@ -825,6 +826,8 @@ class GUIConnectionHover(HoverArea):
             self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection, [[]])
         elif conn:
             self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
+            self.add_mouse_action('RMB', 'move connection', QtCore.Qt.RightButton,
+                    self.move_connection_step_one, [])
 
     def remove_connection(self):
         """
@@ -833,6 +836,33 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.mapobj.detach(self.room, self.direction)
         scene.recreate()
+
+    def move_connection_step_one(self):
+        """
+        We've selected a connection which we're looking to move
+        """
+        scene = self.scene()
+        scene.two_step_move_connection = (self.room, self.direction)
+        self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to move connection')
+
+    def mousePressEvent(self, event):
+        """
+        Handle mouse press event - mostly just looking for the second part of
+        any two-step processes before handing over to the base class.
+        """
+        scene = self.scene()
+        if scene.two_step_move_connection:
+            button = event.button()
+            if button == QtCore.Qt.RightButton:
+                new_room = self.room
+                new_dir = self.direction
+                (orig_room, orig_dir) = scene.two_step_move_connection
+                scene.clear_two_step_actions()
+                conn = orig_room.get_conn(orig_dir)
+                if conn.move_end(orig_room, orig_dir, new_room, new_dir):
+                    scene.recreate()
+                return
+        super().mousePressEvent(event)
 
 class GUIRoomHover(HoverArea):
 
@@ -2103,6 +2133,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         Clears the vars used to store our two-step process state
         """
         self.two_step_group_first = None
+        self.two_step_move_connection = None
         self.mainwindow.statusbar.clear_two_step_text()
 
     def have_two_step_action(self):
@@ -2110,7 +2141,8 @@ class MapScene(QtWidgets.QGraphicsScene):
         Returns a boolean to indicate whether we're in the middle of
         a two-step operation or not.
         """
-        return (self.two_step_group_first is not None)
+        return (self.two_step_group_first is not None or
+                self.two_step_move_connection is not None)
 
     def populate_multi_select_actions(self):
         """
