@@ -915,8 +915,12 @@ class GUIConnectionHover(HoverArea):
             if not self.conn.is_primary(self.room, self.direction):
                 self.add_key_action('R', 'set primary', ['r'], self.set_primary, [[]])
         else:
-            self.add_mouse_action('LMB', 'new room', QtCore.Qt.LeftButton,
-                    self.new_connection_room, [])
+            coords = scene.mapobj.dir_coord(self.room, self.direction)
+            if coords:
+                other_room = scene.mapobj.get_room_at(coords[0], coords[1])
+                if not other_room:
+                    self.add_mouse_action('LMB', 'new room', QtCore.Qt.LeftButton,
+                            self.new_connection_room, [])
             self.add_mouse_action('RMB', 'new connection', QtCore.Qt.RightButton,
                     self.new_connection_step_one, [])
             self.add_mouse_action('MMB', 'new loopback', QtCore.Qt.MiddleButton,
