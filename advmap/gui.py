@@ -513,6 +513,48 @@ class GUI(QtWidgets.QMainWindow):
         self.toolbar = MainToolBar(self)
         self.addToolBar(self.toolbar)
 
+        # File Menu
+        # TODO: would probably make sense to get an icon set which actually supports
+        # all the various things we'd like to do in here.
+        style = self.style()
+        menubar = self.menuBar()
+        filemenu = menubar.addMenu('&File')
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileIcon),
+                '&New', self.action_new, 'Ctrl+N')
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogOpenButton),
+                '&Open', self.action_open, 'Ctrl+O')
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_MediaSeekBackward),
+                '&Revert', self.action_revert, 'Ctrl+R')
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogSaveButton),
+                '&Save', self.action_save, 'Ctrl+S')
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogNewFolder),
+                'Save &As', self.action_save_as, 'Ctrl+A')
+        filemenu.addSeparator()
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogOkButton),
+                '&Import Maps', self.action_import, 'Ctrl+I')
+        filemenu.addSeparator()
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DriveFDIcon),
+                '&Export Image', self.action_export, 'Ctrl+E')
+        filemenu.addSeparator()
+        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_BrowserStop),
+                '&Quit', self.action_quit, 'Ctrl+Q')
+
+        # Edit Menu
+        editmenu = menubar.addMenu('&Edit')
+        editmenu.addAction('&Game/Map Settings', self.action_game_settings)
+        editmenu.addSeparator()
+        editmenu.addAction('&Duplicate Map...', self.action_duplicate)
+
+        # View Menu
+        viewmenu = menubar.addMenu('&View')
+        viewmenu.addAction('Room Notes (for this map)', self.action_room_notes_map)
+        viewmenu.addAction('Room Notes (for all maps)', self.action_room_notes_all)
+
+        # Help
+        helpmenu = menubar.addMenu('&Help')
+        helpmenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation),
+                '&About', self.action_about)
+
         # Set up our main widgets
         self.maparea = MapArea(self)
         self.scene = self.maparea.scene
@@ -650,6 +692,84 @@ class GUI(QtWidgets.QMainWindow):
         if self.is_readonly():
             self.scene.clear_selected()
         self.scene.recreate()
+
+    def action_new(self):
+        """
+        Handle our "New" action.
+        """
+        print('New')
+
+    def action_open(self):
+        """
+        Handle our "Open" action.
+        """
+        print('Open')
+
+    def action_revert(self):
+        """
+        Handle our "Revert" action.
+        """
+        print('Revert')
+
+    def action_save(self):
+        """
+        Handle our "Save" action.
+        """
+        print('Save')
+
+    def action_save_as(self):
+        """
+        Handle our "Save As" action.
+        """
+        print('Save As')
+
+    def action_import(self):
+        """
+        Handle our "Import" action.
+        """
+        print('Import')
+
+    def action_export(self):
+        """
+        Handle our "Export" action.
+        """
+        print('Export')
+
+    def action_quit(self):
+        """
+        Handle our "Quit" action.
+        """
+        print('Quit')
+
+    def action_game_settings(self):
+        """
+        Handle our "Game Settings" action.
+        """
+        print('Game Settings')
+
+    def action_duplicate(self):
+        """
+        Handle our "Duplicate" action.
+        """
+        print('Duplicate')
+
+    def action_room_notes_map(self):
+        """
+        Handle our "Room Notes" action for current map
+        """
+        print('Room Notes (this map)')
+
+    def action_room_notes_all(self):
+        """
+        Handle our "Room Notes" action for all maps
+        """
+        print('Room Notes (all maps)')
+
+    def action_about(self):
+        """
+        Handle our "About" action.
+        """
+        print('About')
 
 class HoverArea(QtWidgets.QGraphicsRectItem):
     """
