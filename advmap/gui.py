@@ -148,6 +148,7 @@ class Constants(object):
 
     gfx_grid = None
     gfx_readonly = None
+    gfx_nudge = None
 
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
@@ -399,6 +400,11 @@ class MainToolBar(QtWidgets.QToolBar):
             'Add column to right of map', lambda: parent.resize_map(DIR_E)))
         self.addSeparator()
 
+        # In-room nudge hovers
+        self.nudge_toggle = self.addAction(QtGui.QIcon(Constants.gfx_nudge), 'Toggle in-room map nudging', parent.toggle_nudge)
+        self.nudge_toggle.setCheckable(True)
+        self.addSeparator()
+
         # Grid
         self.grid_toggle = self.addAction(QtGui.QIcon(Constants.gfx_grid), 'Toggle map grid', parent.toggle_grid)
         self.grid_toggle.setCheckable(True)
@@ -495,6 +501,7 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_resize_right = QtGui.QPixmap(self.resfile('dir_exp_right.png'))
         Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
         Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
+        Constants.gfx_nudge = QtGui.QPixmap(self.resfile('direction.png'))
 
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
@@ -615,6 +622,12 @@ class GUI(QtWidgets.QMainWindow):
         """
         if self.mapobj.resize(direction):
             self.scene.recreate()
+
+    def toggle_nudge(self):
+        """
+        Toggles whether room hovers will have separate "nudge" hovers as well.
+        """
+        self.scene.recreate()
 
     def toggle_grid(self):
         """
@@ -772,6 +785,68 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         self.scene().clear_two_step_actions()
         button = event.button()
         self.do_mouse_action(button)
+
+class GUIRoomNudgeHover(HoverArea):
+
+    def __init__(self, gui_room, direction):
+        super().__init__(gui_room, gui_room.mainwindow, x=gui_room.room.x, y=gui_room.room.y)
+        self.direction = direction
+        self.gui_room = gui_room
+        self.room = gui_room.room
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.setZValue(Constants.z_value_edge_hover)
+        self.setRect(0, 0, Constants.room_space, Constants.room_space)
+        offset_x = Constants.connection_offset[direction][0]
+        offset_y = Constants.connection_offset[direction][1]
+        if direction in [DIR_N, DIR_S]:
+            offset_x -= Constants.room_space_half
+        if direction in [DIR_NE, DIR_E, DIR_SE]:
+            offset_x -= Constants.room_space
+        if direction in [DIR_W, DIR_E]:
+            offset_y -= Constants.room_space_half
+        if direction in [DIR_SW, DIR_S, DIR_SE]:
+            offset_y -= Constants.room_space
+        self.setPos(offset_x, offset_y)
+
+    def hoverEnterEvent(self, event=None):
+        """
+        We've entered hovering
+        """
+        scene = self.scene()
+        scene.hover_start(self)
+        self.setBrush(QtGui.QBrush(Constants.c_highlight_nudge))
+        self.setPen(QtGui.QPen(Constants.c_highlight_nudge))
+        self.setFocus()
+        self.mainwindow.maparea.setFocus()
+        self.show_actions()
+
+    def hoverLeaveEvent(self, event=None):
+        """
+        We've left hovering
+        """
+        self.scene().hover_end()
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.clearFocus()
+        self.scene().default_actions()
+
+    def set_up_actions(self):
+        """
+        Sets up the actions we can take at the moment.  We shouldn't ever
+        actually exist if we're in readonly mode, so we're not going to
+        bother checking for that.
+        """
+        self.add_mouse_action('LMB', 'nudge room', QtCore.Qt.LeftButton,
+                self.nudge_room, [])
+
+    def nudge_room(self):
+        """
+        Nudges ourselves, if possible
+        """
+        scene = self.scene()
+        if scene.mapobj.move_room(self.room, self.direction):
+            scene.recreate()
 
 class GUIConnectionHover(HoverArea):
 
@@ -1496,6 +1571,11 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         if not self.mainwindow.is_readonly():
             for direction in DIR_LIST:
                 self.connhovers[direction] = GUIConnectionHover(self, direction)
+
+            # And finally (for now), Nudge hovers, if we've been told to
+            if self.mainwindow.toolbar.nudge_toggle.isChecked():
+                for direction in DIR_LIST:
+                    nudgehover = GUIRoomNudgeHover(self, direction)
 
     def check_keep_hover_connections(self, keep_hover):
         """
