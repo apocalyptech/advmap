@@ -588,7 +588,7 @@ class GUI(QtWidgets.QMainWindow):
             try:
                 self.load_from_file(initfile)
             except Exception as e:
-                print(e)
+                self.dialog_error('Unable to load file', str(e))
         if not self.curfile:
             self.create_new_game()
 
@@ -921,7 +921,51 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Export" action.
         """
-        print('Export')
+        extensions = []
+        formats = QtGui.QImageWriter.supportedImageFormats()
+        for ext in formats:
+            extensions.append('.{}'.format(str(ext.data(), 'utf-8')))
+        default_ext = '.png'
+
+        # Get the filename to export to
+        if self.curfile:
+            path = os.path.dirname(os.path.realpath(self.curfile))
+        else:
+            path = None
+        (filename, filefilter) = QtWidgets.QFileDialog.getSaveFileName(self,
+                'Export Image...',
+                path,
+                'Image Files ({});;All Files (*.*)'.format(
+                    ' '.join(['*{}'.format(ext) for ext in extensions]))
+                )
+
+        if filename and filename != '':
+
+            # Make sure we have an extension we know about.
+            found_ext = False
+            for ext in extensions:
+                if filename[-len(ext):] == ext:
+                    found_ext = True
+            if not found_ext:
+                filename += default_ext
+
+            # Write out the image
+            painter = None
+            try:
+                image = QtGui.QImage(int(self.scene.width()), int(self.scene.height()), QtGui.QImage.Format_ARGB32)
+                painter = QtGui.QPainter(image)
+                painter.setRenderHints(QtGui.QPainter.Antialiasing)
+                self.scene.render(painter)
+                image.save(filename)
+                self.dialog_info('Image exported', 'Image exported to {}'.format(filename))
+            except Exception as e:
+                self.dialog_error('Error exporting image', str(e))
+            finally:
+                if painter:
+                    del painter
+
+        # Re-focus the main window
+        self.activateWindow()
 
     def action_quit(self):
         """
