@@ -773,6 +773,67 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         button = event.button()
         self.do_mouse_action(button)
 
+class GUIConnectionHover(HoverArea):
+
+    def __init__(self, gui_room, direction):
+        super().__init__(gui_room, gui_room.mainwindow, x=gui_room.room.x, y=gui_room.room.y)
+        self.direction = direction
+        self.room = gui_room.room
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.setZValue(Constants.z_value_connection_hover)
+        self.setRect(0, 0, Constants.room_space, Constants.room_space)
+        offset_x = Constants.connection_offset[direction][0]
+        offset_y = Constants.connection_offset[direction][1]
+        self.setPos(offset_x - Constants.room_space_half, offset_y - Constants.room_space_half)
+
+    def hoverEnterEvent(self, event=None):
+        """
+        We've entered hovering
+        """
+        scene = self.scene()
+        scene.hover_start(self)
+        if self.room.get_conn(self.direction) or self.room.get_loopback(self.direction):
+            self.setBrush(QtGui.QBrush(Constants.c_highlight_del))
+            self.setPen(QtGui.QPen(Constants.c_highlight_del))
+        else:
+            self.setBrush(QtGui.QBrush(Constants.c_highlight_new))
+            self.setPen(QtGui.QPen(Constants.c_highlight_new))
+        self.setFocus()
+        self.mainwindow.maparea.setFocus()
+        self.show_actions()
+
+    def hoverLeaveEvent(self, event=None):
+        """
+        We've left hovering
+        """
+        self.scene().hover_end()
+        self.setBrush(QtGui.QBrush(Constants.c_transparent))
+        self.setPen(QtGui.QPen(Constants.c_transparent))
+        self.clearFocus()
+        self.scene().default_actions()
+
+    def set_up_actions(self):
+        """
+        Sets up the actions we can take at the moment.  We shouldn't ever
+        actually exist if we're in readonly mode, so we're not going to
+        bother checking for that.
+        """
+        scene = self.scene()
+        conn = self.room.get_conn(self.direction)
+        if self.room.get_loopback(self.direction):
+            self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection, [[]])
+        elif conn:
+            self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
+
+    def remove_connection(self):
+        """
+        Remove the connection (or loopback, it's the same API call)
+        """
+        scene = self.scene()
+        scene.mapobj.detach(self.room, self.direction)
+        scene.recreate()
+
 class GUIRoomHover(HoverArea):
 
     def __init__(self, gui_room):
@@ -1276,6 +1337,11 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
         # Also add a Hover object for ourselves
         self.hover_obj = GUIRoomHover(self)
 
+        # And we'll need hovers for all our connection points.
+        if not self.mainwindow.is_readonly():
+            for direction in DIR_LIST:
+                connhover = GUIConnectionHover(self, direction)
+
     @staticmethod
     def get_title_font(size=Constants.title_font_sizes[0]):
         """
@@ -1702,6 +1768,38 @@ class GUIConnectionFactory(object):
                 else:
                     self.draw_conn_segment(stub[0], stub[1], mid_x, mid_y, end)
 
+    def draw_loopback(self, gui_room, direction):
+        """
+        Draws a loopback onto a QGraphicsScene
+        """
+        coord = gui_room.get_global_connection_xy(direction)
+        (orig_x2, orig_y2) = gui_room.get_opposite_room_conn_point(direction)
+        fakeend = ConnectionEnd(None, None)
+
+        if direction == DIR_NW or direction == DIR_NE or direction == DIR_SE or direction == DIR_SW:
+            x2 = int((coord[0]*2+orig_x2)/3)
+            y2 = int((coord[1]*2+orig_y2)/3)
+        else:
+            x2 = int((coord[0]*3+orig_x2*2)/5)
+            y2 = int((coord[1]*3+orig_y2*2)/5)
+        self.draw_conn_segment(coord[0], coord[1], x2, y2, fakeend)
+
+        dx_orig = x2-coord[0]
+        dy_orig = y2-coord[1]
+        dist = math.sqrt(dx_orig**2 + dy_orig**2)
+        dx = dx_orig / dist
+        dy = dy_orig / dist
+
+        x3 = x2 + (dist*dy)
+        y3 = y2 - (dist*dx)
+        self.draw_conn_segment(x2, y2, x3, y3, fakeend)
+
+        x4 = coord[0] + (dist*dy)
+        y4 = coord[1] - (dist*dx)
+        self.draw_conn_segment(x4, y4, x3, y3, fakeend)
+        for coord_arrow in self.arrow_coords(x3, y3, x4, y4):
+            self.draw_conn_segment(coord_arrow[0], coord_arrow[1], x4, y4, fakeend)
+
 class GUIGroup(QtWidgets.QGraphicsRectItem):
     """
     GUI representation of one of our room groups.
@@ -1743,6 +1841,7 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setPos(min_x, min_y)
         self.setBrush(QtGui.QBrush(color))
         self.setPen(QtGui.QPen(color))
+        self.setZValue(Constants.z_value_group)
 
 class MapScene(QtWidgets.QGraphicsScene):
     """
@@ -1842,6 +1941,10 @@ class MapScene(QtWidgets.QGraphicsScene):
                 l = self.addLine(0, y, total_w, y, QtGui.QPen(Constants.c_grid))
                 l.setZValue(Constants.z_value_background)
 
+        # Create a GUIConnectionFactory, used to draw connections and
+        # loopbacks
+        cf = GUIConnectionFactory(self)
+
         # TODO: It shouldn't be possible to have selected rooms disappear
         # on us during a recreate, but it wouldn't hurt to check for it
         # First render our rooms
@@ -1855,6 +1958,9 @@ class MapScene(QtWidgets.QGraphicsScene):
                     self.room_to_gui[room] = guiroom
                     if keep_hover == room:
                         guiroom.hover_obj.hoverEnterEvent()
+                    for direction in DIR_LIST:
+                        if room.get_loopback(direction):
+                            cf.draw_loopback(guiroom, direction)
                 else:
                     newroom = GUINewRoom(x, y, self.parent().mainwindow)
                     self.addItem(newroom)
@@ -1862,7 +1968,6 @@ class MapScene(QtWidgets.QGraphicsScene):
                         newroom.hover_obj.hoverEnterEvent()
 
         # Next all the connections
-        cf = GUIConnectionFactory(self)
         for conn in self.mapobj.conns:
             cf.draw_connection(conn)
 
