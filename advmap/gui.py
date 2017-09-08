@@ -340,6 +340,14 @@ class MapCombo(QtWidgets.QComboBox):
         self.currentIndexChanged.connect(self.index_changed)
         self.loading = False
 
+    def clear_maplist(self):
+        """
+        Clears our maplist without raising any signals.  Will not
+        trigger anything until another call to sset_maplist
+        """
+        self.loading = True
+        self.clear()
+
     def set_maplist(self, maplist):
         """
         Sets our contents.  `maplist` should be a list of
@@ -347,8 +355,7 @@ class MapCombo(QtWidgets.QComboBox):
             1) Map name
             2) Map index
         """
-        self.loading = True
-        self.clear()
+        self.clear_maplist()
         for (mapname, mapidx) in maplist:
             self.addItem(mapname, mapidx)
         self.loading = False
@@ -357,7 +364,8 @@ class MapCombo(QtWidgets.QComboBox):
         """
         The user selected a new map to display
         """
-        self.maingui.set_current_map(self.currentData())
+        if not self.loading:
+            self.maingui.set_current_map(self.currentData())
 
 class MainToolBar(QtWidgets.QToolBar):
     """
@@ -584,6 +592,35 @@ class GUI(QtWidgets.QMainWindow):
 
         #self.scene.set_map(self.mapobj)
 
+    def dialog_user(self, message, infotext, buttons, default_button, icon):
+        """
+        Shows a dialog to the user with the specified information and
+        returns its result
+        """
+        # TODO: would like to have icons on buttons
+        msgbox = QtWidgets.QMessageBox(self)
+        msgbox.setText(message)
+        if infotext and infotext != '':
+            msgbox.setInformativeText(infotext)
+        msgbox.setStandardButtons(buttons)
+        msgbox.setDefaultButton(default_button)
+        msgbox.setIcon(icon)
+        return msgbox.exec()
+
+    def dialog_confirm(self, message, infotext=None):
+        """
+        Asks the user to confirm an action.  Returns `True` or
+        `False`.
+        """
+        res = self.dialog_user(message, infotext,
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.Question)
+        if res == QtWidgets.QMessageBox.Yes:
+            return True
+        else:
+            return False
+
     def set_status(self, status_str):
         """
         Sets our status
@@ -625,8 +662,10 @@ class GUI(QtWidgets.QMainWindow):
         Starts a new Game file from scratch.
         """
         self.curfile = None
+        self.toolbar.mapcombo.clear_maplist()
         self.game = Game('New Game')
         self.mapobj = self.create_new_map('Starting Map')
+        self.map_idx = self.game.add_map_obj(self.mapobj)
         self.set_mapcombo()
         self.set_status('Editing a new game')
 
@@ -697,7 +736,10 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "New" action.
         """
-        print('New')
+        proceed = self.dialog_confirm('Create New Map',
+            'Starting a new game will erase any unsaved changes.  Really wipe the current map?')
+        if proceed:
+            self.create_new_game()
 
     def action_open(self):
         """
@@ -739,7 +781,10 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Quit" action.
         """
-        print('Quit')
+        # TODO: would be nice to have confirmation, though that
+        # probably ties into undo/redo so that we know not to do
+        # it if there's not been changes.
+        self.close()
 
     def action_game_settings(self):
         """
