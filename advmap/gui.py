@@ -1503,6 +1503,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
             # Show our notes, if we need to
             if self.room.notes and self.room.notes != '':
                 self.notes = GUIRoomNotesTextItem(self)
+                self.setToolTip('<span>{}</span>'.format(self.room.notes))
 
             # Show our title
             if room.type != Room.TYPE_CONNHELPER:
