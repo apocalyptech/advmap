@@ -272,8 +272,8 @@ class MainStatusBar(QtWidgets.QStatusBar):
         self.hover_label = QtWidgets.QLabel(self)
         self.hover_label.setAlignment(QtCore.Qt.AlignHCenter)
         self.inner_sb = QtWidgets.QStatusBar(self)
-        self.secondary_hover = QtWidgets.QLabel(self)
-        self.inner_sb.addPermanentWidget(self.secondary_hover)
+        self.two_step_hover = QtWidgets.QLabel(self)
+        self.inner_sb.addPermanentWidget(self.two_step_hover)
         # TODO: I would like to figure out a way to remove the padding around the
         # QStatusBar but have been unable to do so.  Couldn't find CSS that worked,
         # either.
@@ -317,6 +317,18 @@ class MainStatusBar(QtWidgets.QStatusBar):
             if prefix is not None:
                 hover_text = '%s - %s' % (prefix, hover_text)
         self.hover_label.setText(hover_text)
+
+    def clear_two_step_text(self):
+        """
+        Clears our two-step hover label
+        """
+        self.two_step_hover.clear()
+
+    def set_two_step_text(self, text):
+        """
+        Sets our two-step hover label
+        """
+        self.two_step_hover.setText(text)
 
 class MapCombo(QtWidgets.QComboBox):
 
@@ -743,10 +755,13 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         """
         pass
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event, scene=None):
         """
         Keyboard input
         """
+        if not scene:
+            scene = self.scene()
+        scene.clear_two_step_actions()
         key = event.text().lower()
         self.do_key_action(key)
 
@@ -754,6 +769,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         """
         Mouse input
         """
+        self.scene().clear_two_step_actions()
         button = event.button()
         self.do_mouse_action(button)
 
@@ -806,6 +822,9 @@ class GUIRoomHover(HoverArea):
                         self.change_group_render, [[]])
                 self.add_key_action('O', 'remove from group', ['o'],
                         self.remove_from_group, [[]])
+            else:
+                self.add_key_action('G', 'add to group', ['g'],
+                        self.add_to_group_step_one, [[]])
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -888,6 +907,14 @@ class GUIRoomHover(HoverArea):
         if scene.mapobj.remove_room_from_group(room):
             scene.recreate(room)
 
+    def add_to_group_step_one(self):
+        """
+        We've selected a room to add to a group.
+        """
+        scene = self.scene()
+        scene.two_step_group_first = self.gui_room.room
+        self.gui_room.mainwindow.statusbar.set_two_step_text('G again to add to a group')
+
     def view_details(self):
         """
         Viewing room details (on account of being in readonly mode)
@@ -899,6 +926,23 @@ class GUIRoomHover(HoverArea):
         Editing the room
         """
         print('Editing room...')
+
+    def keyPressEvent(self, event):
+        """
+        Key press event - will generally pass this through, unless
+        we happen to have a two-step action we're in the middle of
+        """
+        scene = self.scene()
+        if scene.two_step_group_first:
+            key = event.text().lower()
+            if key == 'g':
+                room = self.gui_room.room
+                other_room = scene.two_step_group_first
+                scene.clear_two_step_actions()
+                if scene.mapobj.group_rooms(room, other_room):
+                    scene.recreate(room)
+                return
+        super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
         """
@@ -912,6 +956,7 @@ class GUIRoomHover(HoverArea):
                 scene = self.scene()
                 room = self.gui_room.room
                 scene.select_room(room)
+                scene.clear_two_step_actions()
                 scene.recreate(room)
                 return
 
@@ -1700,6 +1745,11 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setPen(QtGui.QPen(color))
 
 class MapScene(QtWidgets.QGraphicsScene):
+    """
+    Our main scene which contains all our graphic elements.  Also
+    keeps track of rooms we've selected, and the state of any
+    two-step operation we're doing.
+    """
 
     def __init__(self, parent, mainwindow):
 
@@ -1717,6 +1767,9 @@ class MapScene(QtWidgets.QGraphicsScene):
 
         # Keep track of current room selection
         self.clear_selected()
+
+        # Vars to keep track of two-step actions
+        self.clear_two_step_actions()
 
         # Default actions
         self.default_actions()
@@ -1940,6 +1993,20 @@ class MapScene(QtWidgets.QGraphicsScene):
         else:
             return False
 
+    def clear_two_step_actions(self):
+        """
+        Clears the vars used to store our two-step process state
+        """
+        self.two_step_group_first = None
+        self.mainwindow.statusbar.clear_two_step_text()
+
+    def have_two_step_action(self):
+        """
+        Returns a boolean to indicate whether we're in the middle of
+        a two-step operation or not.
+        """
+        return (self.two_step_group_first is not None)
+
     def populate_multi_select_actions(self):
         """
         Populates our list of multi-select actions, if appropriate.  We're
@@ -1982,10 +2049,16 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Keyboard input
         """
+        doing_two_step = self.have_two_step_action()
         if self.has_selections():
-            self.multi_select_actions.keyPressEvent(event)
+            self.multi_select_actions.keyPressEvent(event, self)
         else:
             super().keyPressEvent(event)
+            # If we got here and we were previously doing a two-step
+            # action, we shouldn't be doing it anymore.
+            if doing_two_step:
+                self.clear_two_step_actions()
+
 
     def multi_nudge_rooms(self, direction):
         """
@@ -2083,8 +2156,13 @@ class MapScene(QtWidgets.QGraphicsScene):
         Groups the selected rooms together into the given
         group.
         """
-        for room in self.selected:
-            group.add_room(room)
+        if group:
+            for room in self.selected:
+                group.add_room(room)
+        else:
+            roomlist = list(self.selected)
+            for room in roomlist[1:]:
+                self.mapobj.group_rooms(roomlist[0], room)
         self.recreate()
 
     def multi_ungroup_selected(self):
