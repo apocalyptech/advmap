@@ -582,15 +582,13 @@ class GUI(QtWidgets.QMainWindow):
         self.resize(1000, 700)
         self.setWindowTitle('Adventure Game Mapper')
 
-        # Load the specified game, or create a blank map
+        # Create an empty game/map to start out with, so that if we're loading
+        # a file and it fails, the dialog can be properly modal.  It looks
+        # like it probably won't actually center properly because the mainloop
+        # hasn't started up, and the engine probably doesn't actually know
+        # the location of the main window yet.  But still!  Better than before.
         self.curfile = None
-        if initfile:
-            try:
-                self.load_from_file(initfile)
-            except Exception as e:
-                self.dialog_error('Unable to load file', str(e))
-        if not self.curfile:
-            self.create_new_game()
+        self.create_new_game()
 
         # Set our readonly state, if we've been told to
         if readonly:
@@ -600,7 +598,12 @@ class GUI(QtWidgets.QMainWindow):
         # Show ourselves
         self.show()
 
-        #self.scene.set_map(self.mapobj)
+        # Try to load a file, if we've been told to.
+        if initfile:
+            try:
+                self.load_from_file(initfile)
+            except Exception as e:
+                self.dialog_error('Unable to load file', str(e))
 
     def dialog_user(self, message, infotext, buttons, default_button, icon):
         """
