@@ -151,6 +151,9 @@ class Constants(object):
     gfx_readonly = None
     gfx_nudge = None
 
+    gfx_plus = None
+    gfx_minus = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -530,6 +533,8 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
         Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
         Constants.gfx_nudge = QtGui.QPixmap(self.resfile('direction.png'))
+        Constants.gfx_plus = QtGui.QPixmap(self.resfile('plus.png'))
+        Constants.gfx_minus = QtGui.QPixmap(self.resfile('minus.png'))
 
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
@@ -2620,12 +2625,6 @@ class MapListTable(QtWidgets.QTableView):
     Table which holds information about our list of maps
     """
 
-    ROLE_OBJ = QtCore.Qt.UserRole+1
-
-    (COL_MAPNAME,
-        COL_ROOMS,
-        ) = range(2)
-
     def __init__(self, parent, game):
         """
         Initialize
@@ -2646,7 +2645,7 @@ class MapListTable(QtWidgets.QTableView):
 
         for (idx, mapobj) in enumerate(self.game.maps):
             item_name = QtGui.QStandardItem(mapobj.name)
-            item_name.setData(mapobj, self.ROLE_OBJ)
+            item_name.setData(mapobj)
             item_name.setEditable(True)
             item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
 
@@ -2656,7 +2655,7 @@ class MapListTable(QtWidgets.QTableView):
                 plural = 's'
             item_rooms = QtGui.QStandardItem('{} room{}'.format(len(mapobj.rooms), plural))
             item_rooms.setEditable(False)
-            item_rooms.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+            item_rooms.setFlags(item_rooms.flags() ^ QtCore.Qt.ItemIsDropEnabled)
 
             self.model.appendRow([item_name, item_rooms])
 
@@ -2706,6 +2705,20 @@ class EditGameDialog(AppDialog):
         self.table = MapListTable(self, self.game)
         layout.addWidget(self.table, 1)
 
+        # Now an HBox to hold a couple of control buttons
+        hbox = QtWidgets.QWidget()
+        hbox_layout = QtWidgets.QHBoxLayout()
+        hbox.setLayout(hbox_layout)
+        layout.addWidget(hbox)
+
+        # Add Map button
+        button = QtWidgets.QPushButton(QtGui.QIcon(Constants.gfx_plus), 'Add Map')
+        button.clicked.connect(self.add_map)
+        hbox_layout.addWidget(button)
+        button = QtWidgets.QPushButton(QtGui.QIcon(Constants.gfx_minus), 'Remove Map')
+        button.clicked.connect(self.remove_map)
+        hbox_layout.addWidget(button)
+
     def accept(self):
         """
         User hit "OK" on the dialog
@@ -2714,8 +2727,20 @@ class EditGameDialog(AppDialog):
         rowcount = model.rowCount()
         for rownum in range(rowcount):
             name_col = model.item(rownum, 0)
-            print('{}: {}'.format(name_col.text(), name_col.data().name))self.table.model
+            print('{}: {}'.format(name_col.text(), name_col.data().name))
         super().accept()
+
+    def add_map(self):
+        """
+        Adds a map
+        """
+        print('Add map')
+
+    def remove_map(self):
+        """
+        Removes a map
+        """
+        print('Remove map')
 
 class NewEditRoomDialog(AppDialog):
     """

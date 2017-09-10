@@ -19,7 +19,7 @@
 
     Specifically, the following are from Axialis' "Light Grey Square" set:
       * dir_*.png
-      * lock.png
+      * lock.png, plus.png, minus.png
       * grid.png (an edited version of "Table")
 
     http://creativecommons.org/licenses/by/2.5/

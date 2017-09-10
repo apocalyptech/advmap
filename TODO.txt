@@ -68,3 +68,4 @@ PyQt porting issues which I've temporarily set aside:
    toolkit.
  * Icons on dialog buttons
  * MessageDialog width - force it to be at least a certain width somehow.
+ * Prevent dragging rooms to different columns; what the hell?
