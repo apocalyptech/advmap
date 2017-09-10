@@ -257,6 +257,16 @@ class Constants(object):
     # pretty terribly, but I do not feel bad about this.
     statusbar = None
 
+class FirstLineEdit(QtWidgets.QLineEdit):
+    """
+    Stupid little class which automatically sets the cursor position
+    to the beginning of the field, when the value is set.
+    """
+
+    def setText(self, text):
+        super().setText(text)
+        self.setCursorPosition(0)
+
 class MainStatusBar(QtWidgets.QStatusBar):
     """
     Main status bar for our app.  Basically we're adding in a QVBoxLayout which
@@ -983,7 +993,12 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Game Settings" action.
         """
-        print('Game Settings')
+        d = EditGameDialog(self, self.game)
+        res = d.exec()
+        if res == d.Accepted:
+            # TODO: update combo box, switch map if needed
+            pass
+        self.activateWindow()
 
     def action_duplicate(self):
         """
@@ -2477,7 +2492,232 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setPen(QtGui.QPen(color))
         self.setZValue(Constants.z_value_group)
 
-class NewEditRoomDialog(QtWidgets.QDialog):
+class AppDialog(QtWidgets.QDialog):
+    """
+    Custom dialog class which provides a uniform look for all our popups
+    """
+
+    def __init__(self, parent, title, size_x, size_y, scrollable=False, use_cancel=True):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        # This attribute seems to be needed before we can return focus to the main
+        # window...
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(size_x, size_y)
+        self.setWindowTitle(title)
+        self.cur_row = -1
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Dialog Title
+        title_label = QtWidgets.QLabel('{}'.format(title), self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Scrollable, if we've been told to
+        if scrollable:
+
+            scrollarea = QtWidgets.QScrollArea(self)
+            scrollarea.setFrameShadow(scrollarea.Sunken)
+            scrollarea.setFrameShape(scrollarea.Panel)
+            scrollarea.setLineWidth(2)
+            scrollarea.setMidLineWidth(2)
+            scrollarea.setWidgetResizable(True)
+            layout.addWidget(scrollarea, 1)
+
+            # Main grid inside the scrollarea
+            self.gridlayout = QtWidgets.QGridLayout(scrollarea)
+            grid = QtWidgets.QWidget(scrollarea)
+            grid.setLayout(self.gridlayout)
+            scrollarea.setWidget(grid)
+
+        else:
+
+            # Main grid inside the vbox
+            self.gridlayout = QtWidgets.QGridLayout()
+            grid = QtWidgets.QWidget(self)
+            grid.setLayout(self.gridlayout)
+            layout.addWidget(grid, 1)
+
+        # Button box
+        if use_cancel:
+            buttons = QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Ok
+        else:
+            buttons = QtWidgets.QDialogButtonBox.Ok
+        self.buttonbox = QtWidgets.QDialogButtonBox(buttons, parent=self)
+        self.buttonbox.accepted.connect(self.accept)
+        self.buttonbox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+
+        # Construct the actual dialog contents
+        self.create_contents()
+
+        # Fix some grid sizing parameters
+        self.gridlayout.setColumnStretch(1, 1)
+        self.gridlayout.setRowStretch(self.cur_row, 1)
+
+        # Set any defaults
+        self.set_defaults()
+
+    def create_contents(self):
+        """
+        Creating any contents we need.  Intended to be implemented in another
+        class.
+        """
+        pass
+
+    def set_defaults(self):
+        """
+        Setting any defaults we need.  Intended to be implemented in another
+        class.
+        """
+        pass
+
+    def add_label(self, text):
+        """
+        Adds a label to the lefthand side of our grid
+        """
+        self.cur_row += 1
+        label = QtWidgets.QLabel('{}:'.format(text), self)
+        label.setMargin(3)
+        self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
+        return label
+
+    def add_textbox(self, width=None):
+        """
+        Adds a textbox at the current row
+        """
+        edit = FirstLineEdit(self)
+        # Our actual max length for strings in our file format is 65536
+        edit.setMaxLength(200)
+        if width:
+            edit.setFixedWidth(width)
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return edit
+
+    def add_checkbox(self, text):
+        """
+        Adds a checkbox at the current row
+        """
+        cb = QtWidgets.QCheckBox(text, self)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return cb
+
+    def add_plaintext_edit(self, width, height):
+        """
+        Adds a plaintext edit box
+        """
+        edit = QtWidgets.QPlainTextEdit(self)
+        edit.setMinimumSize(QtCore.QSize(width, height))
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return edit
+
+class MapListTable(QtWidgets.QTableView):
+    """
+    Table which holds information about our list of maps
+    """
+
+    ROLE_OBJ = QtCore.Qt.UserRole+1
+
+    (COL_MAPNAME,
+        COL_ROOMS,
+        ) = range(2)
+
+    def __init__(self, parent, game):
+        """
+        Initialize
+        """
+        super().__init__(parent)
+        self.game = game
+        self.verticalHeader().hide()
+        self.horizontalHeader().hide()
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.setSelectionBehavior(self.SelectRows)
+        self.setSelectionMode(self.SingleSelection)
+        self.setShowGrid(False)
+        self.setDragDropMode(self.InternalMove)
+        self.setDragDropOverwriteMode(False)
+
+        self.model = QtGui.QStandardItemModel()
+        self.setModel(self.model)
+
+        for (idx, mapobj) in enumerate(self.game.maps):
+            item_name = QtGui.QStandardItem(mapobj.name)
+            item_name.setData(mapobj, self.ROLE_OBJ)
+            item_name.setEditable(True)
+            item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+
+            if len(mapobj.rooms) == 1:
+                plural = ''
+            else:
+                plural = 's'
+            item_rooms = QtGui.QStandardItem('{} room{}'.format(len(mapobj.rooms), plural))
+            item_rooms.setEditable(False)
+            item_rooms.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+
+            self.model.appendRow([item_name, item_rooms])
+
+class EditGameDialog(AppDialog):
+    """
+    Dialog for editing the main game properties (game name, map list, etc)
+    """
+
+    def __init__(self, parent, game):
+        self.game = game
+        super().__init__(parent, 'Game Editor', 400, 400)
+
+    def create_contents(self):
+        """
+        Dialog contents
+        """
+        # Game Name
+        self.add_label('Game Name')
+        self.input_gamename = self.add_textbox(200)
+
+        # Maps
+        self.add_label('Maps')
+        self.add_map_edit_vbox()
+
+    def set_defaults(self):
+        """
+        Sets our defaults
+        """
+        self.input_gamename.setText(self.game.name)
+
+    def add_map_edit_vbox(self):
+        """
+        Adds the vbox which contains the majority of this dialog's content
+        """
+
+        # First the vbox itself
+        vbox = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        vbox.setLayout(layout)
+        self.gridlayout.addWidget(vbox, self.cur_row, 1)
+
+        # Then a label
+        label = QtWidgets.QLabel('<i>Doubleclick to edit names, drag to reorder.</i>')
+        layout.addWidget(label)
+
+        # Now the actual QTableView
+        self.table = MapListTable(self, self.game)
+        layout.addWidget(self.table, 1)
+
+    def accept(self):
+        """
+        User hit "OK" on the dialog
+        """
+        model = self.table.model
+        rowcount = model.rowCount()
+        for rownum in range(rowcount):
+            name_col = model.item(rownum, 0)
+            print('{}: {}'.format(name_col.text(), name_col.data().name))self.table.model
+        super().accept()
+
+class NewEditRoomDialog(AppDialog):
     """
     Main dialog for either adding a new room or editing an existing room.  Some
     fields in here depend on what "mode" we're in, though the majority of them
@@ -2486,55 +2726,21 @@ class NewEditRoomDialog(QtWidgets.QDialog):
 
     def __init__(self, parent, editing=False, room=None, from_direction=None,
             x=None, y=None):
-        super().__init__(parent)
-        self.setModal(True)
-        self.setSizeGripEnabled(True)
-        # This attribute seems to be needed before we can return focus to the main
-        # window...
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(560, 670)
+        if editing:
+            title = 'Edit Room'
+        else:
+            title = 'New Room'
         self.editing = editing
         self.room = room
         self.from_direction = from_direction
         self.x = x
         self.y = y
-        if self.editing:
-            window_title = 'Edit Room'
-        else:
-            window_title = 'New Room'
-        self.setWindowTitle(window_title)
-        self.cur_row = -1
+        super().__init__(parent, title, 560, 670, scrollable=True)
 
-        # Layout info
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-
-        # Dialog Title
-        title = QtWidgets.QLabel('{}'.format(window_title), self)
-        title.setStyleSheet('font-weight: bold; font-size: 12pt;')
-        layout.addWidget(title, 0, QtCore.Qt.AlignCenter)
-
-        # Main Scrollarea
-        scrollarea = QtWidgets.QScrollArea(self)
-        scrollarea.setFrameShadow(scrollarea.Sunken)
-        scrollarea.setFrameShape(scrollarea.Panel)
-        scrollarea.setLineWidth(2)
-        scrollarea.setMidLineWidth(2)
-        scrollarea.setWidgetResizable(True)
-        layout.addWidget(scrollarea, 1)
-
-        # Button box
-        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel |
-            QtWidgets.QDialogButtonBox.Ok, parent=self)
-        self.buttonbox.accepted.connect(self.accept)
-        self.buttonbox.rejected.connect(self.reject)
-        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
-
-        # Main grid inside the scrollarea
-        self.gridlayout = QtWidgets.QGridLayout(scrollarea)
-        grid = QtWidgets.QWidget(scrollarea)
-        grid.setLayout(self.gridlayout)
-        scrollarea.setWidget(grid)
+    def create_contents(self):
+        """
+        Creates our contents
+        """
 
         # Contents - Room Name
         self.add_label('Room Name')
@@ -2550,7 +2756,7 @@ class NewEditRoomDialog(QtWidgets.QDialog):
 
         # Some connection-related data we'll only render when linking from an
         # existing room.
-        if not editing and from_direction is not None:
+        if not self.editing and self.from_direction is not None:
 
             # Connect to direction
             self.add_label('Connect to Direction')
@@ -2573,7 +2779,7 @@ class NewEditRoomDialog(QtWidgets.QDialog):
         self.input_offset_y = self.add_checkbox('Offset (shift down)')
 
         # Grouping widget choice depends on what exactly we're doing
-        if not editing and from_direction is not None:
+        if not self.editing and self.from_direction is not None:
 
             # Group with previous
             self.add_label('Grouping')
@@ -2605,12 +2811,15 @@ class NewEditRoomDialog(QtWidgets.QDialog):
         self.add_label('Notes')
         self.input_notes = self.add_plaintext_edit(310, 150)
 
-        # Fix some grid sizing parameters
-        self.gridlayout.setColumnStretch(1, 1)
-        self.gridlayout.setRowStretch(self.cur_row, 1)
+    def set_defaults(self):
+        """
+        Sets defaults for the dialog
+        """
+
+        room = self.room
 
         # Set defaults
-        if editing:
+        if self.editing:
 
             self.input_roomname.setText(room.name)
 
@@ -2680,8 +2889,8 @@ class NewEditRoomDialog(QtWidgets.QDialog):
             self.input_roomname.setText(Room.unexplored_text)
             self.input_roomtype_normal.setChecked(True)
             self.input_roomcolor_bw.setChecked(True)
-            if from_direction is not None:
-                self.input_connect_to_direction.setCurrentIndex(DIR_OPP[from_direction])
+            if self.from_direction is not None:
+                self.input_connect_to_direction.setCurrentIndex(DIR_OPP[self.from_direction])
                 self.input_conntype_regular.setChecked(True)
                 self.input_passage_twoway.setChecked(True)
             if room is not None:
@@ -2691,45 +2900,6 @@ class NewEditRoomDialog(QtWidgets.QDialog):
                     self.input_offset_y.setChecked(True)
                 if room.group:
                     self.input_group_with_previous.setChecked(True)
-
-    def add_label(self, text):
-        """
-        Adds a label to the lefthand side of our grid
-        """
-        self.cur_row += 1
-        label = QtWidgets.QLabel('{}:'.format(text), self)
-        label.setMargin(3)
-        self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
-        return label
-
-    def add_textbox(self, width=None):
-        """
-        Adds a textbox at the current row
-        """
-        edit = QtWidgets.QLineEdit(self)
-        # Our actual max length for strings in our file format is 65536
-        edit.setMaxLength(200)
-        if width:
-            edit.setFixedWidth(width)
-        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
-        return edit
-
-    def add_checkbox(self, text):
-        """
-        Adds a checkbox at the current row
-        """
-        cb = QtWidgets.QCheckBox(text, self)
-        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
-        return cb
-
-    def add_plaintext_edit(self, width, height):
-        """
-        Adds a plaintext edit box
-        """
-        edit = QtWidgets.QPlainTextEdit(self)
-        edit.setMinimumSize(QtCore.QSize(width, height))
-        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
-        return edit
 
     def add_type_radios(self):
         """
