@@ -58,5 +58,13 @@ Possibly, sometime:
       at least.
  * double-sized rooms
 
-Would be nice, but probably never gonna happen:
- * Port to PyQt
+PyQt porting issues which I've temporarily set aside:
+ * Rich text in dropddowns + checkboxes (both in Edit Room dialog)
+ * Dashed lines don't render well when the mainarea is being scrolled.
+   They fix easily enough when we hit our hover events and things get
+   redrawn, but that wouldn't help longer dashed connections
+ * Handing app arguments properly
+ * Get a set of standard icons for us to use rather than relying on
+   toolkit.
+ * Icons on dialog buttons
+ * MessageDialog width - force it to be at least a certain width somehow.
