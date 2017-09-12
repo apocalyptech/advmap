@@ -620,13 +620,16 @@ class GUI(QtWidgets.QMainWindow):
             except Exception as e:
                 self.dialog_error('Unable to load file', str(e))
 
-    def dialog_user(self, message, infotext, buttons, default_button, icon):
+    def dialog_user(self, message, infotext, buttons, default_button, icon, parent=None):
         """
         Shows a dialog to the user with the specified information and
         returns its result
         """
         # TODO: would like to have icons on buttons
-        msgbox = QtWidgets.QMessageBox(self)
+        if not parent:
+            msgbox = QtWidgets.QMessageBox(self)
+        else:
+            msgbox = QtWidgets.QMessageBox(parent)
         msgbox.setText(message)
         if infotext and infotext != '':
             msgbox.setInformativeText(infotext)
@@ -650,14 +653,15 @@ class GUI(QtWidgets.QMainWindow):
         else:
             return False
 
-    def dialog_error(self, message, infotext=None):
+    def dialog_error(self, message, infotext=None, parent=None):
         """
         Shows an error dialog to the user
         """
         self.dialog_user(message, infotext,
                 QtWidgets.QMessageBox.Ok,
                 QtWidgets.QMessageBox.Ok,
-                QtWidgets.QMessageBox.Critical)
+                QtWidgets.QMessageBox.Critical,
+                parent=parent)
         self.activateWindow()
 
     def dialog_info(self, message, infotext=None):
@@ -724,6 +728,7 @@ class GUI(QtWidgets.QMainWindow):
         self.mapobj = self.create_new_map('Starting Map')
         self.map_idx = self.game.add_map_obj(self.mapobj)
         self.set_mapcombo()
+        self.revert_menu_item.setEnabled(False)
         self.set_status('Editing a new game')
 
     def create_new_map(self, name):
@@ -734,7 +739,6 @@ class GUI(QtWidgets.QMainWindow):
         mapobj = Map(name)
         room = mapobj.add_room_at(4, 4, 'Starting Room')
         room.color = Room.COLOR_GREEN
-        self.revert_menu_item.setEnabled(False)
         return mapobj
 
     def reldir(self, directory):
@@ -2625,6 +2629,9 @@ class MapListTable(QtWidgets.QTableView):
     Table which holds information about our list of maps
     """
 
+    object_role = QtCore.Qt.UserRole + 1
+    cur_idx_role = QtCore.Qt.UserRole + 2
+
     def __init__(self, parent, game):
         """
         Initialize
@@ -2645,7 +2652,8 @@ class MapListTable(QtWidgets.QTableView):
 
         for (idx, mapobj) in enumerate(self.game.maps):
             item_name = QtGui.QStandardItem(mapobj.name)
-            item_name.setData(mapobj)
+            item_name.setData(mapobj, self.object_role)
+            item_name.setData(idx, self.cur_idx_role)
             item_name.setEditable(True)
             item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
 
@@ -2723,24 +2731,79 @@ class EditGameDialog(AppDialog):
         """
         User hit "OK" on the dialog
         """
+
+        # First update our game name
+        mainwindow = self.parent()
+        mainwindow.game.name = self.input_gamename.text()
+
+        # Next, loop through our model to figure out any changes
+        newmaps = []
+        new_map_idx = 0
+        found_cur_map = False
         model = self.table.model
         rowcount = model.rowCount()
         for rownum in range(rowcount):
             name_col = model.item(rownum, 0)
-            print('{}: {}'.format(name_col.text(), name_col.data().name))
+            map_name = name_col.text()
+            map_obj = name_col.data(self.table.object_role)
+            map_cur_idx = name_col.data(self.table.cur_idx_role)
+            if map_obj is None:
+                newmaps.append(mainwindow.create_new_map(map_name))
+            else:
+                if map_cur_idx == mainwindow.map_idx:
+                    new_map_idx = rownum
+                    found_cur_map = True
+                map_obj.name = map_name
+                newmaps.append(mainwindow.game.maps[map_cur_idx])
+        mainwindow.game.replace_maps(newmaps)
+
+        # Update our main map dropdown
+        mainwindow.set_mapcombo()
+
+        # Set our currently-selected map
+        mainwindow.toolbar.mapcombo.setCurrentIndex(new_map_idx)
+
+        # And finally, trigger a recreate
+        mainwindow.scene.recreate()
+
+        # Pass through so that our dialog returns properly
         super().accept()
 
     def add_map(self):
         """
-        Adds a map
+        User would like to add a map
         """
-        print('Add map')
+        (mapname, status) = QtWidgets.QInputDialog.getText(self,
+                'Create New Map',
+                'Map Name:',
+                text='New Map')
+        if status:
+            if mapname and mapname != '':
+                item_name = QtGui.QStandardItem(mapname)
+                item_name.setData(None, self.table.object_role)
+                item_name.setEditable(True)
+                item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+
+                item_rooms = QtGui.QStandardItem('0 rooms')
+                item_rooms.setEditable(False)
+                item_rooms.setFlags(item_rooms.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+
+                self.table.model.appendRow([item_name, item_rooms])
 
     def remove_map(self):
         """
         Removes a map
         """
-        print('Remove map')
+        indexes = self.table.selectedIndexes()
+        if len(indexes) > 0:
+            mapcount = self.table.model.rowCount()
+            if mapcount < 2:
+                self.parent().dialog_error('Cannot delete map',
+                        'You cannot delete the last map in a game',
+                        parent=self)
+            else:
+                row = indexes[0].row()
+                self.table.model.takeRow(row)
 
 class NewEditRoomDialog(AppDialog):
     """
