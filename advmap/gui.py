@@ -373,17 +373,23 @@ class MapCombo(QtWidgets.QComboBox):
         self.loading = True
         self.clear()
 
-    def set_maplist(self, maplist):
+    def set_maplist(self, maplist, keep_position=False):
         """
         Sets our contents.  `maplist` should be a list of
         tuples, with the following indexes:
             1) Map name
             2) Map index
+        If `keep_position` is `True`, we will keep the map at
+        the current position at time of running
         """
+        if keep_position:
+            cur_position = self.currentIndex()
         self.clear_maplist()
         for (mapname, mapidx) in maplist:
             self.addItem(mapname, mapidx)
         self.loading = False
+        if keep_position:
+            self.setCurrentIndex(cur_position)
 
     def index_changed(self, index):
         """
@@ -717,12 +723,15 @@ class GUI(QtWidgets.QMainWindow):
         self.revert_menu_item.setEnabled(True)
         return True
 
-    def set_mapcombo(self):
+    def set_mapcombo(self, keep_position=False):
         """
-        Sets up our mapcombo
+        Sets up our mapcombo.  Pass in `keep_position`=`True`
+        in order to not update our selected index.
         """
-        self.toolbar.mapcombo.set_maplist([(r.name, idx) for (idx, r) in enumerate(self.game.maps)])
-        self.set_current_map(0)
+        self.toolbar.mapcombo.set_maplist([(r.name, idx) for (idx, r) in enumerate(self.game.maps)],
+                keep_position=keep_position)
+        if not keep_position:
+            self.set_current_map(0)
 
     def set_current_map(self, mapindex):
         """
@@ -945,7 +954,7 @@ class GUI(QtWidgets.QMainWindow):
 
         # Report on any maps imported
         if imported > 0:
-            self.set_mapcombo()
+            self.set_mapcombo(keep_position=True)
             if imported == 1:
                 plural = ''
             else:
@@ -1026,7 +1035,15 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Duplicate" action.
         """
-        print('Duplicate')
+        (newname, status) = QtWidgets.QInputDialog.getText(self,
+                'Duplicate Map',
+                'Map Name:',
+                text='{} (copy)'.format(self.mapobj.name))
+        if status:
+            newmap = self.mapobj.duplicate(newname)
+            self.game.add_map_obj(newmap)
+            self.set_mapcombo(keep_position=True)
+            self.set_temporary_status('Added new map "{}"'.format(newname))
 
     def action_room_notes_map(self):
         """
