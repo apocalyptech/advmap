@@ -444,11 +444,22 @@ class MainToolBar(QtWidgets.QToolBar):
         # Readonly
         self.readonly_toggle = self.addAction(QtGui.QIcon(Constants.gfx_readonly), 'Toggle readonly', parent.toggle_readonly)
         self.readonly_toggle.setCheckable(True)
-        self.addSeparator()
+
+        # Game Label (which happens to be a spacer which will push everything after to be
+        # right-aligned)
+        self.game_label = QtWidgets.QLabel()
+        self.game_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.game_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.addWidget(self.game_label)
 
         # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
         self.addWidget(self.mapcombo)
+
+        # Edit Game
+        style = self.style()
+        self.edit_game = self.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogListView),
+            'Game/Map Settings', parent.action_game_settings)
 
     def toggle_readonly_actions(self):
         """
@@ -574,7 +585,8 @@ class GUI(QtWidgets.QMainWindow):
 
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
-        editmenu.addAction('&Game/Map Settings', self.action_game_settings)
+        editmenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogListView),
+                '&Game/Map Settings', self.action_game_settings)
         editmenu.addSeparator()
         editmenu.addAction('&Duplicate Map...', self.action_duplicate)
 
@@ -717,6 +729,7 @@ class GUI(QtWidgets.QMainWindow):
         self.map_idx = mapindex
         self.scene.set_map(self.mapobj)
         self.setWindowTitle('Adventure Game Mapper | {} | {}'.format(self.game.name, self.mapobj.name))
+        self.toolbar.game_label.setText('<b>{}</b>'.format(self.game.name))
 
     def create_new_game(self):
         """
