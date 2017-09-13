@@ -311,11 +311,6 @@ class MainStatusBar(QtWidgets.QStatusBar):
         self.widget.setLayout(self.vbox)
         self.addWidget(self.widget, 1)
 
-        # Setting size policy; this generally didn't seem to actually do anything
-        # while I was playing with spacing here, keeping it commented just for
-        # reference, though.
-        #self.widget.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
-
     def currentMessage(self):
         """
         Returns our current message on the inner status bar
