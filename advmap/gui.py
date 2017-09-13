@@ -281,22 +281,30 @@ class MainStatusBar(QtWidgets.QStatusBar):
 
         super().__init__(parent)
 
+        # We don't want a separate size grip for this
         self.setSizeGripEnabled(False)
+
+        # Main VBox
         self.vbox = QtWidgets.QVBoxLayout()
         self.vbox.setSpacing(0)
         self.vbox.setContentsMargins(0, 0, 0, 0)
+
+        # The QLabel which shows what actions are available
         self.hover_label = QtWidgets.QLabel(self)
         self.hover_label.setAlignment(QtCore.Qt.AlignHCenter)
+
+        # The "real" inner QStatusBar which updates go to
         self.inner_sb = QtWidgets.QStatusBar(self)
+
+        # Two-step label, indicating that a two-step process is in progress
         self.two_step_hover = QtWidgets.QLabel(self)
         self.inner_sb.addPermanentWidget(self.two_step_hover)
+
+        # Now the widget that our inner statusbar uses to display
         self.normal = QtWidgets.QLabel(self)
         self.inner_sb.addWidget(self.normal)
-        # TODO: I would like to figure out a way to remove the padding around the
-        # QStatusBar but have been unable to do so.  Couldn't find CSS that worked,
-        # either.
-        #self.inner_sb.setContentsMargins(0, 0, 0, 0)
-        #self.inner_sb.layout().setContentsMargins(0, 0, 0, 0)
+
+        # Housekeeping...
         self.vbox.addWidget(self.hover_label)
         self.vbox.addWidget(self.inner_sb)
         self.widget = QtWidgets.QWidget()
@@ -340,7 +348,7 @@ class MainStatusBar(QtWidgets.QStatusBar):
             hover_text = ', '.join(['%s: %s' % (key, action) for (key, action) in actions])
             if prefix is not None:
                 hover_text = '%s - %s' % (prefix, hover_text)
-        self.hover_label.setText(hover_text)
+        self.hover_label.setText('<i>{}</i>'.format(hover_text))
 
     def clear_two_step_text(self):
         """
@@ -352,7 +360,7 @@ class MainStatusBar(QtWidgets.QStatusBar):
         """
         Sets our two-step hover label
         """
-        self.two_step_hover.setText(text)
+        self.two_step_hover.setText('<b>{}</b>'.format(text))
 
 class MapCombo(QtWidgets.QComboBox):
 
