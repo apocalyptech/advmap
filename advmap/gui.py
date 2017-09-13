@@ -1004,9 +1004,6 @@ class GUI(QtWidgets.QMainWindow):
         """
         d = EditGameDialog(self, self.game)
         res = d.exec()
-        if res == d.Accepted:
-            # TODO: update combo box, switch map if needed
-            pass
         self.activateWindow()
 
     def action_duplicate(self):
@@ -2626,7 +2623,20 @@ class AppDialog(QtWidgets.QDialog):
 
 class MapListTable(QtWidgets.QTableView):
     """
-    Table which holds information about our list of maps
+    Table which holds information about our list of maps.  We store
+    two bits of data along with the map name colum: the map object
+    itself, and that map object's current index in the main `maps`
+    list.  We do this because as items get reordered by the user in
+    the list, the QStandardItemModel makes copies of the objects,
+    rather than keeping the reference the way it is (this probably
+    means that the copies aren't "complete" - I bet they're just
+    shallow copies.  See the Qt docs for `QStandardItem.clone` and
+    related).  Anyway, we could certainly provide our own classes
+    for the model, to take care of that stuff and provide real
+    copies (either hooking into our `clone` function, or doing some
+    finagling to just return the same object back), but it's easier
+    to just contine checking by index, as we'd been doing on the
+    Gtk+ version.
     """
 
     object_role = QtCore.Qt.UserRole + 1
@@ -2753,7 +2763,7 @@ class EditGameDialog(AppDialog):
                 if map_cur_idx == mainwindow.map_idx:
                     new_map_idx = rownum
                     found_cur_map = True
-                map_obj.name = map_name
+                mainwindow.game.maps[map_cur_idx].name = map_name
                 newmaps.append(mainwindow.game.maps[map_cur_idx])
         mainwindow.game.replace_maps(newmaps)
 
