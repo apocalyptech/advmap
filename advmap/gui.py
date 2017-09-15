@@ -23,6 +23,7 @@ import os.path
 import operator
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+from advmap import version
 from advmap.data import *
 
 def overlay_color(source, overlay):
@@ -1065,7 +1066,9 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "About" action.
         """
-        print('About')
+        d = AboutDialog(self)
+        d.exec()
+        self.activateWindow()
 
 class HoverArea(QtWidgets.QGraphicsRectItem):
     """
@@ -2534,6 +2537,124 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(color))
         self.setPen(QtGui.QPen(color))
         self.setZValue(Constants.z_value_group)
+
+class AboutDialog(QtWidgets.QDialog):
+    """
+    Dialog for showing an "About" style dialog.  Modelled after the one
+    provided by Gtk; apparently I care?  Odd.
+    """
+
+    url = 'https://github.com/apocalyptech/advmap/'
+
+    def __init__(self, parent, mapobj=None, maplist=None):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        # This attribute seems to be needed before we can return focus to the main
+        # window...
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        #self.setMinimumSize(420, 240)
+        self.setWindowTitle('About Adventure Game Mapper')
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Dialog Title
+        title_label = QtWidgets.QLabel('Adventure Game Mapper v{}'.format(version), self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Link to project website (eventually)
+        url_label = QtWidgets.QLabel('<a href="{}">{}</a>'.format(self.url, self.url))
+        url_label.setOpenExternalLinks(True)
+        layout.addWidget(url_label, 1, QtCore.Qt.AlignCenter)
+
+        # An HBox to contain two separate buttonboxes
+        w = QtWidgets.QWidget()
+        hbox = QtWidgets.QHBoxLayout()
+        w.setLayout(hbox)
+        layout.addWidget(w, 0)
+
+        # Our custom button box
+        style = self.style()
+        self.custombb = QtWidgets.QDialogButtonBox(self)
+        hbox.addWidget(self.custombb, 0, QtCore.Qt.AlignLeft)
+
+        # License
+        self.license = QtWidgets.QPushButton(style.standardIcon(QtWidgets.QStyle.SP_FileDialogDetailedView),
+                'License')
+        self.license.clicked.connect(self.open_license)
+        self.custombb.addButton(self.license, self.custombb.ActionRole)
+
+        # "Standard" Button box
+        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox.rejected.connect(self.reject)
+        hbox.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def open_license(self, event):
+        """
+        User requested to open the license
+        """
+        d = LicenseDialog(self)
+        d.exec()
+        self.activateWindow()
+
+class LicenseDialog(QtWidgets.QDialog):
+    """
+    Custom dialog class for showing our software license
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        # This attribute seems to be needed before we can return focus to the main
+        # window...
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(600, 440)
+        self.setWindowTitle('Adventure Game Mapper License')
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Main place where we're showing the info
+        self.browser = QtWidgets.QTextBrowser(self)
+        layout.addWidget(self.browser, 1)
+        cursor = self.browser.textCursor()
+        self.set_scroll = False
+
+        # Read in our license
+        licensepath = self.parent().parent().reldir('COPYING.txt')
+        license_text = 'ERROR: License data not found'
+        if os.path.isfile(licensepath):
+            try:
+                with open(licensepath, 'r') as df:
+                    license_text = df.read()
+            except:
+                pass
+        self.browser.insertPlainText(license_text)
+
+        # Button box
+        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def showEvent(self, event):
+        """
+        Events when the dialog is shown.  This is just here so that we can
+        initially put our main text scrollbar at the top - setting the cursor
+        position doesn't seem to do the trick, and the scrollbars don't have
+        any size parameters yet when we initialize 'em.  I don't think it's
+        possible for this to get triggered more than once per instantiation,
+        since we're modal, but I'm guarding against setting it more than
+        once anyway.
+        """
+        if not self.set_scroll:
+            self.browser.verticalScrollBar().setValue(0)
+            self.set_scroll = True
+        super().showEvent(event)
 
 class NotesDialog(QtWidgets.QDialog):
     """
