@@ -1049,13 +1049,17 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Room Notes" action for current map
         """
-        print('Room Notes (this map)')
+        d = NotesDialog(self, mapobj=self.mapobj)
+        d.exec()
+        self.activateWindow()
 
     def action_room_notes_all(self):
         """
         Handle our "Room Notes" action for all maps
         """
-        print('Room Notes (all maps)')
+        d = NotesDialog(self, maplist=self.game.maps)
+        d.exec()
+        self.activateWindow()
 
     def action_about(self):
         """
@@ -2530,6 +2534,122 @@ class GUIGroup(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtGui.QBrush(color))
         self.setPen(QtGui.QPen(color))
         self.setZValue(Constants.z_value_group)
+
+class NotesDialog(QtWidgets.QDialog):
+    """
+    Custom dialog class for displaying room notes, either for
+    the current map or for the aggregate of all maps
+    """
+
+    def __init__(self, parent, mapobj=None, maplist=None):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        # This attribute seems to be needed before we can return focus to the main
+        # window...
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(420, 440)
+        if mapobj is None:
+            title = 'Room Notes (for all maps)'
+        else:
+            title = 'Room Notes (for {})'.format(mapobj.name)
+        self.setWindowTitle(title)
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Dialog Title
+        title_label = QtWidgets.QLabel(title, self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Main place where we're showing the info
+        self.browser = QtWidgets.QTextBrowser(self)
+        self.browser.document().setDefaultStyleSheet("""
+            .mapheader {
+                font-weight: bold;
+                text-align: center;
+                font-size: large;
+            }
+            .roomheader {
+            }
+            .roomname {
+                font-weight: bold;
+            }
+            .roomcoords {
+                font-style: italic;
+            }
+            .roomnotes {
+            }
+        """)
+        layout.addWidget(self.browser, 1)
+        cursor = self.browser.textCursor()
+
+        # Add info to the map
+        if mapobj is not None:
+            show_maps = [mapobj]
+        elif maplist is None:
+            show_maps = []
+        else:
+            show_maps = maplist
+
+        # For some reason, I can't seem to usefully set <div> alignment using
+        # stylesheets themselves.  The text always just uses the alignment of the
+        # very first textblock, regardless of what I've set in CSS.  So, what we're
+        # doing is setting a custom QTextBlockFormat when creating each block.
+        # This actually is the only way I've found to set margins, too.  I think
+        # the CSS processing there isn't as powerful as I'd hope?
+        format_center = QtGui.QTextBlockFormat()
+        format_center.setAlignment(QtCore.Qt.AlignHCenter)
+        format_center.setBottomMargin(15)
+        format_left = QtGui.QTextBlockFormat()
+        format_left.setAlignment(QtCore.Qt.AlignLeft)
+        format_indent = QtGui.QTextBlockFormat()
+        format_indent.setAlignment(QtCore.Qt.AlignLeft)
+        format_indent.setLeftMargin(20)
+        format_indent.setBottomMargin(15)
+        have_notes = False
+        notes = {}
+        for (idx, mapobj) in enumerate(show_maps):
+            shown_header = False
+            for room in sorted(mapobj.roomlist(), key=operator.methodcaller('name_sort_key')):
+                if room and room.notes and room.notes != '':
+                    have_notes = True
+                    if not shown_header:
+                        cursor.insertBlock(format_center)
+                        self.browser.insertHtml('<div class="mapheader">Notes for {}</div>'.format(mapobj.name))
+                        shown_header = True
+                    cursor.insertBlock(format_left)
+                    self.browser.insertHtml("""
+                        <div class="roomheader">
+                            <span class="roomname">{}</span>
+                            <span class="roomcoords">at ({}, {})</span>
+                        </div>""".format(
+                        room.name, room.x, room.y,
+                        ))
+                    cursor.insertBlock(format_indent)
+                    self.browser.insertHtml('<div class="roomnotes">{}</div>'.format(room.notes))
+        self.set_scroll = False
+
+        # Button box
+        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def showEvent(self, event):
+        """
+        Events when the dialog is shown.  This is just here so that we can
+        initially put our main text scrollbar at the top - setting the cursor
+        position doesn't seem to do the trick, and the scrollbars don't have
+        any size parameters yet when we initialize 'em.  I don't think it's
+        possible for this to get triggered more than once per instantiation,
+        since we're modal, but I'm guarding against setting it more than
+        once anyway.
+        """
+        if not self.set_scroll:
+            self.browser.verticalScrollBar().setValue(0)
+            self.set_scroll = True
+        super().showEvent(event)
 
 class AppDialog(QtWidgets.QDialog):
     """
