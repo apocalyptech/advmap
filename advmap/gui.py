@@ -2634,6 +2634,7 @@ class NotesDialog(QtWidgets.QDialog):
 
         # Button box
         self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox.rejected.connect(self.reject)
         layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
 
     def showEvent(self, event):
