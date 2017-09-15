@@ -1640,7 +1640,9 @@ class GUIRoomHover(HoverArea):
         """
         Viewing room details (on account of being in readonly mode)
         """
-        print('Viewing details...')
+        d = RoomDetailsDialog(self.gui_room.mainwindow, self.gui_room.room)
+        d.exec()
+        self.gui_room.mainwindow.activateWindow()
 
     def edit_room(self):
         """
@@ -2867,6 +2869,15 @@ class AppDialog(QtWidgets.QDialog):
         self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
         return label
 
+    def add_text(self, text):
+        """
+        Adds textual (readonly) data, as a QLabel.  Returns the QLabel
+        in case you'd like to apply extra formatting to it.
+        """
+        label = QtWidgets.QLabel(text)
+        self.gridlayout.addWidget(label, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        return label
+
     def add_textbox(self, width=None):
         """
         Adds a textbox at the current row
@@ -3090,6 +3101,75 @@ class EditGameDialog(AppDialog):
                 row = indexes[0].row()
                 self.table.model.takeRow(row)
 
+class RoomDetailsDialog(AppDialog):
+    """
+    Dialog for showing text information about a room (for readonly mode)
+    """
+
+    def __init__(self, parent, room):
+        self.room = room
+        super().__init__(parent, 'Room Details', 360, 270,
+                scrollable=True, use_cancel=False)
+
+    def create_contents(self):
+        """
+        Creates our contents
+        """
+
+        # Contents - Room Name
+        self.add_label('Room Name')
+        label = self.add_text(self.room.name)
+        label.setText('<b>{}</b>'.format(self.room.name))
+
+        # Room Type
+        self.add_label('Room Type')
+        self.add_text(self.room.TYPE_TXT[self.room.type])
+
+        # Room Color
+        self.add_label('Room Color')
+        self.add_text(self.room.COLOR_TXT[self.room.color])
+
+        # Directions
+        for (data, eng) in [(self.room.up, 'Up'),
+                (self.room.down, 'Down'),
+                (self.room.door_in, 'In'),
+                (self.room.door_out, 'Out'),
+                ]:
+            if data and data != '':
+                self.add_label('"{}" Direction'.format(eng))
+                self.add_text(data)
+
+        # Notes
+        self.set_notes_scroll = False
+        if self.room.notes and self.room.notes != '':
+            self.has_notes = True
+            self.add_label('Notes')
+            self.input_notes = self.add_plaintext_edit(210, 150)
+            self.input_notes.setReadOnly(True)
+            self.input_notes.setPlainText(self.room.notes)
+        else:
+            # If we don't have notes, we'll want a "dummy" row for
+            # our auto-stretch configuration
+            self.has_notes = False
+            self.cur_row += 1
+            self.add_text('')
+
+    def showEvent(self, event):
+        """
+        Events when the dialog is shown.  This is just here so that we can
+        initially put our notes scrollbar at the top - setting the cursor
+        position doesn't seem to do the trick, and the scrollbars don't have
+        any size parameters yet when we initialize 'em.  I don't think it's
+        possible for this to get triggered more than once per instantiation,
+        since we're modal, but I'm guarding against setting it more than
+        once anyway.
+        """
+        if not self.set_notes_scroll and self.has_notes:
+            self.input_notes.verticalScrollBar().setValue(0)
+            self.set_notes_scroll = True
+        super().showEvent(event)
+
+
 class NewEditRoomDialog(AppDialog):
     """
     Main dialog for either adding a new room or editing an existing room.  Some
@@ -3097,8 +3177,21 @@ class NewEditRoomDialog(AppDialog):
     are the same regardless.
     """
 
-    def __init__(self, parent, editing=False, room=None, from_direction=None,
-            x=None, y=None):
+    def __init__(self, parent, editing=False, room=None,
+            from_direction=None, x=None, y=None):
+        """
+        Initialize our dialog.  The various options here have multiple valid
+        states, and we don't really enforce them - it'd be possible to call
+        this in ways which result in weird behavior.  There's three basic
+        functional ways to call it:
+            1) Define `editing=False` (the default), and send in `room` and
+               `from_direction`.  This is the action to add a new room,
+               connected to an existing room on the map.
+            2) Define `editing=False` (the default), and send in `x` and `y`.
+               This is adding a new room at an arbitrary point on the map.
+            3) Define `editing=True`, and set `room`.  This will be to edit
+               an already-existing room.
+        """
         if editing:
             title = 'Edit Room'
         else:
