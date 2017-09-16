@@ -26,20 +26,6 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from advmap import version
 from advmap.data import *
 
-def overlay_color(source, overlay):
-    """
-    Merges two QColors.  The Alpha value of the new QColor will be the
-    Alpha from `source`.  The Alpha value of `overlay` will determine how
-    much of the color to multiply in.
-    """
-    ratio_overlay = overlay.alphaF()
-    return QtGui.QColor(
-            source.red()*(1-ratio_overlay)+overlay.red()*ratio_overlay,
-            source.green()*(1-ratio_overlay)+overlay.green()*ratio_overlay,
-            source.blue()*(1-ratio_overlay)+overlay.blue()*ratio_overlay,
-            source.alpha(),
-        )
-
 class Constants(object):
     """
     Basically just a container for a bunch of static vars used by a number
@@ -557,6 +543,9 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_plus = QtGui.QPixmap(self.resfile('plus.png'))
         Constants.gfx_minus = QtGui.QPixmap(self.resfile('minus.png'))
 
+        # Making sure our view memory vars exist early
+        self.clear_view_memory()
+
         # Set up a status bar
         self.statusbar = MainStatusBar(self)
         self.setStatusBar(self.statusbar)
@@ -717,6 +706,7 @@ class GUI(QtWidgets.QMainWindow):
         """
         # TODO: center on map
         game = Game.load(filename)
+        self.clear_view_memory()
         self.game = game
         self.curfile = filename
         self.set_status('Editing %s' % filename)
@@ -738,11 +728,55 @@ class GUI(QtWidgets.QMainWindow):
         """
         Sets the current map to the specified index
         """
+        self.store_view_memory()
         self.mapobj = self.game.maps[mapindex]
         self.map_idx = mapindex
         self.scene.set_map(self.mapobj)
         self.setWindowTitle('Adventure Game Mapper | {} | {}'.format(self.game.name, self.mapobj.name))
         self.toolbar.game_label.setText('<b>{}</b>'.format(self.game.name))
+        self.restore_view_memory()
+
+    def clear_view_memory(self):
+        """
+        Clears our view memory, which stores where our scrollbars
+        are for each map
+        """
+        self.view_memory = {}
+
+    def store_view_memory(self):
+        """
+        Stores our view memory for the current map
+        """
+        if self.mapobj:
+            vbar = self.maparea.verticalScrollBar()
+            hbar = self.maparea.horizontalScrollBar()
+            self.view_memory[self.mapobj] = (hbar.value(), vbar.value())
+
+    def restore_view_memory(self):
+        """
+        Restores our view memory for the current map, if possible.  This
+        will theoretically put our scrollbars back where they were, the
+        last time we viewed this map.  If we don't have any known values
+        here, center the view.
+        """
+        if self.mapobj and self.mapobj in self.view_memory:
+            (hval, vval) = self.view_memory[self.mapobj]
+            self.maparea.horizontalScrollBar().setValue(hval)
+            self.maparea.verticalScrollBar().setValue(vval)
+        else:
+            # TODO: I wonder if it'd be nicer to center around the "average"
+            # of all the rooms, rather than the center of the scene.  I also
+            # wonder if it might be better to default to upper-left-corner
+            # for existing maps, so long as rooms are visible, rather than
+            # centering.
+            hbar = self.maparea.horizontalScrollBar()
+            vbar = self.maparea.verticalScrollBar()
+            hmin = hbar.minimum()
+            hmax = hbar.maximum()
+            hbar.setValue((hmin+hmax)/2)
+            vmin = vbar.minimum()
+            vmax = vbar.maximum()
+            vbar.setValue((vmin+vmax)/2)
 
     def create_new_game(self):
         """
@@ -756,6 +790,8 @@ class GUI(QtWidgets.QMainWindow):
         self.set_mapcombo()
         self.revert_menu_item.setEnabled(False)
         self.set_status('Editing a new game')
+        self.clear_view_memory()
+        self.restore_view_memory()
 
     def create_new_map(self, name):
         """
@@ -4063,6 +4099,13 @@ class MapScene(QtWidgets.QGraphicsScene):
             self.recreate()
 
 class MapArea(QtWidgets.QGraphicsView):
+    """
+    Class which holds the viewport into our scene.  Not much
+    happens in this class - there's stuff which perhaps
+    *should* be part of this class which is instead part of
+    our MainWindow classes, but I don't really feel like ripping
+    that stuff apart.
+    """
 
     statusbar = QtCore.pyqtSignal(str)
 
