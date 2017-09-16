@@ -1,12 +1,14 @@
 WARNING
 =======
 
-This branch is going to be an attempt to port this over to PyQt5, specifically
-using their excellent-looking QGraphicsView/QGraphicsScene framework.  The
-branch may be in various states of disarray and will probably often not work
-at all.  At time of writing this, I haven't actually even started on the
-conversion, but it'll probably soon start getting all broken.  So beware!
-You probably want to be back on the master branch.
+This branch is a rewrite/port of the GUI from pygtk to pyqt.  It's far less
+tested than the main gtk+ version, and still has a few rough edges (it's
+possible to do some weird things when dragging rooms around in the Game
+Edit dialog, for instance - be sure to only drag into the first column),
+but otherwise it's essentially feature-complete.  Use with caution, but in
+general it should work all right at the moment.  Once I get a few more
+niggling weird Qt things figured out (like the aforementioned dragging
+issue), I'll probably be merging this into master.
 
 Adventure Game Mapper
 =====================
