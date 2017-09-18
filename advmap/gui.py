@@ -3573,7 +3573,6 @@ class NewEditRoomDialog(AppDialog):
             # Create the new room
             try:
                 oper_room = scene.mapobj.add_room_at(self.x, self.y, self.input_roomname.text())
-                i = 4/0
             except Exception as e:
                 self.parent().dialog_error('Unable to add new room', str(e), parent=self)
                 return self.reject()
