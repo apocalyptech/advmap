@@ -1641,7 +1641,8 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         mapobj = scene.mapobj
         if len(mapobj.rooms) < 2:
-            # TODO: notification
+            self.mainwindow.dialog_error('Unable to remove room',
+                    'You cannot remove the last room from a map')
             return
         mapobj.del_room(room)
         self.hoverLeaveEvent()
@@ -3567,8 +3568,9 @@ class NewEditRoomDialog(AppDialog):
             # Create the new room
             try:
                 oper_room = scene.mapobj.add_room_at(self.x, self.y, self.input_roomname.text())
+                i = 4/0
             except Exception as e:
-                # TODO: notification!
+                self.parent().dialog_error('Unable to add new room', str(e), parent=self)
                 return self.reject()
 
             # If we started with a room, link the two (if told to)
