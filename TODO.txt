@@ -44,5 +44,6 @@ PyQt porting issues which I've temporarily set aside:
  * Get a set of standard icons for us to use rather than relying on
    toolkit.
  * Icons on dialog buttons
- * MessageDialog width - force it to be at least a certain width somehow.
+ * QMessageBox width (via dialog_user function) - force it to be at
+   least a certain width somehow.
  * Prevent dragging rooms to different columns; what the hell?
