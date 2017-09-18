@@ -647,6 +647,7 @@ class GUI(QtWidgets.QMainWindow):
         msgbox.setStandardButtons(buttons)
         msgbox.setDefaultButton(default_button)
         msgbox.setIcon(icon)
+        msgbox.setWindowTitle(message)
         return msgbox.exec()
 
     def dialog_confirm(self, message, infotext=None):
