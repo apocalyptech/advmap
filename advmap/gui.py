@@ -2951,6 +2951,23 @@ class AppDialog(QtWidgets.QDialog):
         self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
         return edit
 
+class MapListModel(QtGui.QStandardItemModel):
+    """
+    Custom Model for use with MapListTable.  The only reason why
+    we're subclassing is to "fix" dragging and dropping to reorder
+    rows.  Using the base class alone would allow the user to
+    drag a row into the second cell, creating a new column and
+    generally screwing up the data.
+    """
+
+    def dropMimeData(self, data, action, row, col, parent):
+        """
+        Override of `dropMimeData` which will force the `col` parameter
+        to always be zero, so all drop actions will insert a new row
+        the way we want, preventing any column expansion, etc.
+        """
+        return super().dropMimeData(data, action, row, 0, parent)
+
 class MapListTable(QtWidgets.QTableView):
     """
     Table which holds information about our list of maps.  We store
@@ -2987,7 +3004,7 @@ class MapListTable(QtWidgets.QTableView):
         self.setDragDropMode(self.InternalMove)
         self.setDragDropOverwriteMode(False)
 
-        self.model = QtGui.QStandardItemModel()
+        self.model = MapListModel()
         self.setModel(self.model)
 
         for (idx, mapobj) in enumerate(self.game.maps):
