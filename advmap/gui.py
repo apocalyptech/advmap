@@ -2995,7 +2995,7 @@ class MapListTable(QtWidgets.QTableView):
             item_name.setData(mapobj, self.object_role)
             item_name.setData(idx, self.cur_idx_role)
             item_name.setEditable(True)
-            item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+            item_name.setDropEnabled(False)
 
             if len(mapobj.rooms) == 1:
                 plural = ''
@@ -3003,7 +3003,7 @@ class MapListTable(QtWidgets.QTableView):
                 plural = 's'
             item_rooms = QtGui.QStandardItem('{} room{}'.format(len(mapobj.rooms), plural))
             item_rooms.setEditable(False)
-            item_rooms.setFlags(item_rooms.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+            item_rooms.setDropEnabled(False)
 
             self.model.appendRow([item_name, item_rooms])
 
