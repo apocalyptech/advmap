@@ -44,5 +44,3 @@ PyQt porting issues which I've temporarily set aside:
  * Get a set of standard icons for us to use rather than relying on
    toolkit.
  * Icons on dialog buttons
- * Have the between-row drag-n-drop hover notification span the entire
-   row regardless of what column you're hovering over.

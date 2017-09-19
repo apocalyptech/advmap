@@ -2968,6 +2968,22 @@ class MapListModel(QtGui.QStandardItemModel):
         """
         return super().dropMimeData(data, action, row, 0, parent)
 
+class MapListStyle(QtWidgets.QProxyStyle):
+    """
+    Custom style for our MapListTable to draw the between-row drop
+    indicator across the entire row, instead of just across the single
+    cell the user happens to be hovering over.
+    """
+
+    def drawPrimitive(self, element, option, painter, widget=None):
+        if element == self.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
+            option_new = QtWidgets.QStyleOption(option)
+            option_new.rect.setLeft(0)
+            if widget:
+                option_new.rect.setRight(widget.width())
+            option = option_new
+        super().drawPrimitive(element, option, painter, widget)
+
 class MapListTable(QtWidgets.QTableView):
     """
     Table which holds information about our list of maps.  We store
@@ -2998,15 +3014,22 @@ class MapListTable(QtWidgets.QTableView):
         self.verticalHeader().hide()
         self.horizontalHeader().hide()
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.setShowGrid(False)
+
+        # These vars are what enables our basic drag-n-drop reordering
         self.setSelectionBehavior(self.SelectRows)
         self.setSelectionMode(self.SingleSelection)
-        self.setShowGrid(False)
         self.setDragDropMode(self.InternalMove)
         self.setDragDropOverwriteMode(False)
 
+        # Set up our style (this fixes the between-row drop indicator)
+        self.setStyle(MapListStyle())
+
+        # Set up our model (our custom model here enforces basic row moves only)
         self.model = MapListModel()
         self.setModel(self.model)
 
+        # Add all our maps.  setDropEnabled(False) is important!
         for (idx, mapobj) in enumerate(self.game.maps):
             item_name = QtGui.QStandardItem(mapobj.name)
             item_name.setData(mapobj, self.object_role)
