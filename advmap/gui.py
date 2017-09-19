@@ -21,6 +21,7 @@
 import math
 import os.path
 import operator
+import textwrap
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from advmap import version
@@ -634,25 +635,25 @@ class GUI(QtWidgets.QMainWindow):
     def dialog_user(self, message, infotext, buttons, default_button, icon, parent=None):
         """
         Shows a dialog to the user with the specified information and
-        returns its result
+        returns its result.  Note that we use a QMessageBox for this, but
+        don't actually make use of its informativeText attribute because
+        I don't like how that ends up interacting with word wrapping.
         """
         # TODO: would like to have icons on buttons
         if not parent:
             msgbox = QtWidgets.QMessageBox(self)
         else:
             msgbox = QtWidgets.QMessageBox(parent)
-        msgbox.setText(message)
         if infotext and infotext != '':
-            msgbox.setInformativeText(infotext)
+            text = "{}\n\n{}".format(message, "\n".join(textwrap.wrap(infotext, width=100)))
+        else:
+            text = message
+        msgbox.setText(text)
         msgbox.setStandardButtons(buttons)
         msgbox.setDefaultButton(default_button)
         msgbox.setIcon(icon)
         msgbox.setWindowTitle(message)
         msgbox.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
-        # TODO: How the hell can we make this dialog larger?  These, below,
-        # do nothing, basically:
-        #msgbox.setSizeGripEnabled(True)
-        #msgbox.setMinimumWidth(600)
         return msgbox.exec()
 
     def dialog_confirm(self, message, infotext=None):
