@@ -115,7 +115,6 @@ class GroupTests(unittest.TestCase):
         Test to make sure our `increment_style` does the right thing
         """
         # Currently there are nine total styles
-        # Alas, subTests were implemented in Python 3.4 and never got backported to 2.7
         for (current, result) in [
                 (0, 1),
                 (1, 2),
@@ -127,9 +126,10 @@ class GroupTests(unittest.TestCase):
                 (7, 8),
                 (8, 0),
                 ]:
-            self.assertEqual(self.g.style, current)
-            self.g.increment_style()
-            self.assertEqual(self.g.style, result)
+            with self.subTest(current=current):
+                self.assertEqual(self.g.style, current)
+                self.g.increment_style()
+                self.assertEqual(self.g.style, result)
 
     def test_save_only_one_room(self):
         """

@@ -173,7 +173,6 @@ class RoomTests(unittest.TestCase):
         Test to make sure connect will automatically go to the
         opposite direction
         """
-        # Again, a shame that Python 2.7 doesn't have unittest.subTest
         for (direction, opposite) in [
                     (DIR_N, DIR_S),
                     (DIR_NE, DIR_SW),
@@ -184,15 +183,16 @@ class RoomTests(unittest.TestCase):
                     (DIR_W, DIR_E),
                     (DIR_NW, DIR_SE),
                 ]:
-            r1 = Room(1, 1, 1)
-            r2 = Room(2, 2, 2)
-            c = r1.connect(direction, r2)
-            self.assertEqual(len(r1.conns), 1)
-            self.assertIn(direction, r1.conns)
-            self.assertEqual(r1.conns[direction], c)
-            self.assertEqual(len(r2.conns), 1)
-            self.assertIn(opposite, r2.conns)
-            self.assertEqual(r2.conns[opposite], c)
+            with self.subTest(direction=direction):
+                r1 = Room(1, 1, 1)
+                r2 = Room(2, 2, 2)
+                c = r1.connect(direction, r2)
+                self.assertEqual(len(r1.conns), 1)
+                self.assertIn(direction, r1.conns)
+                self.assertEqual(r1.conns[direction], c)
+                self.assertEqual(len(r2.conns), 1)
+                self.assertIn(opposite, r2.conns)
+                self.assertEqual(r2.conns[opposite], c)
 
     def test_connect_specified_direction(self):
         """
@@ -464,7 +464,6 @@ class RoomTests(unittest.TestCase):
         """
         Tests increment_type
         """
-        # Shame about unittest.subTest not being in Py2
         r = Room(1, 1, 1)
         for (current, result) in [
                 (0, 1),
@@ -473,15 +472,15 @@ class RoomTests(unittest.TestCase):
                 (3, 4),
                 (4, 0),
                 ]:
-            self.assertEqual(r.type, current)
-            r.increment_type()
-            self.assertEqual(r.type, result)
+            with self.subTest(current=current):
+                self.assertEqual(r.type, current)
+                r.increment_type()
+                self.assertEqual(r.type, result)
 
     def test_increment_color(self):
         """
         Tests increment_color
         """
-        # Shame about unittest.subTest not being in Py2
         r = Room(1, 1, 1)
         for (current, result) in [
                 (0, 1),
@@ -493,9 +492,10 @@ class RoomTests(unittest.TestCase):
                 (6, 7),
                 (7, 0),
                 ]:
-            self.assertEqual(r.color, current)
-            r.increment_color()
-            self.assertEqual(r.color, result)
+            with self.subTest(current=current):
+                self.assertEqual(r.color, current)
+                r.increment_color()
+                self.assertEqual(r.color, result)
 
     def test_save_basic_room_no_loopbacks_or_flags(self):
         """
@@ -705,7 +705,8 @@ class RoomTests(unittest.TestCase):
         self.assertEqual(len(r.loopbacks), 8)
         for direction in [DIR_N, DIR_NE, DIR_E, DIR_SE, DIR_S,
                 DIR_SW, DIR_W, DIR_NW]:
-            self.assertEqual(r.get_loopback(direction), True)
+            with self.subTest(direction=direction):
+                self.assertEqual(r.get_loopback(direction), True)
 
     def test_load_v3_type_color_changes(self):
         """
@@ -728,38 +729,38 @@ class RoomTests(unittest.TestCase):
                 (10, (Room.TYPE_NORMAL, Room.COLOR_BW)), # Invalid, should default to Normal/BW
             ]
 
-        # Alas for not having unittest.subTest in py2
         for (orig_type, (new_type, new_color)) in old_to_new:
-            df = self.getSavefile()
-            df.writeshort(1)
-            df.writeuchar(2)
-            df.writeuchar(3)
-            df.writestr('Room')
-            df.writeuchar(orig_type)
-            df.writestr('Up')
-            df.writestr('Down')
-            df.writestr('In')
-            df.writestr('Out')
-            df.writestr('Notes')
-            df.writeuchar(0)
-            df.writeuchar(0)
-            df.seek(0)
-            r = Room.load(df, 3)
-            self.assertEqual(df.eof(), True)
-            self.assertEqual(r.idnum, 1)
-            self.assertEqual(r.x, 2)
-            self.assertEqual(r.y, 3)
-            self.assertEqual(r.name, 'Room')
-            self.assertEqual(r.notes, 'Notes')
-            self.assertEqual(r.up, 'Up')
-            self.assertEqual(r.down, 'Down')
-            self.assertEqual(r.door_in, 'In')
-            self.assertEqual(r.door_out, 'Out')
-            self.assertEqual(r.type, new_type)
-            self.assertEqual(r.color, new_color)
-            self.assertEqual(r.offset_x, False)
-            self.assertEqual(r.offset_y, False)
-            self.assertEqual(len(r.loopbacks), 0)
+            with self.subTest(orig_type=orig_type):
+                df = self.getSavefile()
+                df.writeshort(1)
+                df.writeuchar(2)
+                df.writeuchar(3)
+                df.writestr('Room')
+                df.writeuchar(orig_type)
+                df.writestr('Up')
+                df.writestr('Down')
+                df.writestr('In')
+                df.writestr('Out')
+                df.writestr('Notes')
+                df.writeuchar(0)
+                df.writeuchar(0)
+                df.seek(0)
+                r = Room.load(df, 3)
+                self.assertEqual(df.eof(), True)
+                self.assertEqual(r.idnum, 1)
+                self.assertEqual(r.x, 2)
+                self.assertEqual(r.y, 3)
+                self.assertEqual(r.name, 'Room')
+                self.assertEqual(r.notes, 'Notes')
+                self.assertEqual(r.up, 'Up')
+                self.assertEqual(r.down, 'Down')
+                self.assertEqual(r.door_in, 'In')
+                self.assertEqual(r.door_out, 'Out')
+                self.assertEqual(r.type, new_type)
+                self.assertEqual(r.color, new_color)
+                self.assertEqual(r.offset_x, False)
+                self.assertEqual(r.offset_y, False)
+                self.assertEqual(len(r.loopbacks), 0)
 
     def test_load_v8_basic(self):
         """

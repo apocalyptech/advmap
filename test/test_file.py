@@ -290,12 +290,12 @@ class SavefileTests(unittest.TestCase):
         """
         df = self.get_in_memory()
         df.close()
-        # Alas for not having unittest.subTest in Py2
         for func in [df.readchar, df.readuchar, df.readshort, df.readint,
                 df.readfloat, df.readstr]:
-            with self.assertRaises(IOError) as cm:
-                func()
-            self.assertIn('File is not open for reading', str(cm.exception))
+            with self.subTest(func=func):
+                with self.assertRaises(IOError) as cm:
+                    func()
+                self.assertIn('File is not open for reading', str(cm.exception))
 
     def test_writing_on_unopened_file(self):
         """
@@ -303,12 +303,12 @@ class SavefileTests(unittest.TestCase):
         """
         df = self.get_in_memory()
         df.close()
-        # Alas for not having unittest.subTest in Py2
         for func in [df.writechar, df.writeuchar, df.writeshort, df.writeint,
                 df.writefloat, df.writestr]:
-            with self.assertRaises(IOError) as cm:
-                func(3)
-            self.assertIn('File is not open for writing', str(cm.exception))
+            with self.subTest(func=func):
+                with self.assertRaises(IOError) as cm:
+                    func(3)
+                self.assertIn('File is not open for writing', str(cm.exception))
 
     def test_read_write_char(self):
         """

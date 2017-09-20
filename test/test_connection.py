@@ -44,11 +44,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_S, self.c.ends2)
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
-        # Alas, no unittest.subTest in Py2
         for end in [ce1, ce2]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
-            self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+            with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
+                self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
 
     def test_initialization_specify(self):
         """
@@ -72,11 +72,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_S, c.ends2)
         ce1 = c.ends1[DIR_N]
         ce2 = c.ends2[DIR_S]
-        # Alas, no unittest.subTest in Py2
         for end in [ce1, ce2]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
-            self.assertEqual(end.stub_length, 3)
+            with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+                self.assertEqual(end.stub_length, 3)
 
     def test_set_symmetric_to_false(self):
         """
@@ -104,11 +104,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_S, self.c.ends2)
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
-        # Alas, no unittest.subTest in Py2
         for end in [ce1, ce2]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
-            self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+            with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
+                self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
 
         self.c.set_symmetric()
 
@@ -124,11 +124,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_S, self.c.ends2)
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
-        # Alas, no unittest.subTest in Py2
         for end in [ce1, ce2]:
-            self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
-            self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
-            self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+            with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
+                self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
 
     def test_set_symmetric_to_true_change_other_side(self):
         """
@@ -1531,15 +1531,15 @@ class ConnectionTests(unittest.TestCase):
         """
         Tests our cycle_conn_type method
         """
-        # Alas for no unittest.subTest in Py2
         for (current, result) in [
                 (ConnectionEnd.CONN_REGULAR, ConnectionEnd.CONN_LADDER),
                 (ConnectionEnd.CONN_LADDER, ConnectionEnd.CONN_DOTTED),
                 (ConnectionEnd.CONN_DOTTED, ConnectionEnd.CONN_REGULAR),
                 ]:
-            self.assertEqual(self.c.ends1[DIR_N].conn_type, current)
-            self.c.cycle_conn_type(self.r1, DIR_N)
-            self.assertEqual(self.c.ends1[DIR_N].conn_type, result)
+            with self.subTest(current=current):
+                self.assertEqual(self.c.ends1[DIR_N].conn_type, current)
+                self.c.cycle_conn_type(self.r1, DIR_N)
+                self.assertEqual(self.c.ends1[DIR_N].conn_type, result)
 
     def test_get_render_type_change_endlist_primary_r1(self):
         """
@@ -1726,15 +1726,15 @@ class ConnectionTests(unittest.TestCase):
         """
         Tests our cycle_render_type method
         """
-        # Alas for no unittest.subTest in Py2
         for (current, result) in [
                 (ConnectionEnd.RENDER_REGULAR, ConnectionEnd.RENDER_MIDPOINT_A),
                 (ConnectionEnd.RENDER_MIDPOINT_A, ConnectionEnd.RENDER_MIDPOINT_B),
                 (ConnectionEnd.RENDER_MIDPOINT_B, ConnectionEnd.RENDER_REGULAR),
                 ]:
-            self.assertEqual(self.c.ends1[DIR_N].render_type, current)
-            self.c.cycle_render_type(self.r1, DIR_N)
-            self.assertEqual(self.c.ends1[DIR_N].render_type, result)
+            with self.subTest(current=current):
+                self.assertEqual(self.c.ends1[DIR_N].render_type, current)
+                self.c.cycle_render_type(self.r1, DIR_N)
+                self.assertEqual(self.c.ends1[DIR_N].render_type, result)
 
     def test_set_stub_length_symmetric(self):
         """
@@ -1757,15 +1757,15 @@ class ConnectionTests(unittest.TestCase):
         """
         Tests our increment_stub_length method
         """
-        # Alas for no unittest.subTest in Py2
         for (current, result) in [
                 (1, 2),
                 (2, 3),
                 (3, 1),
                 ]:
-            self.assertEqual(self.c.ends1[DIR_N].stub_length, current)
-            self.c.increment_stub_length(self.r1, DIR_N)
-            self.assertEqual(self.c.ends1[DIR_N].stub_length, result)
+            with self.subTest(current=current):
+                self.assertEqual(self.c.ends1[DIR_N].stub_length, current)
+                self.c.increment_stub_length(self.r1, DIR_N)
+                self.assertEqual(self.c.ends1[DIR_N].stub_length, result)
 
     def test_set_twoway(self):
         """
@@ -1793,15 +1793,15 @@ class ConnectionTests(unittest.TestCase):
         """
         Tests our cycle_passage method
         """
-        # Alas for no unittest.subTest in Py2
         for (current, result) in [
                 (Connection.PASS_TWOWAY, Connection.PASS_ONEWAY_A),
                 (Connection.PASS_ONEWAY_A, Connection.PASS_ONEWAY_B),
                 (Connection.PASS_ONEWAY_B, Connection.PASS_TWOWAY),
                 ]:
-            self.assertEqual(self.c.passage, current)
-            self.c.cycle_passage()
-            self.assertEqual(self.c.passage, result)
+            with self.subTest(current=current):
+                self.assertEqual(self.c.passage, current)
+                self.c.cycle_passage()
+                self.assertEqual(self.c.passage, result)
 
     def test_is_twoway_true(self):
         """

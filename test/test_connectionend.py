@@ -254,15 +254,15 @@ class ConnectionEndTests(unittest.TestCase):
         """
         r = Room(1, 1, 1)
         ce = ConnectionEnd(r, DIR_N)
-        # Alas for no unittest.subTest in Py2
         for (before, after) in [
                 (1, 2),
                 (2, 3),
                 (3, 1),
                 ]:
-            self.assertEqual(ce.stub_length, before)
-            ce.increment_stub_length()
-            self.assertEqual(ce.stub_length, after)
+            with self.subTest(before=before):
+                self.assertEqual(ce.stub_length, before)
+                ce.increment_stub_length()
+                self.assertEqual(ce.stub_length, after)
 
     def test_save(self):
         """
