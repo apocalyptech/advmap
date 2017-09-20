@@ -3666,11 +3666,12 @@ class NewEditRoomDialog(AppDialog):
         self.input_roomtype_dark = QtWidgets.QRadioButton('Dark', w)
         l.addWidget(self.input_roomtype_dark, 0, 2)
 
-        # Mmf, I wish QRadioButtons supported rich text so I could italicize the parenthetical.
-        self.input_roomtype_label = QtWidgets.QRadioButton('Label (Only Room Name is shown)', w)
+        self.input_roomtype_label = QtWidgets.QRadioButton('Label <i>(Only Room Name is shown)</i>', w)
+        self.input_roomtype_label.setStyle(HTMLStyle())
         l.addWidget(self.input_roomtype_label, 1, 0, 1, 3)
 
-        self.input_roomtype_connhelper = QtWidgets.QRadioButton('Connection Helper (no text is shown)', w)
+        self.input_roomtype_connhelper = QtWidgets.QRadioButton('Connection Helper <i>(no text is shown)</i>', w)
+        self.input_roomtype_connhelper.setStyle(HTMLStyle())
         l.addWidget(self.input_roomtype_connhelper, 2, 0, 1, 3)
 
     def add_color_radios(self):
