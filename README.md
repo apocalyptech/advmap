@@ -1,15 +1,3 @@
-WARNING
-=======
-
-This branch is a rewrite/port of the GUI from pygtk to pyqt.  It's far less
-tested than the main gtk+ version, and still has a few rough edges (it's
-possible to do some weird things when dragging rooms around in the Game
-Edit dialog, for instance - be sure to only drag into the first column),
-but otherwise it's essentially feature-complete.  Use with caution, but in
-general it should work all right at the moment.  Once I get a few more
-niggling weird Qt things figured out (like the aforementioned dragging
-issue), I'll probably be merging this into master.
-
 Adventure Game Mapper
 =====================
 
@@ -36,15 +24,13 @@ games which I'd used the map as a general- purpose note-taking device as well.
 Running
 -------
 
-This is written in Python 2.7, using PyGTK2/PyCairo, and is therefore a gtk+-2
-application.  As far as I know, PyGTK2 doesn't work with Python 3 (you've
-instead got to start using gobject for gtk+-3 bindings instead), so this
-remains a Python 2 app.
+This application is written in Python 3 (only tested with Python 3.6), using
+PyQt5 as its GUI toolkit.  Previous versions of the app used PyGTK2 and used
+only supported Python 2.
 
 I've developed this and run it exclusively on Linux, but it should work on
-anything you can get PyGTK2/PyCairo to work on.  I believe that's not too
-difficult on Windows, though it will probably give OSX users a run for their
-money.
+anything you can get PyQt to work on.  I believe that this should be possible
+on both Windows and OSX, though I have no experience trying with either.
 
 This doesn't have a `setup.py`, alas - just run it from this directory and
 load up a file in the `data` directory, or start making your own.
