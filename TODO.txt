@@ -38,7 +38,10 @@ Possibly, sometime:
 PyQt porting issues which I've temporarily set aside:
  * Dashed lines don't render well when the mainarea is being scrolled.
    They fix easily enough when we hit our hover events and things get
-   redrawn, but that wouldn't help longer dashed connections
+   redrawn, but that wouldn't help longer dashed connections.  I've
+   verified that this is a bug which seems to affect other people as
+   well, and have put it in as a bug in their tracker:
+   https://bugreports.qt.io/browse/QTBUG-63322
  * Handing app arguments properly
  * Get a set of standard icons for us to use rather than relying on
    toolkit.
