@@ -13,16 +13,29 @@
     GNU General Public License for more details.  A copy of the
     General Public License is included at the end of this document.
 
+----------------------------------------------------------------------------
+
     Some icons in this program are Copyright Axialis Team, and released
     under a Creative Commons Attribution 2.5 Generic license.  See
     http://www.axialis.com/free/icons/ for details.
 
     Specifically, the following are from Axialis' "Light Grey Square" set:
       * dir_*.png
-      * lock.png, plus.png, minus.png
-      * grid.png (an edited version of "Table")
+      * lock.png, grid.png (an edited version of "Table")
 
     http://creativecommons.org/licenses/by/2.5/
+
+----------------------------------------------------------------------------
+
+    Other icons in the application are designed by Smashicons from
+    Flaticon:
+
+        https://www.flaticon.com/packs/essential-collection
+        https://www.flaticon.com/authors/smashicons
+        https://smashicons.com/
+
+    Specifically, all the icons beginning with "smashicons" in their
+    filenames.  These icons are available via Flaticon's free license.
 
 ----------------------------------------------------------------------------
 

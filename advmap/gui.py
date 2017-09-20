@@ -139,8 +139,22 @@ class Constants(object):
     gfx_readonly = None
     gfx_nudge = None
 
-    gfx_plus = None
-    gfx_minus = None
+    gfx_icon_new = None
+    gfx_icon_open = None
+    gfx_icon_revert = None
+    gfx_icon_save = None
+    gfx_icon_save_as = None
+    gfx_icon_import = None
+    gfx_icon_export = None
+    gfx_icon_quit = None
+    gfx_icon_gameedit = None
+    gfx_icon_duplicate = None
+    gfx_icon_notes_single = None
+    gfx_icon_notes_all = None
+    gfx_icon_about = None
+    gfx_icon_license = None
+    gfx_icon_plus = None
+    gfx_icon_minus = None
 
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
@@ -649,7 +663,7 @@ class MainToolBar(QtWidgets.QToolBar):
 
         # Edit Game
         style = self.style()
-        self.edit_game = self.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogListView),
+        self.edit_game = self.addAction(Constants.gfx_icon_gameedit,
             'Game/Map Settings', parent.action_game_settings)
 
     def toggle_readonly_actions(self):
@@ -735,8 +749,23 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
         Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
         Constants.gfx_nudge = QtGui.QPixmap(self.resfile('direction.png'))
-        Constants.gfx_plus = QtGui.QPixmap(self.resfile('plus.png'))
-        Constants.gfx_minus = QtGui.QPixmap(self.resfile('minus.png'))
+
+        Constants.gfx_icon_new = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-file-1.png')))
+        Constants.gfx_icon_open = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-folder-6.png')))
+        Constants.gfx_icon_revert = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-restart.png')))
+        Constants.gfx_icon_save = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-save.png')))
+        Constants.gfx_icon_save_as = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-archive-1.png')))
+        Constants.gfx_icon_import = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-incoming.png')))
+        Constants.gfx_icon_export = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-photo-camera.png')))
+        Constants.gfx_icon_quit = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-exit-1.png')))
+        Constants.gfx_icon_gameedit = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-layers-1.png')))
+        Constants.gfx_icon_duplicate = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-add-3.png')))
+        Constants.gfx_icon_notes_single = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-notepad.png')))
+        Constants.gfx_icon_notes_all = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-notebook-4.png')))
+        Constants.gfx_icon_about = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-info.png')))
+        Constants.gfx_icon_license = Constants.gfx_icon_notes_single
+        Constants.gfx_icon_plus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-plus.png')))
+        Constants.gfx_icon_minus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-minus.png')))
 
         # Making sure our view memory vars exist early
         self.clear_view_memory()
@@ -756,42 +785,44 @@ class GUI(QtWidgets.QMainWindow):
         style = self.style()
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileIcon),
+        filemenu.addAction(Constants.gfx_icon_new,
                 '&New', self.action_new, 'Ctrl+N')
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogOpenButton),
+        filemenu.addAction(Constants.gfx_icon_open,
                 '&Open', self.action_open, 'Ctrl+O')
-        self.revert_menu_item = filemenu.addAction(
-                style.standardIcon(QtWidgets.QStyle.SP_MediaSeekBackward),
+        self.revert_menu_item = filemenu.addAction(Constants.gfx_icon_revert,
                 '&Revert', self.action_revert, 'Ctrl+R')
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogSaveButton),
+        filemenu.addAction(Constants.gfx_icon_save,
                 '&Save', self.action_save, 'Ctrl+S')
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogNewFolder),
+        filemenu.addAction(Constants.gfx_icon_save_as,
                 'Save &As', self.action_save_as, 'Ctrl+A')
         filemenu.addSeparator()
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DialogOkButton),
+        filemenu.addAction(Constants.gfx_icon_import,
                 '&Import Maps', self.action_import, 'Ctrl+I')
         filemenu.addSeparator()
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_DriveFDIcon),
+        filemenu.addAction(Constants.gfx_icon_export,
                 '&Export Image', self.action_export, 'Ctrl+E')
         filemenu.addSeparator()
-        filemenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_BrowserStop),
+        filemenu.addAction(Constants.gfx_icon_quit,
                 '&Quit', self.action_quit, 'Ctrl+Q')
 
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
-        editmenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_FileDialogListView),
+        editmenu.addAction(Constants.gfx_icon_gameedit,
                 '&Game/Map Settings', self.action_game_settings)
         editmenu.addSeparator()
-        editmenu.addAction('&Duplicate Map...', self.action_duplicate)
+        editmenu.addAction(Constants.gfx_icon_duplicate,
+                '&Duplicate Map...', self.action_duplicate)
 
         # View Menu
         viewmenu = menubar.addMenu('&View')
-        viewmenu.addAction('Room Notes (for this map)', self.action_room_notes_map)
-        viewmenu.addAction('Room Notes (for all maps)', self.action_room_notes_all)
+        viewmenu.addAction(Constants.gfx_icon_notes_single,
+                'Room Notes (for this map)', self.action_room_notes_map)
+        viewmenu.addAction(Constants.gfx_icon_notes_all,
+                'Room Notes (for all maps)', self.action_room_notes_all)
 
         # Help
         helpmenu = menubar.addMenu('&Help')
-        helpmenu.addAction(style.standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation),
+        helpmenu.addAction(Constants.gfx_icon_about,
                 '&About', self.action_about)
 
         # Set up our main widgets
@@ -2793,7 +2824,7 @@ class AboutDialog(QtWidgets.QDialog):
         # This attribute seems to be needed before we can return focus to the main
         # window...
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        #self.setMinimumSize(420, 240)
+        self.setMinimumSize(400, 230)
         self.setWindowTitle('About Adventure Game Mapper')
 
         # Layout info
@@ -2808,7 +2839,45 @@ class AboutDialog(QtWidgets.QDialog):
         # Link to project website (eventually)
         url_label = QtWidgets.QLabel('<a href="{}">{}</a>'.format(self.url, self.url))
         url_label.setOpenExternalLinks(True)
-        layout.addWidget(url_label, 1, QtCore.Qt.AlignCenter)
+        layout.addWidget(url_label, 0, QtCore.Qt.AlignCenter)
+
+        # Frame to contain icon credits
+        frame = QtWidgets.QFrame()
+        frame.setFrameShadow(frame.Sunken)
+        frame.setFrameShape(frame.Panel)
+        frame.setLineWidth(2)
+        frame.setAutoFillBackground(True)
+        layout.addWidget(frame)
+        framelayout = QtWidgets.QVBoxLayout()
+        frame.setLayout(framelayout)
+
+        # Lighten up the background
+        # TODO: should really figure out how to do the "appropriate" thing
+        # given the style, rather than blindly ligtening
+        pal = frame.palette()
+        bgcolor = pal.color(pal.Window)
+        pal.setColor(pal.Window, bgcolor.lighter())
+        frame.setPalette(pal)
+
+        # Icon credits
+        icon_label = QtWidgets.QLabel("""<span>The monochome icons in the main toolbar are copyright
+            <a href="http://www.axialis.com/free/icons/">Axialis Team</a>, available
+            under <a href="http://creativecommons.org/licenses/by/2.5/">Creative
+            Commons Attribution 2.5 Generic</a>.</span>""")
+        icon_label.setOpenExternalLinks(True)
+        icon_label.setWordWrap(True)
+        icon_label.setFixedWidth(300)
+        framelayout.addWidget(icon_label, 0, QtCore.Qt.AlignCenter)
+
+        # More icon credits
+        icon_label_2 = QtWidgets.QLabel("""<span>The other icons are designed by
+            <a href="https://smashicons.com/">Smashicons</a>, from
+            <a href="https://www.flaticon.com/authors/smashicons">Flaticon</a>, and
+            are available bia the Flaticon free license.</span>""")
+        icon_label_2.setOpenExternalLinks(True)
+        icon_label_2.setWordWrap(True)
+        icon_label_2.setFixedWidth(300)
+        framelayout.addWidget(icon_label_2, 1, QtCore.Qt.AlignCenter)
 
         # An HBox to contain two separate buttonboxes
         w = QtWidgets.QWidget()
@@ -2822,8 +2891,7 @@ class AboutDialog(QtWidgets.QDialog):
         hbox.addWidget(self.custombb, 0, QtCore.Qt.AlignLeft)
 
         # License
-        self.license = QtWidgets.QPushButton(style.standardIcon(QtWidgets.QStyle.SP_FileDialogDetailedView),
-                'License')
+        self.license = QtWidgets.QPushButton(Constants.gfx_icon_license, 'License')
         self.license.clicked.connect(self.open_license)
         self.custombb.addButton(self.license, self.custombb.ActionRole)
 
@@ -3294,10 +3362,10 @@ class EditGameDialog(AppDialog):
         layout.addWidget(hbox)
 
         # Add Map button
-        button = QtWidgets.QPushButton(QtGui.QIcon(Constants.gfx_plus), 'Add Map')
+        button = QtWidgets.QPushButton(Constants.gfx_icon_plus, 'Add Map')
         button.clicked.connect(self.add_map)
         hbox_layout.addWidget(button)
-        button = QtWidgets.QPushButton(QtGui.QIcon(Constants.gfx_minus), 'Remove Map')
+        button = QtWidgets.QPushButton(Constants.gfx_icon_minus, 'Remove Map')
         button.clicked.connect(self.remove_map)
         hbox_layout.addWidget(button)
 
