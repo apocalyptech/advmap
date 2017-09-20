@@ -1,47 +1,37 @@
-RFEs:
- * write whole group out to PNG
+Things I'm not sure of:
  * Should we still be able to edit Notes in readonly mode?
 
-GUI stuffs:
- * Can trigger some unpack warnings by hovering around the lower-right-hand
-   corner of the map
+Stuff I'd definitely like to do at some point, time permitting:
+ * write whole group out to PNG
  * Three-line title will overlap "(notes)" on my Laptop display
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
  * Show "(notes)" on map for Label rooms
- * Mouseover hover notes text, when available
+ * Expand our room mouseovers - should be able to summarize most of the
+   info in there, I'd think.
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
- * Can connect indirectly on the side of the map, which looks a bit
-   strange; should figure out how to make that look better, or just disallow
-   it.
- * Have a separate set of "activated" icons for our toggleable buttons
  * Undo/Redo would be real nice
  * Copy/Paste would be nice, too.
  * Popup when LMB on a connection to edit conn attributes (should be much
    more manageable than our previous Advanced tab on Room Edit)
  * Better one-way arrows for ladder connections.  What we do right now
    is technically Good Enough, but it doesn't really look great.
-
-Internal stuffs:
- * Have a flag to draw_room() which lets us only re-draw the mousemap
- * Put in a cache surface to draw to, after all - forwarding this over X is
-   pretty slow
-
-Possibly, sometime:
- * redo internal storage mechanisms/mousemaps to allow > 256 rooms
- * multiple links from the same direction
-   -> Have that partially, now - can have multiple ends on the same room,
-      at least.
- * double-sized rooms
-
-PyQt porting issues which I've temporarily set aside:
  * Dashed lines don't render well when the mainarea is being scrolled.
    They fix easily enough when we hit our hover events and things get
    redrawn, but that wouldn't help longer dashed connections.  I've
    verified that this is a bug which seems to affect other people as
    well, and have put it in as a bug in their tracker:
    https://bugreports.qt.io/browse/QTBUG-63322
- * Get a set of standard icons for us to use rather than relying on
-   toolkit.
- * Icons on dialog buttons
+ * Put icons on dialog buttons
+ * our MapCombo looks like it's probably getting squished, causing
+   unnecessary truncation in some cases
+
+Possibly, sometime:
+ * multiple links from the same direction
+   -> Have that partially, now - can have multiple ends on the same room,
+      at least.
+ * double-sized rooms, or even arbitrarily-large room.  Sort of a
+   super-group where the room itself takes over space instead of just
+   the background notification
+
