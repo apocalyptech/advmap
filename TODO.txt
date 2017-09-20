@@ -24,8 +24,6 @@ Stuff I'd definitely like to do at some point, time permitting:
    well, and have put it in as a bug in their tracker:
    https://bugreports.qt.io/browse/QTBUG-63322
  * Put icons on dialog buttons
- * our MapCombo looks like it's probably getting squished, causing
-   unnecessary truncation in some cases
 
 Possibly, sometime:
  * multiple links from the same direction

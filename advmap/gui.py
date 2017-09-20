@@ -559,6 +559,7 @@ class MapCombo(QtWidgets.QComboBox):
         super().__init__(parent)
         self.maingui = maingui
         self.currentIndexChanged.connect(self.index_changed)
+        self.setSizeAdjustPolicy(self.AdjustToContents)
         self.loading = False
 
     def clear_maplist(self):
@@ -659,6 +660,7 @@ class MainToolBar(QtWidgets.QToolBar):
 
         # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
+        self.mapcombo.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
         self.addWidget(self.mapcombo)
 
         # Edit Game
@@ -780,8 +782,6 @@ class GUI(QtWidgets.QMainWindow):
         self.addToolBar(self.toolbar)
 
         # File Menu
-        # TODO: would probably make sense to get an icon set which actually supports
-        # all the various things we'd like to do in here.
         style = self.style()
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
