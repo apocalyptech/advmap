@@ -1130,9 +1130,8 @@ class Map(object):
         Adds a new room at (x, y), with no connections.
         Make sure to keep this in sync with inject_room_obj
         """
-        # TODO: this limit is actually because of the way the GUI handles the mousemaps
-        if (len(self.rooms) >= 256):
-            raise Exception('Can only have 256 rooms on a map currently; sorry...')
+        if (len(self.rooms) >= 65535):
+            raise Exception('Can only have 65535 rooms on a map currently; sorry...')
         if self.roomxy[y][x]:
             raise Exception('A room already exists at (%d, %d)' % (x+1, y+1))
         idnum = self.grab_id()
@@ -1166,13 +1165,8 @@ class Map(object):
         the connection will be symmetrical.  Returns the new
         connection, or None if something got in the way
         """
-        # TODO: Note that technically we're limited to 65535
-        # conns because we store the number of conns as a
-        # short in the file.  Given our current 256-room
-        # limit, there's not much point checking for it, but
-        # should we ever lift that, it's at least technically
-        # possible that some determined maniac could run up
-        # against the limit, so we should check for it if so.
+        if len(self.conns) >= 65535:
+            raise Exception('Can only have 65535 connections on a map currently; sorry')
         if dir2 is None:
             dir2 = DIR_OPP[dir1]
         if dir1 in room1.conns or dir1 in room1.loopbacks:

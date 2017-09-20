@@ -508,18 +508,14 @@ class MapTests(unittest.TestCase):
 
     def test_add_room_at_too_many_rooms(self):
         """
-        Test adding a room when we already have too many.  The current
-        limitation is actually because of the GUI - we use a mousemap
-        to figure out mouseovers and use just one of the color channels
-        to identify the rooms, and there's only 256 values available
-        there.
+        Test adding a room when we already have too many.
         """
         mapobj = Map('Map')
-        for i in range(256):
+        for i in range(65535):
             mapobj.rooms[i] = True
         with self.assertRaises(Exception) as cm:
             mapobj.add_room_at(1, 1, 'Room')
-        self.assertIn('Can only have 256 rooms', str(cm.exception))
+        self.assertIn('Can only have 65535 rooms', str(cm.exception))
 
     def test_add_room_at_coords_already_taken(self):
         """
@@ -731,6 +727,20 @@ class MapTests(unittest.TestCase):
         with self.assertRaises(Exception) as cm:
             mapobj.connect_id(0, DIR_N, 1)
         self.assertIn('Must specify two valid rooms', str(cm.exception))
+
+    def test_connect_failed_too_many_connections(self):
+        """
+        Our file format "only" supports 65535 connections per map.  Check
+        for that.
+        """
+        mapobj = Map('Map')
+        r1 = mapobj.add_room_at(1, 1, 'Room 1')
+        r2 = mapobj.add_room_at(2, 2, 'Room 2')
+        for i in range(65535):
+            mapobj.conns.append(True)
+        with self.assertRaises(Exception) as cm:
+            mapobj.connect(r1, DIR_N, r2)
+        self.assertIn('Can only have 65535 connections', str(cm.exception))
 
     def test_detach_without_anything_to_do(self):
         """
