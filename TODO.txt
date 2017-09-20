@@ -42,7 +42,6 @@ PyQt porting issues which I've temporarily set aside:
    verified that this is a bug which seems to affect other people as
    well, and have put it in as a bug in their tracker:
    https://bugreports.qt.io/browse/QTBUG-63322
- * Handing app arguments properly
  * Get a set of standard icons for us to use rather than relying on
    toolkit.
  * Icons on dialog buttons

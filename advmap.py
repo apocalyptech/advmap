@@ -19,22 +19,23 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import sys
+import argparse
 from advmap.gui import Application
-from optparse import OptionParser
 
-# Parse Arguments
-parser = OptionParser()
-parser.add_option('-r', '--readonly',
-        action='store_true', dest='readonly', default=False,
-        help='start in readonly mode')
-(options, args) = parser.parse_args()
+# Argument Definitions
+parser = argparse.ArgumentParser(description='Adventure Game Mapper')
+parser.add_argument('-r', '--readonly',
+        action='store_true',
+        help='Start the editor in readonly mode')
+parser.add_argument('filename',
+        type=str,
+        nargs='?',
+        metavar='filename',
+        help='Filename to load (will start with a new map, otherwise)')
 
-# See if we have any files to load initially
-if (len(args) > 0):
-    filename = args[0]
-else:
-    filename = None
+# Parse arguments
+args = parser.parse_args()
 
-# ... regardless, run the GUI
-gui = Application(filename, options.readonly)
+# Run the GUI
+gui = Application(args.filename, args.readonly)
 sys.exit(gui.exec_())
