@@ -4368,7 +4368,7 @@ class MapScene(QtWidgets.QGraphicsScene):
                 selected_room = next(iter(self.selected))
                 if selected_room.group:
                     self.multi_select_actions.add_key_action('G', 'change group render',
-                            ['g'], self.multi_change_group_render, [[group]])
+                            ['g'], self.multi_change_group_render, [[selected_room.group]])
                     self.multi_select_actions.add_key_action('O', 'ungroup selected',
                             ['o'], self.multi_ungroup_selected, [[]])
 
