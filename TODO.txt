@@ -34,10 +34,12 @@ Features to implement:
  * Better one-way arrows for ladder connections.  What we do right now
    is technically Good Enough, but it doesn't really look great.
 
- * Put icons on dialog buttons
-
  * I'd really like to start unit-testing the GUI; apparently there
    *is* a QTest class, or something, which can assist with this.
+
+ * QInputDialog.getText() doesn't let you specify custom buttons; would
+   be nice to use our standard ones with icons, so I may need to write
+   my own class to do that.
 
 Things to consider:
 

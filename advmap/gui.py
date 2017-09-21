@@ -139,6 +139,13 @@ class Constants(object):
     gfx_readonly = None
     gfx_nudge = None
 
+    gfx_error_full = None
+    gfx_error = None
+    gfx_question_full = None
+    gfx_question = None
+    gfx_information_full = None
+    gfx_information = None
+
     gfx_icon_new = None
     gfx_icon_open = None
     gfx_icon_revert = None
@@ -156,6 +163,12 @@ class Constants(object):
     gfx_icon_plus = None
     gfx_icon_minus = None
 
+    gfx_icon_ok = None
+    gfx_icon_yes = None
+    gfx_icon_no = None
+    gfx_icon_cancel = None
+    gfx_icon_close = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -169,6 +182,9 @@ class Constants(object):
         z_value_connection_hover,
         z_value_edge_hover,
         ) = range(9)
+
+    # How large our QMessageBox main icon should be
+    messagebox_icon_size = 50
 
     # Initialize a bunch of Colors that we'll use
     c_background = QtGui.QColor(255, 255, 255, 255)
@@ -680,6 +696,51 @@ class MainToolBar(QtWidgets.QToolBar):
         for action in self.readonly_actions:
             action.setEnabled(enabled)
 
+class OKButton(QtWidgets.QPushButton):
+    """
+    Our own "standard" OK button.  A bit silly, but this way we can
+    access one from anywhere.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(Constants.gfx_icon_ok, 'OK', parent)
+
+class YesButton(QtWidgets.QPushButton):
+    """
+    Our own "standard" Yes button.  A bit silly, but this way we can
+    access one from anywhere.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(Constants.gfx_icon_yes, 'Yes', parent)
+
+class NoButton(QtWidgets.QPushButton):
+    """
+    Our own "standard" No button.  A bit silly, but this way we can
+    access one from anywhere.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(Constants.gfx_icon_no, 'No', parent)
+
+class CancelButton(QtWidgets.QPushButton):
+    """
+    Our own "standard" Cancel button.  A bit silly, but this way we can
+    access one from anywhere.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(Constants.gfx_icon_cancel, 'Cancel', parent)
+
+class CloseButton(QtWidgets.QPushButton):
+    """
+    Our own "standard" Close button.  A bit silly, but this way we can
+    access one from anywhere.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(Constants.gfx_icon_close, 'Close', parent)
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window.
@@ -752,6 +813,24 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
         Constants.gfx_nudge = QtGui.QPixmap(self.resfile('direction.png'))
 
+        # Icons used by QMessageBox for the main dialog icon
+        Constants.gfx_error_full = QtGui.QPixmap(self.resfile('smashicons-error.png'))
+        Constants.gfx_error = Constants.gfx_error_full.scaled(Constants.messagebox_icon_size,
+                Constants.messagebox_icon_size,
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation)
+        Constants.gfx_question_full = QtGui.QPixmap(self.resfile('smashicons-info.png'))
+        Constants.gfx_question = Constants.gfx_question_full.scaled(Constants.messagebox_icon_size,
+                Constants.messagebox_icon_size,
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation)
+        Constants.gfx_information_full = QtGui.QPixmap(self.resfile('smashicons-idea.png'))
+        Constants.gfx_information = Constants.gfx_information_full.scaled(Constants.messagebox_icon_size,
+                Constants.messagebox_icon_size,
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation)
+
+        # Icons used primarily by menus and message dialog buttons
         Constants.gfx_icon_new = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-file-1.png')))
         Constants.gfx_icon_open = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-folder-6.png')))
         Constants.gfx_icon_revert = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-restart.png')))
@@ -764,10 +843,16 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_icon_duplicate = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-add-3.png')))
         Constants.gfx_icon_notes_single = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-notepad.png')))
         Constants.gfx_icon_notes_all = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-notebook-4.png')))
-        Constants.gfx_icon_about = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-info.png')))
+        Constants.gfx_icon_about = QtGui.QIcon(Constants.gfx_question_full)
         Constants.gfx_icon_license = Constants.gfx_icon_notes_single
         Constants.gfx_icon_plus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-plus.png')))
         Constants.gfx_icon_minus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-minus.png')))
+
+        Constants.gfx_icon_ok = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-success.png')))
+        Constants.gfx_icon_yes = Constants.gfx_icon_ok
+        Constants.gfx_icon_no = QtGui.QIcon(Constants.gfx_error_full)
+        Constants.gfx_icon_cancel = Constants.gfx_icon_no
+        Constants.gfx_icon_close = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-multiply-1.png')))
 
         # Making sure our view memory vars exist early
         self.clear_view_memory()
@@ -857,14 +942,14 @@ class GUI(QtWidgets.QMainWindow):
             except Exception as e:
                 self.dialog_error('Unable to load file', str(e))
 
-    def dialog_user(self, message, infotext, buttons, default_button, icon, parent=None):
+    def dialog_user(self, message, infotext, pixmap,
+            show_yes=False, show_no=False, show_ok=False, parent=None):
         """
         Shows a dialog to the user with the specified information and
         returns its result.  Note that we use a QMessageBox for this, but
         don't actually make use of its informativeText attribute because
         I don't like how that ends up interacting with word wrapping.
         """
-        # TODO: would like to have icons on buttons
         if not parent:
             msgbox = QtWidgets.QMessageBox(self)
         else:
@@ -874,12 +959,28 @@ class GUI(QtWidgets.QMainWindow):
         else:
             text = message
         msgbox.setText(text)
-        msgbox.setStandardButtons(buttons)
-        msgbox.setDefaultButton(default_button)
-        msgbox.setIcon(icon)
+
+        # Show our custom buttons
+        if show_ok:
+            ok = OKButton(msgbox)
+            msgbox.addButton(ok, msgbox.AcceptRole)
+            msgbox.setDefaultButton(ok)
+        if show_yes:
+            msgbox.addButton(YesButton(msgbox), msgbox.YesRole)
+        if show_no:
+            no = NoButton(msgbox)
+            msgbox.addButton(no, msgbox.NoRole)
+            msgbox.setDefaultButton(no)
+
+        msgbox.setIconPixmap(pixmap)
         msgbox.setWindowTitle(message)
         msgbox.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
-        return msgbox.exec()
+
+        # Rather than returning the exec() value, return the role of the
+        # button which was chosen, so we can match on that (needed because
+        # we're not using StandardButtons
+        msgbox.exec()
+        return msgbox.buttonRole(msgbox.clickedButton())
 
     def dialog_confirm(self, message, infotext=None):
         """
@@ -887,11 +988,10 @@ class GUI(QtWidgets.QMainWindow):
         `False`.
         """
         res = self.dialog_user(message, infotext,
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.Question)
+                Constants.gfx_question,
+                show_yes=True, show_no=True)
         self.activateWindow()
-        if res == QtWidgets.QMessageBox.Yes:
+        if res == QtWidgets.QMessageBox.YesRole:
             return True
         else:
             return False
@@ -901,9 +1001,8 @@ class GUI(QtWidgets.QMainWindow):
         Shows an error dialog to the user
         """
         self.dialog_user(message, infotext,
-                QtWidgets.QMessageBox.Ok,
-                QtWidgets.QMessageBox.Ok,
-                QtWidgets.QMessageBox.Critical,
+                Constants.gfx_error,
+                show_ok=True,
                 parent=parent)
         self.activateWindow()
 
@@ -912,9 +1011,8 @@ class GUI(QtWidgets.QMainWindow):
         Shows an informational dialog to the user
         """
         self.dialog_user(message, infotext,
-                QtWidgets.QMessageBox.Ok,
-                QtWidgets.QMessageBox.Ok,
-                QtWidgets.QMessageBox.Information)
+                Constants.gfx_information,
+                show_ok=True)
         self.activateWindow()
 
     def set_status(self, status_str):
@@ -1150,14 +1248,15 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Revert" action.
         """
-        # TODO: some confirmation would be nice.
         if self.curfile:
-            try:
-                self.load_from_file(self.curfile)
-                #self.set_temporary_status('Reverted to on-disk state')
-                self.dialog_info('Reverted to on-disk version of file')
-            except Exception as e:
-                self.dialog_error('Unable to Revert file', str(e))
+            proceed = self.dialog_confirm('Revert to Saved',
+                    'Reverting to the saved copy on disk will revert any changes you have made.  Continue?')
+            if proceed:
+                try:
+                    self.load_from_file(self.curfile)
+                    self.dialog_info('Reverted to on-disk version of file')
+                except Exception as e:
+                    self.dialog_error('Unable to Revert file', str(e))
         else:
             self.dialog_error('Unable to Revert file', 'This map has never been saved to disk')
 
@@ -2896,7 +2995,8 @@ class AboutDialog(QtWidgets.QDialog):
         self.custombb.addButton(self.license, self.custombb.ActionRole)
 
         # "Standard" Button box
-        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
         hbox.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
 
@@ -2945,7 +3045,8 @@ class LicenseDialog(QtWidgets.QDialog):
         self.browser.insertPlainText(license_text)
 
         # Button box
-        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
         layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
 
@@ -3062,7 +3163,8 @@ class NotesDialog(QtWidgets.QDialog):
         self.set_scroll = False
 
         # Button box
-        self.buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
         layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
 
@@ -3132,11 +3234,10 @@ class AppDialog(QtWidgets.QDialog):
             layout.addWidget(grid, 1)
 
         # Button box
+        self.buttonbox = QtWidgets.QDialogButtonBox(self)
+        self.buttonbox.addButton(OKButton(self.buttonbox), self.buttonbox.AcceptRole)
         if use_cancel:
-            buttons = QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Ok
-        else:
-            buttons = QtWidgets.QDialogButtonBox.Ok
-        self.buttonbox = QtWidgets.QDialogButtonBox(buttons, parent=self)
+            self.buttonbox.addButton(CancelButton(self.buttonbox), self.buttonbox.RejectRole)
         self.buttonbox.accepted.connect(self.accept)
         self.buttonbox.rejected.connect(self.reject)
         layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
