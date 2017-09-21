@@ -36,6 +36,9 @@ Features to implement:
 
  * Put icons on dialog buttons
 
+ * I'd really like to start unit-testing the GUI; apparently there
+   *is* a QTest class, or something, which can assist with this.
+
 Things to consider:
 
  * Should we still be able to edit Notes in readonly mode?
