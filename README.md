@@ -88,7 +88,7 @@ logical rooms which aren't directly accessible without leaving the screen.
 Sierra did this quite a bit, especially with the Space Quest series.  (See
 below for a map of the opening area of Space Quest I, with grouping.)
 
-Right now the only actual export format is PNG.
+Maps can be exported in a variety of image formats, defaulting to PNG.
 
 Usage
 -----
