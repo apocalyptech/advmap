@@ -3112,6 +3112,10 @@ class NotesDialog(QtWidgets.QDialog):
             }
             .roomnotes {
             }
+            .nonotes {
+                text-align: center;
+                font-style: italic;
+            }
         """)
         layout.addWidget(self.browser, 1)
         cursor = self.browser.textCursor()
@@ -3160,6 +3164,8 @@ class NotesDialog(QtWidgets.QDialog):
                         ))
                     cursor.insertBlock(format_indent)
                     self.browser.insertHtml('<div class="roomnotes">{}</div>'.format(room.notes))
+        if not have_notes:
+            self.browser.insertHtml('<div class="nonotes"><br><br><br><br>(no notes)</div>')
         self.set_scroll = False
 
         # Button box
