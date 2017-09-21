@@ -44,9 +44,7 @@ a bit clumsy.  Mapping out the maze from Zork I, for instance, is an
 this does a great job, though.
 
 The app supports containing multiple maps within the same game, accessible
-via a dropdown and button in the upper right.  Due to a limitation of the way
-we're handling the graphics, each individual map can have a maximum of 256
-rooms, which is kind of lame, but so far that's not been a problem.
+via a dropdown and button in the upper right:
 
 ![Game Editing](screenshots/screenshot-gameedit.png)
 
