@@ -1,35 +1,64 @@
-Things I'm not sure of:
- * Should we still be able to edit Notes in readonly mode?
+Bugs to fix:
 
-Stuff I'd definitely like to do at some point, time permitting:
- * write whole group out to PNG
  * Three-line title will overlap "(notes)" on my Laptop display
- * Different ways to draw nonsymmetric links (thinking "rounded" and
-   "midpoint" at the least)
- * Show "(notes)" on map for Label rooms
- * Expand our room mouseovers - should be able to summarize most of the
-   info in there, I'd think.
- * Should really draw some little icons for mouseovers, instead of just
-   highlighting in green
- * Undo/Redo would be real nice
- * Copy/Paste would be nice, too.
- * Popup when LMB on a connection to edit conn attributes (should be much
-   more manageable than our previous Advanced tab on Room Edit)
- * Better one-way arrows for ladder connections.  What we do right now
-   is technically Good Enough, but it doesn't really look great.
+
  * Dashed lines don't render well when the mainarea is being scrolled.
    They fix easily enough when we hit our hover events and things get
    redrawn, but that wouldn't help longer dashed connections.  I've
    verified that this is a bug which seems to affect other people as
    well, and have put it in as a bug in their tracker:
    https://bugreports.qt.io/browse/QTBUG-63322
+
+Features to implement:
+
+ * write whole group out to PNG
+
+ * Different ways to draw nonsymmetric links (thinking "rounded" and
+   "midpoint" at the least)
+
+ * Show "(notes)" on map for Label rooms
+
+ * Expand our room mouseovers - should be able to summarize most of the
+   info in there, I'd think.
+
+ * Should really draw some little icons for mouseovers, instead of just
+   highlighting in green
+
+ * Undo/Redo would be real nice
+
+ * Copy/Paste would be nice, too.
+
+ * Popup when LMB on a connection to edit conn attributes (should be much
+   more manageable than our previous Advanced tab on Room Edit)
+
+ * Better one-way arrows for ladder connections.  What we do right now
+   is technically Good Enough, but it doesn't really look great.
+
  * Put icons on dialog buttons
 
-Possibly, sometime:
- * multiple links from the same direction
+Things to consider:
+
+ * Should we still be able to edit Notes in readonly mode?
+
+ * Multiple links from the same direction
    -> Have that partially, now - can have multiple ends on the same room,
-      at least.
- * double-sized rooms, or even arbitrarily-large room.  Sort of a
+      at least.  Should we support multi-room connections?  I'm not
+      sure if that'd be useful anywhere.  Presumably there's an
+      Infocom title out there *somewhere* in which it would help.  The
+      bank puzzle from Zork II could technically make use of such a
+      construct.
+
+ * Double-sized rooms, or even arbitrarily-large room.  Sort of a
    super-group where the room itself takes over space instead of just
    the background notification
 
+ * Our current handling of QGraphicsScene/QGraphicsView owes a lot to how
+   we were handling things back in the Gtk+ version - namely, that when
+   changes occur to the data, we trigger a complete recreation of the
+   entire scene, rather than try to keep track of changes.  The datasets
+   involved here are small enough by modern computers that it doesn't
+   really matter, but it's still pretty inefficient.  Really we should
+   be just updating what's changed and keeping the rest of the scene
+   intact.  That's more work than I cared to deal with, since we'd have
+   a lot of QGraphics*Items lying around all over the place, but it's
+   something to consider for the future.
