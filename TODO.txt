@@ -57,6 +57,3 @@ Possibly, sometime:
    -> Have that partially, now - can have multiple ends on the same room,
       at least.
  * double-sized rooms
-
-Would be nice, but probably never gonna happen:
- * Port to PyQt

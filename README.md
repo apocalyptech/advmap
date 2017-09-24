@@ -1,3 +1,19 @@
+WARNING
+=======
+
+This branch is obsolete and will not receive any further changes.  This
+version of the app uses Gtk+ rather than Qt.  (The current master branch
+is basically a complete port of the GUI over to Qt.)  I'm leaving this
+here as a point that's easy to reference, just in case, but have no
+intention of adding further commits, or keeping it in line with any
+changes to the Qt codebase.  The main branch already generates map files
+which this branch won't be able to read, due to a version bump while
+porting.
+
+Apart from that, this branch is, at least, quite stable, and at time of
+writing is more tested than the Qt version, since I'd been running on
+this codebase for nearly seven years before porting.
+
 Adventure Game Mapper
 =====================
 
