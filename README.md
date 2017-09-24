@@ -26,7 +26,9 @@ Running
 
 This application is written in Python 3 (only tested with Python 3.6), using
 PyQt5 as its GUI toolkit.  Previous versions of the app used PyGTK2 and used
-only supported Python 2.
+only supported Python 2.  The old Gtk+ version is available in the
+`obsolete_pygtk` branch on GitHub, for convenience, but note that there won't
+be any more updates to it, and it's already lagging behind.
 
 I've developed this and run it exclusively on Linux, but it should work on
 anything you can get PyQt to work on.  I believe that this should be possible
