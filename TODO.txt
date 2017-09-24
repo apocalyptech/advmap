@@ -1,16 +1,23 @@
 Bugs to fix:
 
- * Three-line title will overlap "(notes)" on my Laptop display
+ * Three-line title will overlap "(notes)" on my Laptop display.
+   Since the move to Qt, actually, three-line titles will end up
+   bumping into the notes field anyway, though not as badly as
+   on the Gtk version on the laptop.
 
  * I think our lines aren't as strong as they could be - aliasing
    or something is getting in the way.  While implementing our own
    dashpattern stuff, those dashes were helped out significantly
    by adding .5 to their pen's width - I wonder if something like
-   that should be applied globally?  Anyway, look into it.
+   that should be applied globally?  Straight lines *do* look
+   sharper if we disable the antialiasing renderhint altogether,
+   but that makes all our diagonals look awful.
 
- * Also, diagonals still look more jagged than they did in the Gtk
-   implementation, particularly on one-way arrows.  Is there some
-   way to alias those better?
+ * Our custom dashed lines benefit greatly from a call to
+   pen.setCapStyle(QtCore.Qt.FlatCap) - would that help out other
+   line drawing cases as well?  When connections bend to new
+   directions, if you look closely enough, there's noticeable
+   overlap where they meet, for instance.
 
  * If one of these Qt bugs ever gets fixed:
     https://bugreports.qt.io/browse/QTBUG-63322
@@ -25,9 +32,9 @@ Features to implement:
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
 
- * Show "(notes)" on map for Label rooms
+ * Show "(notes)" indicator on map for Label rooms?
 
- * Expand our room mouseovers - should be able to summarize most of the
+ * Expand our room tooltips - should be able to summarize most of the
    info in there, I'd think.
 
  * Should really draw some little icons for mouseovers, instead of just
