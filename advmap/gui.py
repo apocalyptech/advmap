@@ -278,6 +278,68 @@ class Constants(object):
     # pretty terribly, but I do not feel bad about this.
     statusbar = None
 
+def draw_dashed_line(x1, y1, x2, y2, dash_pixels, pen,
+        parent=None, scene=None, zvalue=None):
+    """
+    This global function is hanging out here so it can be easily called
+    from any of our classes without having to finagle a reference to some
+    other instance.  Basically this is here because of the twin spectres
+    of these two bugs related to using `QPen.setDashPattern()`:
+
+        https://bugreports.qt.io/browse/QTBUG-63322
+        https://bugreports.qt.io/browse/QTBUG-63386
+
+    Stupidly, the one is a "fix" for the other - you've gotta pick your
+    method of failure.  To be fair, the second one isn't awful really,
+    but it makes dashed lines look bizarre while scrolling, often.
+
+    Anyway, rather than use `setDashPattern` like we should be able to,
+    this is basically just a custom implementation of dashed lines which
+    uses individual `QGraphicsLineItem` objects for each section of the
+    dash.
+
+    Only implements a simple dash pattern where a line of `dash_pixels` 
+    is drawn, followed by empty space also of `dash_pixels` (and so on).
+    """
+
+    # TODO: if one of those two bugs is ever fixed (or if I figure out
+    # some way around them), rip this out and get back to just using
+    # dashPattern like we should.
+
+    # First figure out the total length of our line to draw
+    x_len = (x2 - x1)
+    y_len = (y2 - y1)
+    line_len = math.sqrt(x_len**2 + y_len**2)
+    num_segments = line_len/dash_pixels
+    if num_segments == 0:
+        return
+
+    # Calculate some other stuff if we have segments to draw
+    x_delta = x_len/num_segments
+    y_delta = y_len/num_segments
+    num_segments_int = math.ceil(num_segments)
+
+    # And loop through to draw them
+    cur_x = x1
+    cur_y = y1
+    for i in range(num_segments_int):
+        if i == num_segments_int - 1:
+            new_x = x2
+            new_y = y2
+        else:
+            new_x = cur_x + x_delta
+            new_y = cur_y + y_delta
+        if (i % 2) == 0:
+            line = QtWidgets.QGraphicsLineItem(cur_x, cur_y, new_x, new_y, parent)
+            pen.setCapStyle(QtCore.Qt.FlatCap)
+            line.setPen(pen)
+            if zvalue:
+                line.setZValue(zvalue)
+            if scene:
+                scene.addItem(line)
+        cur_x = new_x
+        cur_y = new_y
+
 class HTMLStyle(QtWidgets.QProxyStyle):
     """
     A QProxyStyle which can be used to render HTML/Rich text inside
@@ -2371,8 +2433,15 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                 line.setPen(border_pen)
         else:
             if pretend_label:
-                dash_len = 9/border_pen.width()
-                border_pen.setDashPattern([dash_len, dash_len])
+                dash_pen = QtGui.QPen(border_pen)
+                draw_dashed_line(0, 0, Constants.room_size, 0, 9, dash_pen, parent=self)
+                draw_dashed_line(Constants.room_size, 0, Constants.room_size, Constants.room_size, 9, dash_pen, parent=self)
+                draw_dashed_line(Constants.room_size, Constants.room_size, 0, Constants.room_size, 9, dash_pen, parent=self)
+                draw_dashed_line(0, Constants.room_size, 0, 0, 9, dash_pen, parent=self)
+                border_pen.setColor(QtGui.QColor(0, 0, 0, 0))
+                # TODO: if Qt's dashPattern bugs ever get fixed, go back to doing this instead:
+                #dash_len = 9/border_pen.width()
+                #border_pen.setDashPattern([dash_len, dash_len])
             self.setPen(border_pen)
         
         # Also add a Hover object for ourselves
@@ -2484,14 +2553,20 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
 
 class GUIConnLine(QtWidgets.QGraphicsLineItem):
     
-    def __init__(self, x1, y1, x2, y2, width=1, dashed=False):
+    def __init__(self, x1, y1, x2, y2, scene, width=1, dashed=False):
         super().__init__(x1, y1, x2, y2)
         self.setZValue(Constants.z_value_connection)
         pen = QtGui.QPen(Constants.c_connection)
         pen.setWidthF(width)
         if dashed:
-            dash_len = 3/width
-            pen.setDashPattern([dash_len, dash_len])
+            dash_pen = QtGui.QPen(pen)
+            dash_pen.setWidthF(width+.5)
+            draw_dashed_line(x1, y1, x2, y2, 3, dash_pen, scene=scene,
+                    zvalue=Constants.z_value_connection)
+            pen.setColor(QtGui.QColor(0, 0, 0, 0))
+            # TODO: if Qt's dashPattern bugs ever get fixed, go back to doing this instead:
+            #dash_len = 3/width
+            #pen.setDashPattern([dash_len, dash_len])
         self.setPen(pen)
 
 class GUIConnectionFactory(object):
@@ -2507,7 +2582,8 @@ class GUIConnectionFactory(object):
         """
         Draws a line from `(x1, y1)` to `(x2, y2)`
         """
-        line_obj = GUIConnLine(x1, y1, x2, y2, width=width, dashed=dashed)
+        # TODO: If Qt's dashPattern bugs ever get fixed, we don't need to pass scene.
+        line_obj = GUIConnLine(x1, y1, x2, y2, self.scene, width=width, dashed=dashed)
         self.scene.addItem(line_obj)
 
     def is_primary_adjacent(self, conn):

@@ -2,12 +2,21 @@ Bugs to fix:
 
  * Three-line title will overlap "(notes)" on my Laptop display
 
- * Dashed lines don't render well when the mainarea is being scrolled.
-   They fix easily enough when we hit our hover events and things get
-   redrawn, but that wouldn't help longer dashed connections.  I've
-   verified that this is a bug which seems to affect other people as
-   well, and have put it in as a bug in their tracker:
-   https://bugreports.qt.io/browse/QTBUG-63322
+ * I think our lines aren't as strong as they could be - aliasing
+   or something is getting in the way.  While implementing our own
+   dashpattern stuff, those dashes were helped out significantly
+   by adding .5 to their pen's width - I wonder if something like
+   that should be applied globally?  Anyway, look into it.
+
+ * Also, diagonals still look more jagged than they did in the Gtk
+   implementation, particularly on one-way arrows.  Is there some
+   way to alias those better?
+
+ * If one of these Qt bugs ever gets fixed:
+    https://bugreports.qt.io/browse/QTBUG-63322
+    https://bugreports.qt.io/browse/QTBUG-63386
+   ... get rid of our draw_dashed_line function and go back to
+   using setDashPattern() like I'd love to be doing.
 
 Features to implement:
 
