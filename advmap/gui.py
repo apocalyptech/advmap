@@ -534,6 +534,62 @@ class HTMLComboBox(QtWidgets.QComboBox):
         """
         return self.sizeHint()
 
+class HTMLWidgetHelper(object):
+    """
+    Class to enable HTML/Rich text on a "simple" Qt widget such as QCheckBox
+    or QRadioButton.  The most important bit is setting the widget style to
+    HTMLStyle.  The rest is all just making sure that the widget is sized
+    properly; without it, the widget will be too wide.  If you don't care
+    about that, you can easily just use .setStyle(HTMLStyle()) on a regular
+    widget without bothering with subclassing.
+
+    There's doubtless some corner cases we're missing here, but it works
+    for my purposes.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyle(HTMLStyle())
+        self.stored_size = None
+
+    def sizeHint(self):
+        """
+        Use a QTextDocument to compute our rendered text size
+        """
+        if not self.stored_size:
+            doc = QtGui.QTextDocument()
+            doc.setHtml(self.text())
+            size = doc.size()
+            # Details from this derived from QCheckBox/QRadioButton sizeHint sourcecode:
+            # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qcheckbox.cpp
+            # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qradiobutton.cpp
+            opt = QtWidgets.QStyleOptionButton()
+            self.initStyleOption(opt)
+            self.stored_size = QtCore.QSize(
+                    size.width() + opt.iconSize.width() + 4,
+                    max(size.height(), opt.iconSize.height()))
+        return self.stored_size
+
+    def minimumSizeHint(self):
+        """
+        Just use the same logic as `sizeHint`
+        """
+        return self.sizeHint()
+
+class HTMLCheckBox(HTMLWidgetHelper, QtWidgets.QCheckBox):
+    """
+    An HTML-enabled QCheckBox.  All the actual work is done in HTMLWidgetHelper.
+    We're abusing (well, using) Python's multiple inheritance since the same code
+    works well for more than one widget type.
+    """
+
+class HTMLRadioButton(HTMLWidgetHelper, QtWidgets.QRadioButton):
+    """
+    An HTML-enabled QRadioButton.  All the actual work is done in HTMLWidgetHelper.
+    We're abusing (well, using) Python's multiple inheritance since the same code
+    works well for more than one widget type.
+    """
+
 class FirstLineEdit(QtWidgets.QLineEdit):
     """
     Stupid little class which automatically sets the cursor position
@@ -3383,7 +3439,7 @@ class AppDialog(QtWidgets.QDialog):
         """
         Adds a checkbox at the current row
         """
-        cb = QtWidgets.QCheckBox(text, self)
+        cb = HTMLCheckBox(text, self)
         self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
         return cb
 
@@ -3768,12 +3824,10 @@ class NewEditRoomDialog(AppDialog):
         # Width options
         self.add_label('Width Options')
         self.input_offset_x = self.add_checkbox('Offset <i>(shift to the right)</i>')
-        self.input_offset_x.setStyle(HTMLStyle())
 
         # Height options
         self.add_label('Height Options')
         self.input_offset_y = self.add_checkbox('Offset <i>(shift down)</i>')
-        self.input_offset_y.setStyle(HTMLStyle())
 
         # Grouping widget choice depends on what exactly we're doing
         if not self.editing and self.from_direction is not None:
@@ -3917,12 +3971,10 @@ class NewEditRoomDialog(AppDialog):
         self.input_roomtype_dark = QtWidgets.QRadioButton('Dark', w)
         l.addWidget(self.input_roomtype_dark, 0, 2)
 
-        self.input_roomtype_label = QtWidgets.QRadioButton('Label <i>(Only Room Name is shown)</i>', w)
-        self.input_roomtype_label.setStyle(HTMLStyle())
+        self.input_roomtype_label = HTMLRadioButton('Label <i>(Only Room Name is shown)</i>', w)
         l.addWidget(self.input_roomtype_label, 1, 0, 1, 3)
 
-        self.input_roomtype_connhelper = QtWidgets.QRadioButton('Connection Helper <i>(no text is shown)</i>', w)
-        self.input_roomtype_connhelper.setStyle(HTMLStyle())
+        self.input_roomtype_connhelper = HTMLRadioButton('Connection Helper <i>(no text is shown)</i>', w)
         l.addWidget(self.input_roomtype_connhelper, 2, 0, 1, 3)
 
     def add_color_radios(self):
