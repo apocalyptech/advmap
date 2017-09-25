@@ -561,6 +561,15 @@ class MapTests(unittest.TestCase):
         r = mapobj.get_room_at(2, 3)
         self.assertEqual(r, None)
 
+    def test_get_room_at_out_of_bounds(self):
+        """
+        Test getting a room by coordinate when the specified coordinate
+        is out of bounds.
+        """
+        mapobj = Map('Map')
+        with self.assertRaises(IndexError) as cm:
+            mapobj.get_room_at(90, 90)
+
     def test_connect_basic_no_direction_specified(self):
         """
         Testing connecting rooms without specifying the secondary

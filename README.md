@@ -117,6 +117,21 @@ You can select multiple rooms with shift-click, which will let you change parame
 to groups of rooms at a time - most of the room keys below will work (I've noted where
 they don't).
 
+When you've selected any number of rooms with shift-click, you can copy rooms to the
+internal clipboard with `Ctrl-C`, and then paste them later with `Ctrl-V`.  If you're
+hovering over an empty room spot when you use `Ctrl-V`, the app will attempt to paste
+the group of rooms relative to that position.  If you're not hovering over an empty
+room spot, it will paste them in the first available spot it sees on the map, starting
+in the upper-left corner.  Note that the spot you hover over might not contain a room
+to be pasted.  For instance, if you've just selected the following rooms:
+
+![Copying Three Rooms](screenshots/screenshot-copy.png)
+
+... the green highlighted room is where the "origin" of the paste would be.  Hitting
+`Ctrl-V` somewhere else would cause the three rooms to be pasted "around" the spot
+you're hovering, as shown in the screenshot.  Any connections and groups which the
+rooms share will be included in the paste activity.
+
 Controls while highlighting an empty spot on the map:
 
 * `Left-click and Drag` - Move the map around

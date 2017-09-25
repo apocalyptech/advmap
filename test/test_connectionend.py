@@ -62,6 +62,25 @@ class ConnectionEndTests(unittest.TestCase):
         ce = ConnectionEnd(r, DIR_N, stub_length=4)
         self.assertEqual(ce.stub_length, 3)
 
+    def test_copy_with_new_room(self):
+        """
+        Tests copying our object.
+        """
+        r = Room(1, 1, 1)
+        r2 = Room(2, 2, 2)
+        ce = ConnectionEnd(r, DIR_S,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=2,
+                )
+        ce2 = ce.copy_with_new_room(r2)
+        self.assertNotEqual(ce, ce2)
+        self.assertEqual(ce2.room, r2)
+        self.assertEqual(ce2.direction, DIR_S)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+
     def test_set_regular(self):
         """
         Make sure we can set to regular

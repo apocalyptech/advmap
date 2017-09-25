@@ -162,6 +162,8 @@ class Constants(object):
     gfx_icon_license = None
     gfx_icon_plus = None
     gfx_icon_minus = None
+    gfx_icon_copy = None
+    gfx_icon_paste = None
 
     gfx_icon_ok = None
     gfx_icon_yes = None
@@ -870,6 +872,10 @@ class GUI(QtWidgets.QMainWindow):
 
     def initUI(self, initfile, readonly):
 
+        # Set up a scene object in case something is looking for it.  This'll
+        # prevent AttributeErrors.
+        self.scene = None
+
         # Set up some constants which we can't do directly in Constants
         # because of Reasons.  First up: title font padding
         for font_size in Constants.title_font_sizes:
@@ -965,6 +971,8 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_icon_license = Constants.gfx_icon_notes_single
         Constants.gfx_icon_plus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-plus.png')))
         Constants.gfx_icon_minus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-minus.png')))
+        Constants.gfx_icon_copy = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-upload.png')))
+        Constants.gfx_icon_paste = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-download.png')))
 
         Constants.gfx_icon_ok = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-success.png')))
         Constants.gfx_icon_yes = Constants.gfx_icon_ok
@@ -997,7 +1005,7 @@ class GUI(QtWidgets.QMainWindow):
         filemenu.addAction(Constants.gfx_icon_save,
                 '&Save', self.action_save, 'Ctrl+S')
         filemenu.addAction(Constants.gfx_icon_save_as,
-                'Save &As', self.action_save_as, 'Ctrl+A')
+                'Save &As', self.action_save_as)
         filemenu.addSeparator()
         filemenu.addAction(Constants.gfx_icon_import,
                 '&Import Maps', self.action_import, 'Ctrl+I')
@@ -1010,6 +1018,15 @@ class GUI(QtWidgets.QMainWindow):
 
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
+        editmenu.addAction(Constants.gfx_icon_save_as,
+                'Select &All', self.action_select_all, 'Ctrl+A')
+        self.copy_menu_item = editmenu.addAction(Constants.gfx_icon_copy,
+                '&Copy', self.action_copy, 'Ctrl+C')
+        self.copy_menu_item.setEnabled(False)
+        self.paste_menu_item = editmenu.addAction(Constants.gfx_icon_paste,
+                '&Paste', self.action_paste, 'Ctrl+V')
+        self.paste_menu_item.setEnabled(False)
+        editmenu.addSeparator()
         editmenu.addAction(Constants.gfx_icon_gameedit,
                 '&Game/Map Settings', self.action_game_settings)
         editmenu.addSeparator()
@@ -1049,6 +1066,9 @@ class GUI(QtWidgets.QMainWindow):
         if readonly:
             self.toolbar.readonly_toggle.setChecked(True)
             self.toggle_readonly()
+
+        # Set up an empty clipboard object
+        self.clipboard = Clipboard()
 
         # Show ourselves
         self.show()
@@ -1413,7 +1433,6 @@ class GUI(QtWidgets.QMainWindow):
         # Re-focus the main window
         self.activateWindow()
 
-
     def action_import(self):
         """
         Handle our "Import" action.
@@ -1554,6 +1573,58 @@ class GUI(QtWidgets.QMainWindow):
         d = AboutDialog(self)
         d.exec()
         self.activateWindow()
+
+    def action_select_all(self):
+        """
+        Handle our "Select All" action
+        """
+        self.scene.select_all()
+        self.scene.recreate()
+
+    def action_copy(self):
+        """
+        Handle our "copy" action
+        """
+        self.clipboard.copy(self.scene.mapobj, self.scene.selected)
+        self.paste_menu_item.setEnabled(True)
+        count = self.clipboard.room_count()
+        if count == 1:
+            plural = ''
+        else:
+            plural = 's'
+        self.set_temporary_status('Copied {} room{} to clipboard'.format(count, plural), 3)
+
+    def action_paste(self):
+        """
+        Handle our "paste" action
+        """
+        if self.scene.hover_current and type(self.scene.hover_current) == GUINewRoomHover:
+            x = self.scene.hover_current.x
+            y = self.scene.hover_current.y
+        else:
+            x = None
+            y = None
+        if self.clipboard.paste(self.mapobj, x, y):
+            self.scene.recreate()
+            count = self.clipboard.room_count()
+            if count == 1:
+                plural = ''
+            else:
+                plural = 's'
+            self.set_temporary_status('Pasted {} room{} into map'.format(count, plural), 3)
+        else:
+            self.set_temporary_status('Unable to find room on map to paste', 3)
+
+    def update_copy_menu(self):
+        """
+        Updates our Copy menu actions depending on if it's supposed
+        to be active or not.
+        """
+        if self.scene:
+            if self.scene.has_selections():
+                self.copy_menu_item.setEnabled(True)
+            else:
+                self.copy_menu_item.setEnabled(False)
 
 class HoverArea(QtWidgets.QGraphicsRectItem):
     """
@@ -4236,6 +4307,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         redraw/recreate itself
         """
         self.selected = set()
+        self.mainwindow.update_copy_menu()
 
     def set_map(self, mapobj):
         """
@@ -4431,6 +4503,16 @@ class MapScene(QtWidgets.QGraphicsScene):
             self.selected.remove(room)
         else:
             self.selected.add(room)
+        self.mainwindow.update_copy_menu()
+
+    def select_all(self):
+        """
+        Select all rooms in the map
+        """
+        self.selected = set()
+        for room in self.mapobj.roomlist():
+            self.selected.add(room)
+        self.mainwindow.update_copy_menu()
 
     def is_selected(self, room):
         """

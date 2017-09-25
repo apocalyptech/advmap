@@ -34,7 +34,7 @@ from advmap.file import *
 # (which is nice while saving/loading).
 #
 
-__all__ = [ 'Room', 'Connection', 'ConnectionEnd', 'Map', 'Game', 'Group',
+__all__ = [ 'Room', 'Connection', 'ConnectionEnd', 'Map', 'Game', 'Group', 'Clipboard',
         'DIR_N', 'DIR_NE', 'DIR_E', 'DIR_SE', 'DIR_S', 'DIR_SW', 'DIR_W', 'DIR_NW',
         'DIR_LIST', 'DIR_OPP', 'TXT_2_DIR', 'DIR_2_TXT' ]
 
@@ -513,6 +513,15 @@ class ConnectionEnd(object):
         elif self.stub_length > self.STUB_MAX:
             self.stub_length = self.STUB_MAX
 
+    def copy_with_new_room(self, room):
+        """
+        Returns a copy of ourself, using the given room object instead of our own.
+        """
+        return ConnectionEnd(room, self.direction,
+                conn_type=self.conn_type,
+                render_type=self.render_type,
+                stub_length=self.stub_length)
+
     def set_regular(self):
         self.conn_type = self.CONN_REGULAR
 
@@ -591,7 +600,8 @@ class Connection(object):
             passage=0,
             conn_type=ConnectionEnd.CONN_REGULAR,
             render_type=ConnectionEnd.RENDER_REGULAR,
-            stub_length=ConnectionEnd.STUB_REGULAR):
+            stub_length=ConnectionEnd.STUB_REGULAR,
+            update_room_vars=True):
         """
         Initialization of Connections.  New in savegame format v7 is supporting multiple
         directions on both sides of the connection, and the ability to tweak the
@@ -627,8 +637,32 @@ class Connection(object):
         self.symmetric = True
 
         # Update a couple of Room vars here, while we're at it.
-        self.r1.conns[self.dir1] = self
-        self.r2.conns[self.dir2] = self
+        if update_room_vars:
+            self.r1.conns[self.dir1] = self
+            self.r2.conns[self.dir2] = self
+
+    def copy_with_new_rooms(self, r1, r2, update_room_vars=False):
+        """
+        Returns a duplicate of ourselves using the two passed-in rooms instead
+        of the ones we currently use.  This is used to support our copy+paste
+        functionality.
+        """
+        # TODO: I suspect we should refactor our map duplication code to use this.
+        newconn = Connection(r1, self.dir1, r2, self.dir2,
+                passage=self.passage,
+                update_room_vars=update_room_vars)
+        newconn.symmetric = self.symmetric
+        newconn.ends1 = {}
+        newconn.ends2 = {}
+        for (curends, newends, room) in [
+                (self.ends1, newconn.ends1, r1),
+                (self.ends2, newconn.ends2, r2),
+                ]:
+            for (direction, end) in curends.items():
+                newends[direction] = end.copy_with_new_room(room)
+                if update_room_vars:
+                    room.conns[direction] = newconn
+        return newconn
 
     def set_symmetric(self, symmetric=True, room=None, direction=None):
         """
@@ -1577,3 +1611,166 @@ class Game(object):
         game = Game._load(df)
         df.close()
         return game
+
+class Clipboard(object):
+    """
+    A clipboard class, to assist with copy+paste.  This is probably only
+    something that makes sense for a GUI app, but it's completely data-related
+    and doesn't talk to the GUI at all, so keeping it in here makes sense,
+    especially given that we've got the data class much better unit-tested.
+
+    The Clipboard will keep track of any connections and groups which the
+    rooms share, in addition to the rooms themselves.
+    """
+
+    def __init__(self):
+        self.has_data = False
+
+    def room_count(self):
+        """
+        Returns a count of the number of rooms in the clipboard
+        """
+        if self.has_data:
+            return len(self.rooms)
+        else:
+            return 0
+
+    def copy(self, mapobj, roomset):
+        """
+        Copy the given `roomset` from the given `mapobj`, including all
+        connections and groups which the rooms share
+        """
+
+        if len(roomset) == 0:
+            return
+
+        self.has_data = True
+        self.rooms = set()
+        self.conns = []
+        self.groups = []
+
+        max_x = 0
+        min_x = 9999999999
+        max_y = 0
+        min_y = 9999999999
+
+        # First loop through to find out the geometry of the set of rooms
+        # we're copying
+        for room in roomset:
+            if room.x < min_x:
+                min_x = room.x
+            if room.x > max_x:
+                max_x = room.x
+            if room.y < min_y:
+                min_y = room.y
+            if room.y > max_y:
+                max_y = room.y
+
+        # Store the geometry for future reference
+        self.width = max_x - min_x + 1
+        self.height = max_y - min_y + 1
+
+        # Now store copies of the rooms, and offset their map positions
+        # based on the geometry
+        room_map = {}
+        for room in roomset:
+            newroom = room.duplicate()
+            newroom.x -= min_x
+            newroom.y -= min_y
+            self.rooms.add(newroom)
+            room_map[room] = newroom
+
+        # Loop through connections to see which ones we'll have to keep
+        for conn in mapobj.conns:
+            if conn.r1 in roomset and conn.r2 in roomset:
+                self.conns.append(conn.copy_with_new_rooms(
+                    room_map[conn.r1],
+                    room_map[conn.r2],
+                    ))
+
+        # Loop through our groups to see which ones we'll have to keep.
+        # There must be at least two rooms being copied in the same group.
+        for group in mapobj.groups:
+            foundrooms = []
+            for room in group.get_rooms():
+                if room in roomset:
+                    foundrooms.append(room_map[room])
+            if len(foundrooms) > 1:
+                self.groups.append((group, foundrooms))
+
+    def will_fit(self, mapobj, x, y):
+        """
+        Returns `True` if we will fit in `mapobj` starting at `x`,`y`.  Will
+        return `False` otherwise, or if we have no clipboard data yet.
+        """
+        if not self.has_data:
+            return False
+        for room in self.rooms:
+            try:
+                map_room = mapobj.get_room_at(room.x+x, room.y+y)
+                if map_room:
+                    return False
+            except IndexError:
+                return False
+        return True
+
+    def paste(self, mapobj, x=None, y=None):
+        """
+        Pastes ourself into the given `mapobj`, optionally at `x`,`y`.  If
+        `x` and `y` aren't specified, we will loop through the map looking
+        for the first available spot where there's room.
+
+        Returns `True` if we were able to paste anything, or `False` othewise.
+        """
+        if not self.has_data:
+            return False
+
+        # If we're not hovering over a room spot, loop through the
+        # map to try and find an open spot
+        if x is None or y is None:
+            x = None
+            y = None
+            for map_y in range(mapobj.h - self.height + 1):
+                if x is not None:
+                    break
+                for map_x in range(mapobj.w - self.width + 1):
+                    if x is not None:
+                        break
+                    if self.will_fit(mapobj, map_x, map_y):
+                        x = map_x
+                        y = map_y
+            if x is None:
+                return False
+        else:
+            # Double check that we'll fit if we WERE hovering over a
+            # room spot
+            if not self.will_fit(mapobj, x, y):
+                return False
+
+        # If we got here, we're able to paste, so do so!
+        room_map = {}
+        for room in self.rooms:
+            newroom = room.duplicate()
+            newroom.idnum = mapobj.grab_id()
+            newroom.x += x
+            newroom.y += y
+            mapobj.inject_room_obj(newroom)
+            room_map[room] = newroom
+
+        # Add in any connections we copied
+        for conn in self.conns:
+            mapobj.conns.append(conn.copy_with_new_rooms(
+                room_map[conn.r1],
+                room_map[conn.r2],
+                update_room_vars=True,
+                ))
+
+        # And finally, any groups
+        for (old_group, roomlist) in self.groups:
+            mapobj.group_rooms(room_map[roomlist[0]], room_map[roomlist[1]])
+            room_map[roomlist[0]].group.style = old_group.style
+            for room in roomlist[2:]:
+                mapobj.group_rooms(room_map[roomlist[0]], room_map[room])
+
+        # Aaaand exit.
+        return True

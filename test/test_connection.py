@@ -42,6 +42,45 @@ class ConnectionTests(unittest.TestCase):
         self.assertIn(DIR_N, self.c.ends1)
         self.assertEqual(len(self.c.ends2), 1)
         self.assertIn(DIR_S, self.c.ends2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], self.c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], self.c)
+        ce1 = self.c.ends1[DIR_N]
+        ce2 = self.c.ends2[DIR_S]
+        for end in [ce1, ce2]:
+            with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_REGULAR)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_REGULAR)
+                self.assertEqual(end.stub_length, ConnectionEnd.STUB_REGULAR)
+
+    def test_initialization_defaults_no_update_room_vars(self):
+        """
+        Tests initialization with the default values, but specifying not to
+        update the room object itself.
+        """
+
+        # Need to override our default objects, here.
+        self.r1 = Room(1, 1, 1)
+        self.r1.name = 'Room 1'
+        self.r2 = Room(2, 2, 2)
+        self.r2.name = 'Room 2'
+        self.c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+            update_room_vars=False)
+
+        # Now the tests.
+        self.assertEqual(self.c.r1, self.r1)
+        self.assertEqual(self.c.dir1, DIR_N)
+        self.assertEqual(self.c.r2, self.r2)
+        self.assertEqual(self.c.dir2, DIR_S)
+        self.assertEqual(self.c.passage, Connection.PASS_TWOWAY)
+        self.assertEqual(self.c.symmetric, True)
+        self.assertEqual(len(self.c.ends1), 1)
+        self.assertIn(DIR_N, self.c.ends1)
+        self.assertEqual(len(self.c.ends2), 1)
+        self.assertIn(DIR_S, self.c.ends2)
+        self.assertNotIn(DIR_N, self.r1.conns)
+        self.assertNotIn(DIR_S, self.r2.conns)
         ce1 = self.c.ends1[DIR_N]
         ce2 = self.c.ends2[DIR_S]
         for end in [ce1, ce2]:
@@ -74,6 +113,266 @@ class ConnectionTests(unittest.TestCase):
         ce2 = c.ends2[DIR_S]
         for end in [ce1, ce2]:
             with self.subTest(end=end):
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+                self.assertEqual(end.stub_length, 3)
+
+    def test_copy_with_new_rooms_defaults(self):
+        """
+        Tests duplicating our connection object using different rooms
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        r4 = Room(4, 4, 4)
+        r4.name = 'Room 4'
+        c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+                passage=Connection.PASS_ONEWAY_A,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=3,
+                )
+        c2 = c.copy_with_new_rooms(r3, r4)
+        self.assertNotEqual(c, c2)
+        self.assertEqual(c.r1, self.r1)
+        self.assertEqual(c.r2, self.r2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], c)
+        self.assertEqual(c2.r1, r3)
+        self.assertEqual(c2.dir1, DIR_N)
+        self.assertEqual(c2.r2, r4)
+        self.assertEqual(c2.dir2, DIR_S)
+        self.assertEqual(c2.passage, Connection.PASS_ONEWAY_A)
+        self.assertEqual(c2.symmetric, True)
+        self.assertNotIn(DIR_N, r3.conns)
+        self.assertNotIn(DIR_S, r4.conns)
+        self.assertEqual(len(c2.ends1), 1)
+        self.assertIn(DIR_N, c.ends1)
+        self.assertEqual(len(c2.ends2), 1)
+        self.assertIn(DIR_S, c2.ends2)
+        ce1 = c2.ends1[DIR_N]
+        ce2 = c2.ends2[DIR_S]
+        for (end, room) in [(ce1, r3), (ce2, r4)]:
+            with self.subTest(end=end):
+                self.assertEqual(end.room, room)
+                self.assertNotIn(end.direction, room.conns)
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+                self.assertEqual(end.stub_length, 3)
+
+    def test_copy_with_new_rooms_non_symmetric(self):
+        """
+        Tests duplicating our connection object using different rooms and
+        a nonsymmetric connection
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        r4 = Room(4, 4, 4)
+        r4.name = 'Room 4'
+        c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+                passage=Connection.PASS_ONEWAY_A,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=3,
+                )
+        c.set_symmetric(False)
+        c.ends2[DIR_S].set_dotted()
+        c.ends2[DIR_S].set_stub_length(2)
+        c2 = c.copy_with_new_rooms(r3, r4)
+        self.assertNotEqual(c, c2)
+        self.assertEqual(c.r1, self.r1)
+        self.assertEqual(c.r2, self.r2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], c)
+        self.assertEqual(c2.r1, r3)
+        self.assertEqual(c2.dir1, DIR_N)
+        self.assertEqual(c2.r2, r4)
+        self.assertEqual(c2.dir2, DIR_S)
+        self.assertEqual(c2.passage, Connection.PASS_ONEWAY_A)
+        self.assertEqual(c2.symmetric, False)
+        self.assertNotIn(DIR_N, r3.conns)
+        self.assertNotIn(DIR_S, r4.conns)
+        self.assertEqual(len(c2.ends1), 1)
+        self.assertIn(DIR_N, c.ends1)
+        self.assertEqual(len(c2.ends2), 1)
+        self.assertIn(DIR_S, c2.ends2)
+        ce1 = c2.ends1[DIR_N]
+        ce2 = c2.ends2[DIR_S]
+        self.assertEqual(ce1.room, r3)
+        self.assertNotIn(ce1.direction, r3.conns)
+        self.assertEqual(ce1.conn_type, ConnectionEnd.CONN_LADDER)
+        self.assertEqual(ce1.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce1.stub_length, 3)
+        self.assertEqual(ce2.room, r4)
+        self.assertNotIn(ce2.direction, r4.conns)
+        self.assertEqual(ce2.conn_type, ConnectionEnd.CONN_DOTTED)
+        self.assertEqual(ce2.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+        self.assertEqual(ce2.stub_length, 2)
+
+    def test_copy_with_new_rooms_defaults_with_extra_ends(self):
+        """
+        Tests duplicating our connection object using different rooms, with
+        extra ends on both sides.
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        r4 = Room(4, 4, 4)
+        r4.name = 'Room 4'
+        c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+                passage=Connection.PASS_ONEWAY_A,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=3,
+                )
+        c.connect_extra(self.r1, DIR_NE)
+        c.connect_extra(self.r2, DIR_SW)
+        c2 = c.copy_with_new_rooms(r3, r4)
+        self.assertNotEqual(c, c2)
+        self.assertEqual(c.r1, self.r1)
+        self.assertEqual(c.r2, self.r2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], c)
+        self.assertEqual(self.r1.conns[DIR_NE], c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_SW], c)
+        self.assertEqual(c2.r1, r3)
+        self.assertEqual(c2.dir1, DIR_N)
+        self.assertEqual(c2.r2, r4)
+        self.assertEqual(c2.dir2, DIR_S)
+        self.assertEqual(c2.passage, Connection.PASS_ONEWAY_A)
+        self.assertEqual(c2.symmetric, True)
+        self.assertNotIn(DIR_N, r3.conns)
+        self.assertNotIn(DIR_NE, r3.conns)
+        self.assertNotIn(DIR_S, r4.conns)
+        self.assertNotIn(DIR_SW, r4.conns)
+        self.assertEqual(len(c2.ends1), 2)
+        self.assertIn(DIR_N, c.ends1)
+        self.assertEqual(len(c2.ends2), 2)
+        self.assertIn(DIR_S, c2.ends2)
+        ce1 = c2.ends1[DIR_N]
+        ce2 = c2.ends1[DIR_NE]
+        ce3 = c2.ends2[DIR_S]
+        ce4 = c2.ends2[DIR_SW]
+        for (end, room) in [(ce1, r3), (ce2, r3), (ce3, r4), (ce4, r4)]:
+            with self.subTest(end=end):
+                self.assertEqual(end.room, room)
+                self.assertNotIn(end.direction, room.conns)
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+                self.assertEqual(end.stub_length, 3)
+
+    def test_copy_with_new_rooms_allow_room_var_update(self):
+        """
+        Tests duplicating our connection object using different rooms,
+        allowing updating our room variables as we do so.
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        r4 = Room(4, 4, 4)
+        r4.name = 'Room 4'
+        c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+                passage=Connection.PASS_ONEWAY_A,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=3,
+                )
+        c2 = c.copy_with_new_rooms(r3, r4, update_room_vars=True)
+        self.assertNotEqual(c, c2)
+        self.assertEqual(c.r1, self.r1)
+        self.assertEqual(c.r2, self.r2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], c)
+        self.assertEqual(c2.r1, r3)
+        self.assertEqual(c2.dir1, DIR_N)
+        self.assertEqual(c2.r2, r4)
+        self.assertEqual(c2.dir2, DIR_S)
+        self.assertEqual(c2.passage, Connection.PASS_ONEWAY_A)
+        self.assertEqual(c2.symmetric, True)
+        self.assertIn(DIR_N, r3.conns)
+        self.assertEqual(r3.conns[DIR_N], c2)
+        self.assertIn(DIR_S, r4.conns)
+        self.assertEqual(r4.conns[DIR_S], c2)
+        self.assertEqual(len(c2.ends1), 1)
+        self.assertIn(DIR_N, c2.ends1)
+        self.assertEqual(len(c2.ends2), 1)
+        self.assertIn(DIR_S, c2.ends2)
+        ce1 = c2.ends1[DIR_N]
+        ce2 = c2.ends2[DIR_S]
+        for (end, room) in [(ce1, r3), (ce2, r4)]:
+            with self.subTest(end=end):
+                self.assertEqual(end.room, room)
+                self.assertIn(end.direction, room.conns)
+                self.assertEqual(room.conns[end.direction], c2)
+                self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
+                self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
+                self.assertEqual(end.stub_length, 3)
+
+    def test_copy_with_new_rooms_allow_room_var_update_and_extra_ends(self):
+        """
+        Tests duplicating our connection object using different rooms,
+        allowing updating our room variables as we do so.  Using a connection
+        which has extra ends.
+        """
+        r3 = Room(3, 3, 3)
+        r3.name = 'Room 3'
+        r4 = Room(4, 4, 4)
+        r4.name = 'Room 4'
+        c = Connection(self.r1, DIR_N, self.r2, DIR_S,
+                passage=Connection.PASS_ONEWAY_A,
+                conn_type=ConnectionEnd.CONN_LADDER,
+                render_type=ConnectionEnd.RENDER_MIDPOINT_A,
+                stub_length=3,
+                )
+        c.connect_extra(self.r1, DIR_NE)
+        c.connect_extra(self.r2, DIR_SW)
+        c2 = c.copy_with_new_rooms(r3, r4, update_room_vars=True)
+        self.assertNotEqual(c, c2)
+        self.assertEqual(c.r1, self.r1)
+        self.assertEqual(c.r2, self.r2)
+        self.assertIn(DIR_N, self.r1.conns)
+        self.assertIn(DIR_NE, self.r1.conns)
+        self.assertEqual(self.r1.conns[DIR_N], c)
+        self.assertEqual(self.r1.conns[DIR_NE], c)
+        self.assertIn(DIR_S, self.r2.conns)
+        self.assertIn(DIR_SW, self.r2.conns)
+        self.assertEqual(self.r2.conns[DIR_S], c)
+        self.assertEqual(self.r2.conns[DIR_SW], c)
+        self.assertEqual(c2.r1, r3)
+        self.assertEqual(c2.dir1, DIR_N)
+        self.assertEqual(c2.r2, r4)
+        self.assertEqual(c2.dir2, DIR_S)
+        self.assertEqual(c2.passage, Connection.PASS_ONEWAY_A)
+        self.assertEqual(c2.symmetric, True)
+        self.assertIn(DIR_N, r3.conns)
+        self.assertIn(DIR_NE, r3.conns)
+        self.assertEqual(r3.conns[DIR_N], c2)
+        self.assertEqual(r3.conns[DIR_NE], c2)
+        self.assertIn(DIR_S, r4.conns)
+        self.assertIn(DIR_SW, r4.conns)
+        self.assertEqual(r4.conns[DIR_S], c2)
+        self.assertEqual(r4.conns[DIR_SW], c2)
+        self.assertEqual(len(c2.ends1), 2)
+        self.assertIn(DIR_N, c2.ends1)
+        self.assertIn(DIR_NE, c2.ends1)
+        self.assertEqual(len(c2.ends2), 2)
+        self.assertIn(DIR_S, c2.ends2)
+        self.assertIn(DIR_SW, c2.ends2)
+        ce1 = c2.ends1[DIR_N]
+        ce2 = c2.ends1[DIR_NE]
+        ce3 = c2.ends2[DIR_S]
+        ce4 = c2.ends2[DIR_SW]
+        for (end, room) in [(ce1, r3), (ce2, r3), (ce3, r4), (ce4, r4)]:
+            with self.subTest(end=end):
+                self.assertEqual(end.room, room)
+                self.assertIn(end.direction, room.conns)
+                self.assertEqual(room.conns[end.direction], c2)
                 self.assertEqual(end.conn_type, ConnectionEnd.CONN_LADDER)
                 self.assertEqual(end.render_type, ConnectionEnd.RENDER_MIDPOINT_A)
                 self.assertEqual(end.stub_length, 3)
