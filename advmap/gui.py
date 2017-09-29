@@ -1267,7 +1267,8 @@ class GUI(QtWidgets.QMainWindow):
         """
         # TODO: center
         mapobj = Map(name)
-        room = mapobj.add_room_at(4, 4, 'Starting Room')
+        room = mapobj.add_room_at(4, 4, 'Room')
+        room.notes = 'Starting Room'
         room.color = Room.COLOR_GREEN
         return mapobj
 
