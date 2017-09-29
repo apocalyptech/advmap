@@ -2535,7 +2535,7 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
             else:
                 self.setBrush(QtGui.QBrush(self.color_bg.darker(110)))
         else:
-            border_pen.setWidth(1)
+            border_pen.setWidthF(1.5)
             if room.type == Room.TYPE_CONNHELPER:
                 self.setBrush(QtGui.QBrush(Constants.c_transparent))
             else:
@@ -2685,7 +2685,12 @@ class GUIConnLine(QtWidgets.QGraphicsLineItem):
         super().__init__(x1, y1, x2, y2)
         self.setZValue(Constants.z_value_connection)
         pen = QtGui.QPen(Constants.c_connection)
-        pen.setWidthF(width)
+        # Width 1 lines actually benefit from being 1.1
+        if width == 1:
+            pen.setWidthF(1.1)
+        else:
+            pen.setWidthF(width)
+        pen.setCapStyle(QtCore.Qt.FlatCap)
         if dashed:
             dash_pen = QtGui.QPen(pen)
             dash_pen.setWidthF(width+.5)
