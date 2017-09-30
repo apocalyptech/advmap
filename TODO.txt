@@ -54,6 +54,10 @@ Features to implement:
  * QInputDialog.getText() doesn't let you specify custom buttons; would
    be nice to use our standard ones with icons, so I may need to write
    my own class to do that.
+ 
+ * User-editable keybindings.  I suspect I'd probably never get to the
+   point of having a preferences menu for it, but at least having a config
+   file would be nice.
 
 Things to consider:
 
