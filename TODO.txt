@@ -58,6 +58,13 @@ Features to implement:
  * User-editable keybindings.  I suspect I'd probably never get to the
    point of having a preferences menu for it, but at least having a config
    file would be nice.
+ 
+ * For connections which end up being at least partially a straight line,
+   pretend that the relevant stubs don't exist and instead draw a straight
+   line all the way through.  Not that our dotted/ladder connections look
+   *bad* the way they currently are, but there's a noticeable change
+   between the stub area and the main connection area, when the connection
+   is straight.
 
 Things to consider:
 
