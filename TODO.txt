@@ -24,6 +24,9 @@ Bugs to fix:
     https://bugreports.qt.io/browse/QTBUG-63386
    ... get rid of our draw_dashed_line function and go back to
    using setDashPattern() like I'd love to be doing.
+ 
+ * Our text centering is a little off, at least for room titles.  See
+   "Spaceweaver" in Broken Age, for instance.
 
 Features to implement:
 
