@@ -4383,10 +4383,11 @@ class MapScene(QtWidgets.QGraphicsScene):
                         if room.get_loopback(direction):
                             cf.draw_loopback(guiroom, direction)
                 else:
-                    newroom = GUINewRoom(x, y, self.parent().mainwindow)
-                    self.addItem(newroom)
-                    if keep_hover == (x, y):
-                        newroom.hover_obj.hoverEnterEvent()
+                    if not self.mainwindow.is_readonly():
+                        newroom = GUINewRoom(x, y, self.parent().mainwindow)
+                        self.addItem(newroom)
+                        if keep_hover == (x, y):
+                            newroom.hover_obj.hoverEnterEvent()
 
         # Next all the connections
         for conn in self.mapobj.conns:
