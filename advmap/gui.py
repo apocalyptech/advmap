@@ -1324,6 +1324,10 @@ class GUI(QtWidgets.QMainWindow):
         self.toolbar.toggle_readonly_actions()
         if self.is_readonly():
             self.scene.clear_selected()
+            self.paste_menu_item.setEnabled(False)
+        else:
+            if self.clipboard.has_data:
+                self.paste_menu_item.setEnabled(True)
         self.scene.recreate()
 
     def import_maps_from_file(self, filename):
@@ -1587,7 +1591,8 @@ class GUI(QtWidgets.QMainWindow):
         Handle our "copy" action
         """
         self.clipboard.copy(self.scene.mapobj, self.scene.selected)
-        self.paste_menu_item.setEnabled(True)
+        if not self.is_readonly():
+            self.paste_menu_item.setEnabled(True)
         count = self.clipboard.room_count()
         if count == 1:
             plural = ''
