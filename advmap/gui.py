@@ -42,7 +42,7 @@ class Constants(object):
     group_padding = 10
 
     # Border around the room where we theoretically want to not have text
-    room_text_padding = 6
+    room_text_padding = 4
 
     # Vars for our in/out/up/down labels
     icon_start_y = room_size_half + 6
@@ -907,7 +907,7 @@ class GUI(QtWidgets.QMainWindow):
             t_rect = t.boundingRect()
             Constants.notes_padding_x[font_size] = (t_rect.width() - m_rect.width()) / 2
             Constants.notes_padding_y[font_size] = (t_rect.height() - m_rect.height()) / 2
-        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.default_note_size]*2
+        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.default_note_size]*1.5
         Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
 
         # Load in some external images; currently all assumed to be the same width
@@ -2348,7 +2348,7 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
 
         # Set our position
         self.setPos(
-                Constants.room_text_padding,
+                (Constants.room_size - rect.width())/2,
                 Constants.room_text_padding - Constants.title_padding_y[font_size],
             )
 

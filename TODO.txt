@@ -24,9 +24,13 @@ Bugs to fix:
     https://bugreports.qt.io/browse/QTBUG-63386
    ... get rid of our draw_dashed_line function and go back to
    using setDashPattern() like I'd love to be doing.
- 
- * Our text centering is a little off, at least for room titles.  See
-   "Spaceweaver" in Broken Age, for instance.
+
+ * The text spacing in the game edit dialog is much larger than I'd like;
+   we can show a lot less text in there than I'd like.  It'd also be
+   nice to figure out having our first column occupy as much space as
+   possible.  As it is, the room count column is wider than it has to be.
+   While we're at it, that whole combobox bit should be justified to the
+   top left - right now there's more margin/padding than I want.
 
 Features to implement:
 
