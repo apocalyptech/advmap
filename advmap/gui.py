@@ -217,7 +217,7 @@ class Constants(object):
         }
 
     # Entries here are tuples with the following:
-    #   1) Foreground color for borderse
+    #   1) Foreground color for borders
     #   2) Background color for fill
     #   3) Foreground color for text
     c_default_text = QtGui.QColor(0, 0, 0, 255)
@@ -267,14 +267,14 @@ class Constants(object):
             Room.TYPE_CONNHELPER: {
                     # Background for connhelper is only used if the room is selected.  Text color
                     # is never used.
-                    Room.COLOR_BW: (QtGui.QColor(153, 153, 153, 255), QtGui.QColor(249, 249, 249, 255), None),
-                    Room.COLOR_RED: (QtGui.QColor(204, 153, 153, 255), QtGui.QColor(255, 249, 249, 255), None),
-                    Room.COLOR_GREEN: (QtGui.QColor(153, 204, 153, 255), QtGui.QColor(249, 255, 249, 255), None),
-                    Room.COLOR_BLUE: (QtGui.QColor(153, 153, 204, 255), QtGui.QColor(249, 249, 255, 255), None),
-                    Room.COLOR_YELLOW: (QtGui.QColor(204, 204, 153, 255), QtGui.QColor(255, 255, 249, 255), None),
-                    Room.COLOR_PURPLE: (QtGui.QColor(204, 153, 204, 255), QtGui.QColor(255, 249, 255, 255), None),
-                    Room.COLOR_CYAN: (QtGui.QColor(153, 204, 204, 255), QtGui.QColor(249, 255, 255, 255), None),
-                    Room.COLOR_ORANGE: (QtGui.QColor(204, 178, 153, 255), QtGui.QColor(249, 252, 255, 255), None),
+                    Room.COLOR_BW: (QtGui.QColor(193, 193, 193, 150), QtGui.QColor(249, 249, 249, 255), None),
+                    Room.COLOR_RED: (QtGui.QColor(244, 193, 193, 150), QtGui.QColor(255, 249, 249, 255), None),
+                    Room.COLOR_GREEN: (QtGui.QColor(193, 244, 193, 150), QtGui.QColor(249, 255, 249, 255), None),
+                    Room.COLOR_BLUE: (QtGui.QColor(193, 193, 244, 150), QtGui.QColor(249, 249, 255, 255), None),
+                    Room.COLOR_YELLOW: (QtGui.QColor(244, 244, 193, 150), QtGui.QColor(255, 255, 249, 255), None),
+                    Room.COLOR_PURPLE: (QtGui.QColor(244, 193, 244, 150), QtGui.QColor(255, 249, 255, 255), None),
+                    Room.COLOR_CYAN: (QtGui.QColor(193, 244, 244, 150), QtGui.QColor(249, 255, 255, 255), None),
+                    Room.COLOR_ORANGE: (QtGui.QColor(244, 218, 193, 150), QtGui.QColor(249, 252, 255, 255), None),
                 },
         }
 
