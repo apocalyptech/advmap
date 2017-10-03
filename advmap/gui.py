@@ -45,7 +45,6 @@ class Constants(object):
     room_text_padding = 4
 
     # Vars for our in/out/up/down labels
-    icon_start_y = room_size_half + 6
     icon_label_space = 3
     icon_space_between = 4
 
@@ -101,9 +100,6 @@ class Constants(object):
     other_padding_x = {}
     other_padding_y = {}
     other_max_width = None
-
-    # Y position where we'll always draw the notes field, if it exists
-    notes_start_y = None
 
     # Minimum height of a single-line Notes field
     notes_min_height = None
@@ -912,7 +908,6 @@ class GUI(QtWidgets.QMainWindow):
             Constants.notes_padding_y[font_size] = (t_rect.height() - m_rect.height()) / 2
             if font_size == Constants.default_note_size:
                 Constants.notes_min_height = m_rect.height()
-        Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.default_note_size]*1.5
         Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
 
         # Load in some external images; currently all assumed to be the same width
@@ -2293,27 +2288,66 @@ class GUIRoomTitleAsNotesTextItem(QtWidgets.QGraphicsTextItem):
 
 class GUIRoomNotesTextItem(QtWidgets.QGraphicsTextItem):
     """
-    A text field used for showing room notes
+    A text field used for showing room notes.  Note that unlike our
+    room title/name, we don't automatically set our own positioning in
+    here.  That's done outside in the main GUIRoom class, since it
+    understands what kinds of other data exist in the room.
     """
 
-    def __init__(self, parent):
-        if len(parent.room.notes) > 15:
-            note_str = '%s...' % (parent.room.notes[:12])
+    def __init__(self, parent, max_height):
+        """
+        Initialize inside the `parent` room.  Will have a maximum height
+        of `max_height`.  We'll do multiline wrap if we can.
+        """
+        lines = parent.room.notes.splitlines()
+        if len(lines) > 1:
+            notes_to_show = '{} ...'.format(lines[0])
+        elif len(lines) == 1:
+            notes_to_show = lines[0]
         else:
-            note_str = parent.room.notes
-        super().__init__(note_str, parent)
+            notes_to_show = ''
+        super().__init__(notes_to_show, parent)
+        self.setTextWidth(Constants.title_max_width)
         self.setFont(GUIRoom.get_notes_font(Constants.default_note_size))
         self.setDefaultTextColor(parent.color_text)
         doc = self.document()
         options = doc.defaultTextOption()
-        options.setWrapMode(options.NoWrap)
+        options.setWrapMode(options.WordWrap)
+        options.setAlignment(QtCore.Qt.AlignHCenter)
         doc.setDefaultTextOption(options)
 
-        # Update our position automatically.
+        # Figure out our sizing information
+        rect = self.boundingRect()
+        if rect.width() > (Constants.title_max_width + (Constants.notes_padding_x[Constants.default_note_size]*2)):
+            options.setWrapMode(options.WrapAtWordBoundaryOrAnywhere)
+            doc.setDefaultTextOption(options)
+            rect = self.boundingRect()
+
+        # Make sure we don't exceed our specified max_height
+        block = doc.begin()
+        while rect.height() > (max_height + (Constants.notes_padding_y[Constants.default_note_size]*2)):
+            layout = block.layout()
+            if layout.lineCount() < 2:
+                break
+            last_line = layout.lineAt(layout.lineCount()-1)
+            self.setPlainText('{}...'.format(notes_to_show[:last_line.textStart()-1]))
+            rect = self.boundingRect()
+
+    def height(self):
+        """
+        Retreives our height, for the purposes of placement within the GUIRoom
+        """
+        rect = self.boundingRect()
+        return rect.height() - Constants.notes_padding_y[Constants.default_note_size]*2
+
+    def set_position(self, y_coord):
+        """
+        Sets our position at the given y coordinate
+        """
         rect = self.boundingRect()
         self.setPos(
                 Constants.room_size_half - (rect.width()/2) + 1,
-                Constants.notes_start_y,
+                y_coord
             )
 
 class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
@@ -2354,6 +2388,7 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
                 continue
             else:
                 break
+        self.font_size = font_size
 
         # If we got here and we still exceed our recommended width, switch word wrapping
         # mode so that we don't go out of the room boundaries.
@@ -2377,6 +2412,14 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
                 (Constants.room_size - rect.width())/2,
                 Constants.room_text_padding - Constants.title_padding_y[font_size],
             )
+
+    def offset_height(self):
+        """
+        Returns the offset height after which we can start adding more
+        GUI elements.
+        """
+        return Constants.room_text_padding + self.boundingRect().height() - \
+                Constants.title_padding_y[self.font_size]*2
 
 class GUIRoomTextLabel(QtWidgets.QGraphicsPixmapItem):
 
@@ -2532,30 +2575,81 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
 
         elif room.type != Room.TYPE_CONNHELPER:
 
-            # Show our notes, if we need to
-            if self.room.notes and self.room.notes != '':
-                self.notes = GUIRoomNotesTextItem(self)
-                self.setToolTip('<span>{}</span>'.format(self.room.notes))
+            # Rendering our usual room contents - title, notes, and extra text labels.
+            # This gets a bit ridiculous, actually, and I should probably look into
+            # seeing if we can use some Qt classes to assist with all the positioning
+            # in here. It's not totally straightforward because the positioning of
+            # notes/extralabels depends on the contents of the other of the two.
 
             # Show our title
-            if room.type != Room.TYPE_CONNHELPER:
-                self.title = GUIRoomTitleTextItem(self)
+            self.title = GUIRoomTitleTextItem(self)
+            room_data_height = Constants.room_size - self.title.offset_height() - \
+                    Constants.room_text_padding*2
+            cur_notes_y = self.title.offset_height() - Constants.room_text_padding
 
-        # Draw any in/out/up/down labels we might have
-        if room.type != Room.TYPE_CONNHELPER and not pretend_label:
-            cur_y = Constants.icon_start_y
-            for (label, (graphic_light, graphic_dark)) in [
-                    (room.up, (Constants.gfx_ladder_up, Constants.gfx_ladder_up_rev)),
-                    (room.down, (Constants.gfx_ladder_down, Constants.gfx_ladder_down_rev)),
-                    (room.door_in, (Constants.gfx_door_in, Constants.gfx_door_in_rev)),
-                    (room.door_out, (Constants.gfx_door_out, Constants.gfx_door_out_rev))]:
+            # Find out how many in/out/up/down labels we may have, and figure out a
+            # bit of label geometry based on that
+            extra_labels = 0
+            for label in [room.up, room.down, room.door_in, room.door_out]:
                 if label and label != '':
-                    if room.type == Room.TYPE_DARK:
-                        graphic = graphic_dark
-                    else:
-                        graphic = graphic_light
-                    label = GUIRoomTextLabel(self, label, graphic, cur_y)
-                    cur_y += graphic.height() + Constants.icon_space_between
+                    extra_labels += 1
+            if extra_labels == 0:
+                reserved_for_extras = 0
+            else:
+                cur_extra_label_y = self.title.offset_height() + Constants.icon_space_between
+                total_extra_label_size = (Constants.gfx_ladder_up.height()*extra_labels) + \
+                        (Constants.icon_space_between*(extra_labels-1))
+                reserved_for_extras = min(room_data_height, total_extra_label_size)
+
+            # Set up our notes object, if we need to
+            self.notes = None
+            if self.room.notes and self.room.notes != '':
+
+                # Figure out how much room to use for notes; grab as much as
+                # possible given our extra label constraints.
+                max_notes_height = max(Constants.notes_min_height,
+                        room_data_height - reserved_for_extras)
+
+                self.notes = GUIRoomNotesTextItem(self, max_notes_height)
+                self.setToolTip('<span>{}</span>'.format(self.room.notes))
+
+            # Set up positioning vars for both notes and extra labels.  If there's
+            # just one of the two, center it across the whole space.  Otherwise,
+            # divide up the free space evenly (if we can).
+            if extra_labels > 0 and self.notes:
+                space_left_in_room = room_data_height - self.notes.height() - total_extra_label_size
+                if space_left_in_room > 0:
+                    padding = space_left_in_room / 3
+                    cur_notes_y += padding
+                    cur_extra_label_y += padding*2 + self.notes.height()
+                else:
+                    cur_extra_label_y += self.notes.height()
+            elif self.notes:
+                y_padding = (room_data_height - self.notes.height())/2
+                cur_notes_y += y_padding
+            elif extra_labels > 0:
+                space_left_in_room = room_data_height - total_extra_label_size
+                if space_left_in_room > 0:
+                    cur_extra_label_y += (space_left_in_room/2)
+
+            # Set notes positioning, if we have notes.
+            if self.notes:
+                self.notes.set_position(cur_notes_y)
+
+            # Draw any in/out/up/down labels we might have
+            if extra_labels > 0:
+                for (label, (graphic_light, graphic_dark)) in [
+                        (room.up, (Constants.gfx_ladder_up, Constants.gfx_ladder_up_rev)),
+                        (room.down, (Constants.gfx_ladder_down, Constants.gfx_ladder_down_rev)),
+                        (room.door_in, (Constants.gfx_door_in, Constants.gfx_door_in_rev)),
+                        (room.door_out, (Constants.gfx_door_out, Constants.gfx_door_out_rev))]:
+                    if label and label != '':
+                        if room.type == Room.TYPE_DARK:
+                            graphic = graphic_dark
+                        else:
+                            graphic = graphic_light
+                        label = GUIRoomTextLabel(self, label, graphic, cur_extra_label_y)
+                        cur_extra_label_y += graphic.height() + Constants.icon_space_between
 
         # Set our background/border coloration
         border_pen = QtGui.QPen(self.color_border)
