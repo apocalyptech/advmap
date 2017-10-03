@@ -1,24 +1,5 @@
 Bugs to fix:
 
- * Three-line title will overlap "(notes)" on my Laptop display.
-   Since the move to Qt, actually, three-line titles will end up
-   bumping into the notes field anyway, though not as badly as
-   on the Gtk version on the laptop.
-
- * I think our lines aren't as strong as they could be - aliasing
-   or something is getting in the way.  While implementing our own
-   dashpattern stuff, those dashes were helped out significantly
-   by adding .5 to their pen's width - I wonder if something like
-   that should be applied globally?  Straight lines *do* look
-   sharper if we disable the antialiasing renderhint altogether,
-   but that makes all our diagonals look awful.
-
- * Our custom dashed lines benefit greatly from a call to
-   pen.setCapStyle(QtCore.Qt.FlatCap) - would that help out other
-   line drawing cases as well?  When connections bend to new
-   directions, if you look closely enough, there's noticeable
-   overlap where they meet, for instance.
-
  * If one of these Qt bugs ever gets fixed:
     https://bugreports.qt.io/browse/QTBUG-63322
     https://bugreports.qt.io/browse/QTBUG-63386
@@ -32,14 +13,20 @@ Bugs to fix:
    While we're at it, that whole combobox bit should be justified to the
    top left - right now there's more margin/padding than I want.
 
+ * There's some very minor rendering oddities I'd like to get sorted out
+   at some point - We improved our border strength recently, which looks
+   fine, but it would be nice to figure out getting those to draw a single
+   pixel wide instead of the 2 they are now.  Also, the intersections of
+   each side of the rect on our GUIRoom doesn't "meet up" the way I'd 
+   hope.  If you zoom in to a screenshot, you can see easily where the
+   two brush strokes meet and leave a tiny gap at the corners.
+
 Features to implement:
 
  * write whole group out to PNG
 
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
-
- * Show "(notes)" indicator on map for Label rooms?
 
  * Expand our room tooltips - should be able to summarize most of the
    info in there, I'd think.
