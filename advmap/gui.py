@@ -105,6 +105,9 @@ class Constants(object):
     # Y position where we'll always draw the notes field, if it exists
     notes_start_y = None
 
+    # Minimum height of a single-line Notes field
+    notes_min_height = None
+
     # Parameters for fitting the room title
     title_max_width = room_size - (room_text_padding*2)
     title_max_height = None
@@ -907,6 +910,8 @@ class GUI(QtWidgets.QMainWindow):
             t_rect = t.boundingRect()
             Constants.notes_padding_x[font_size] = (t_rect.width() - m_rect.width()) / 2
             Constants.notes_padding_y[font_size] = (t_rect.height() - m_rect.height()) / 2
+            if font_size == Constants.default_note_size:
+                Constants.notes_min_height = m_rect.height()
         Constants.notes_start_y = Constants.room_size_half - m_rect.height() - Constants.notes_padding_y[Constants.default_note_size]*1.5
         Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
 
@@ -2337,14 +2342,35 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
         doc.setDefaultTextOption(options)
 
         # Loop through font sizes, trying to find one which fits
+        exceeds_width = False
         for font_size in Constants.title_font_sizes:
             self.setFont(GUIRoom.get_title_font(font_size))
             rect = self.boundingRect()
-            if (rect.width() > (Constants.title_max_width + (Constants.title_padding_x[font_size]*2)) or
-                    rect.height() > (Constants.title_max_height + (Constants.title_padding_y[font_size]*2))):
+            if rect.width() > (Constants.title_max_width + (Constants.title_padding_x[font_size]*2)):
+                exceeds_width = True
+            else:
+                exceeds_width = False
+            if (exceeds_width or rect.height() > (Constants.title_max_height + (Constants.title_padding_y[font_size]*2))):
                 continue
             else:
                 break
+
+        # If we got here and we still exceed our recommended width, switch word wrapping
+        # mode so that we don't go out of the room boundaries.
+        if exceeds_width:
+            options.setWrapMode(options.WrapAtWordBoundaryOrAnywhere)
+            doc.setDefaultTextOption(options)
+
+        # Find out if we've exceeded three lines.  If so, truncate.
+        block = doc.begin()
+        layout = block.layout()
+        while layout.lineCount() > 3:
+            line = layout.lineAt(3)
+            self.setPlainText('{}...'.format(parent.room.name[:line.textStart()-1]))
+            layout = block.layout()
+
+        # Re-aquire our bounding rect for positioning
+        rect = self.boundingRect()
 
         # Set our position
         self.setPos(
