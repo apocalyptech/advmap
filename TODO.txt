@@ -6,13 +6,6 @@ Bugs to fix:
    ... get rid of our draw_dashed_line function and go back to
    using setDashPattern() like I'd love to be doing.
 
- * The text spacing in the game edit dialog is much larger than I'd like;
-   we can show a lot less text in there than I'd like.  It'd also be
-   nice to figure out having our first column occupy as much space as
-   possible.  As it is, the room count column is wider than it has to be.
-   While we're at it, that whole combobox bit should be justified to the
-   top left - right now there's more margin/padding than I want.
-
  * There's some very minor rendering oddities I'd like to get sorted out
    at some point - We improved our border strength recently, which looks
    fine, but it would be nice to figure out getting those to draw a single

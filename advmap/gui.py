@@ -105,6 +105,9 @@ class Constants(object):
     # Minimum height of a single-line Notes field
     notes_min_height = None
 
+    # Height of each row in our MapListTable
+    maplist_row_height = None
+
     # Parameters for fitting the room title
     title_max_width = room_size - (room_text_padding*2)
     title_max_height = None
@@ -932,6 +935,11 @@ class GUI(QtWidgets.QMainWindow):
             if font_size == Constants.default_note_size:
                 Constants.notes_min_height = m_rect.height()
         Constants.title_max_height = Constants.room_size_half - (Constants.room_text_padding*1) - m_rect.height()
+
+        # Map list row height
+        t = QtWidgets.QGraphicsTextItem('Map Name')
+        t.setFont(QtGui.QFont())
+        Constants.maplist_row_height = t.boundingRect().height()
 
         # Load in some external images; currently all assumed to be the same width
         Constants.gfx_door_in = QtGui.QPixmap(self.resfile('door_in.png'))
@@ -3946,8 +3954,13 @@ class MapListTable(QtWidgets.QTableView):
         self.game = game
         self.verticalHeader().hide()
         self.horizontalHeader().hide()
-        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.setShowGrid(False)
+
+        # Would be nice to figure out a way to do this without stylesheets,
+        # I always feel as though I've lost when using CSS for this kind of
+        # thing.  Anyway, this style is just to make sure that our room
+        # count column doesn't bump up against the righthand side.
+        self.setStyleSheet('QTableView::item { padding-right: .5em; }')
 
         # These vars are what enables our basic drag-n-drop reordering
         self.setSelectionBehavior(self.SelectRows)
@@ -3979,6 +3992,19 @@ class MapListTable(QtWidgets.QTableView):
             item_rooms.setDropEnabled(False)
 
             self.model.appendRow([item_name, item_rooms])
+
+        # Set up our column stretching parameters; this has to be done
+        # after the columns already exist.
+        self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+
+        # For the vertical header, ResizeToContents nearly does what I want, but
+        # make it so the rows word-wrap rather than getting truncated with ellipses.
+        # If I use anything other than ResizeToContents, though, I can't style
+        # the padding at all with CSS.  Lame.  So, instead, I'm setting a fixed
+        # height based on some calculations done on GUI startup.
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(Constants.maplist_row_height)
 
 class EditGameDialog(AppDialog):
     """
@@ -4015,6 +4041,7 @@ class EditGameDialog(AppDialog):
         # First the vbox itself
         vbox = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 5, 0, 0)
         vbox.setLayout(layout)
         self.gridlayout.addWidget(vbox, self.cur_row, 1)
 
