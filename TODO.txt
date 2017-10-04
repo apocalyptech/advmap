@@ -16,10 +16,12 @@ Bugs to fix:
 
 Features to implement:
 
- * write whole group out to PNG
+ * Write whole set of game maps out to PNGs.  I assume it only makes sense
+   to do that into separate files.
 
- * Different ways to draw nonsymmetric links (thinking "rounded" and
-   "midpoint" at the least)
+ * Extra connection drawing styles, such as "rounded".  That could be
+   interesting, though, since all our current code (such as with dashed
+   lines) assumes straight lines.
 
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
@@ -28,7 +30,10 @@ Features to implement:
    more manageable than our previous Advanced tab on Room Edit)
 
  * Better one-way arrows for ladder connections.  What we do right now
-   is technically Good Enough, but it doesn't really look great.
+   is technically Good Enough, but it doesn't really look great.  Better
+   one-way arrows in general; right now the arrowhead grows with the
+   size of the line that's underneath it.  Would like to have it be the
+   same size regardless.
 
  * I'd really like to start unit-testing the GUI; apparently there
    *is* a QTest class, or something, which can assist with this.
@@ -48,22 +53,22 @@ Features to implement:
    between the stub area and the main connection area, when the connection
    is straight.
 
- * Indication of how many rooms are selected, in our secondary info area
-   (until now only used for two-step actions; I don't think that we have
-   any valid two-step actions while selecting, so it shouldn't get in the
-   way of anything)
+ * Indication of how many rooms are selected, in our secondary info area,
+   until now only used for two-step actions.  This may actually be
+   trickyish, though, 'cause we CAN do some two-step actions with rooms
+   selected.  Perhaps we shouldn't be able to?
 
 Things to consider:
 
  * Should we still be able to edit Notes in readonly mode?
 
- * Multiple links from the same direction
-   -> Have that partially, now - can have multiple ends on the same room,
-      at least.  Should we support multi-room connections?  I'm not
-      sure if that'd be useful anywhere.  Presumably there's an
-      Infocom title out there *somewhere* in which it would help.  The
-      bank puzzle from Zork II could technically make use of such a
-      construct.
+ * Connections involving more than two rooms?  I'm not sure if it'd be
+   worth putting that together, though there's a few cases where it could
+   technically come in handy, such as the bank puzzle in Zork II, or the
+   opening loop of Shay's section in Broken Age.  Those are definitely
+   corner cases, though, and I suspect I won't find it worth the effort to
+   expand this functionality.  Those cases generally benefit from a
+   Label-type room to provide extra info in the middle anyway.
 
  * Double-sized rooms, or even arbitrarily-large room.  Sort of a
    super-group where the room itself takes over space instead of just
@@ -73,9 +78,10 @@ Things to consider:
    we were handling things back in the Gtk+ version - namely, that when
    changes occur to the data, we trigger a complete recreation of the
    entire scene, rather than try to keep track of changes.  The datasets
-   involved here are small enough by modern computers that it doesn't
-   really matter, but it's still pretty inefficient.  Really we should
-   be just updating what's changed and keeping the rest of the scene
-   intact.  That's more work than I cared to deal with, since we'd have
-   a lot of QGraphics*Items lying around all over the place, but it's
+   involved here are small enough by modern computer standards that it
+   doesn't really matter, but it's still pretty inefficient.  Really we
+   should be just updating what's changed and keeping the rest of the scene
+   intact.  That's more work than I cared to deal with, since we'd have a
+   lot of QGraphics*Items lying around all over the place, but it's
    something to consider for the future.
+
