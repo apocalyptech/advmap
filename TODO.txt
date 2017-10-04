@@ -31,8 +31,6 @@ Features to implement:
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
 
- * Undo/Redo would be real nice
-
  * Popup when LMB on a connection to edit conn attributes (should be much
    more manageable than our previous Advanced tab on Room Edit)
 
@@ -56,6 +54,14 @@ Features to implement:
    *bad* the way they currently are, but there's a noticeable change
    between the stub area and the main connection area, when the connection
    is straight.
+
+ * Indication of how many rooms are selected, in our secondary info area
+   (until now only used for two-step actions; I don't think that we have
+   any valid two-step actions while selecting, so it shouldn't get in the
+   way of anything)
+
+ * Should allow copying a single room without having to explicitly select
+   it
 
 Things to consider:
 

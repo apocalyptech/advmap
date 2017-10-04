@@ -22,6 +22,7 @@ import math
 import os.path
 import operator
 import textwrap
+import collections
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from advmap import version
@@ -278,6 +279,9 @@ class Constants(object):
     # gets built.  This is stretching the definition of "Constant"
     # pretty terribly, but I do not feel bad about this.
     statusbar = None
+
+    # How many Undo actions we store before cycling 'em out
+    max_undo_len = 30
 
 def draw_dashed_line(x1, y1, x2, y2, dash_pixels, pen,
         parent=None, scene=None, zvalue=None):
@@ -860,6 +864,25 @@ class CloseButton(QtWidgets.QPushButton):
     def __init__(self, parent=None):
         super().__init__(Constants.gfx_icon_close, 'Close', parent)
 
+class UndoAction(object):
+    """
+    Simple little object to hold some information about an undo state.
+    This is basically just a glorified dict which holds the index of
+    the map in question (as in from the main map selection combo box),
+    and a duplicate of the map as it should be, should we revert to
+    this state.
+    """
+
+    def __init__(self, index, mapobj, description):
+        """
+        Initialize given a map index and a map object.  Take care that
+        the map object passed in is a duplicate of the "real" map the
+        user is working on.
+        """
+        self.index = index
+        self.mapobj = mapobj
+        self.description = description
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window.
@@ -973,6 +996,8 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_icon_minus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-minus.png')))
         Constants.gfx_icon_copy = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-upload.png')))
         Constants.gfx_icon_paste = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-download.png')))
+        Constants.gfx_icon_undo = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-previous.png')))
+        Constants.gfx_icon_redo = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-skip.png')))
 
         Constants.gfx_icon_ok = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-success.png')))
         Constants.gfx_icon_yes = Constants.gfx_icon_ok
@@ -1018,6 +1043,13 @@ class GUI(QtWidgets.QMainWindow):
 
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
+        self.undo_menu_item = editmenu.addAction(Constants.gfx_icon_undo,
+                '&Undo', self.action_undo, 'Ctrl+Z')
+        self.undo_menu_item.setEnabled(False)
+        self.redo_menu_item = editmenu.addAction(Constants.gfx_icon_redo,
+                '&Redo', self.action_redo, 'Ctrl+Y')
+        self.redo_menu_item.setEnabled(False)
+        editmenu.addSeparator()
         editmenu.addAction(Constants.gfx_icon_save_as,
                 'Select &All', self.action_select_all, 'Ctrl+A')
         self.copy_menu_item = editmenu.addAction(Constants.gfx_icon_copy,
@@ -1069,6 +1101,9 @@ class GUI(QtWidgets.QMainWindow):
 
         # Set up an empty clipboard object
         self.clipboard = Clipboard()
+
+        # Set up a clean Undo stack
+        self.clear_undo()
 
         # Show ourselves
         self.show()
@@ -1180,6 +1215,7 @@ class GUI(QtWidgets.QMainWindow):
         self.set_status('Editing %s' % filename)
         self.set_mapcombo()
         self.revert_menu_item.setEnabled(True)
+        self.clear_undo()
         return True
 
     def set_mapcombo(self, keep_position=False):
@@ -1203,6 +1239,14 @@ class GUI(QtWidgets.QMainWindow):
         self.setWindowTitle('Adventure Game Mapper | {} | {}'.format(self.game.name, self.mapobj.name))
         self.toolbar.game_label.setText('<b>{}</b>'.format(self.game.name))
         self.restore_view_memory()
+
+    def replace_map(self, mapindex, mapobj):
+        """
+        Replaces the map at the given index with the specified
+        object.
+        """
+        self.game.maps[mapindex] = mapobj
+        self.set_current_map(mapindex)
 
     def clear_view_memory(self):
         """
@@ -1258,6 +1302,7 @@ class GUI(QtWidgets.QMainWindow):
         self.set_mapcombo()
         self.revert_menu_item.setEnabled(False)
         self.set_status('Editing a new game')
+        self.clear_undo()
         self.clear_view_memory()
         self.restore_view_memory()
 
@@ -1289,14 +1334,18 @@ class GUI(QtWidgets.QMainWindow):
         """
         Attempts to nudge the current scene in the given direction
         """
+        self.start_undo()
         if self.mapobj.nudge(direction):
+            self.finish_undo('Nudge Map to {}'.format(DIR_2_TXT[direction]))
             self.scene.recreate()
 
     def resize_map(self, direction):
         """
         Attempts to resize the current scene in the given direction
         """
+        self.start_undo()
         if self.mapobj.resize(direction):
+            self.finish_undo('Resize Map to {}'.format(DIR_2_TXT[direction]))
             self.scene.recreate()
 
     def toggle_nudge(self):
@@ -1397,6 +1446,7 @@ class GUI(QtWidgets.QMainWindow):
             if proceed:
                 try:
                     self.load_from_file(self.curfile)
+                    self.clear_undo()
                     self.dialog_info('Reverted to on-disk version of file')
                 except Exception as e:
                     self.dialog_error('Unable to Revert file', str(e))
@@ -1610,7 +1660,14 @@ class GUI(QtWidgets.QMainWindow):
         else:
             x = None
             y = None
+        self.start_undo()
         if self.clipboard.paste(self.mapobj, x, y):
+            roomcount = self.clipboard.room_count()
+            if roomcount == 1:
+                plural = 's'
+            else:
+                plural = ''
+            self.finish_undo('Paste {} Room{}'.format(roomcount, plural))
             self.scene.recreate()
             count = self.clipboard.room_count()
             if count == 1:
@@ -1631,6 +1688,87 @@ class GUI(QtWidgets.QMainWindow):
                 self.copy_menu_item.setEnabled(True)
             else:
                 self.copy_menu_item.setEnabled(False)
+
+    def start_undo(self, description=None):
+        """
+        Start an undo action.  If `description` is passed in, we will
+        also commit the action right away.
+        """
+        self.cur_undo = self.scene.mapobj.duplicate()
+        if description:
+            self.finish_undo(description)
+
+    def finish_undo(self, description):
+        """
+        Commits our previously-started undo action.
+        """
+        if self.cur_undo:
+            self.undo.append(UndoAction(self.toolbar.mapcombo.currentIndex(),
+                self.cur_undo,
+                description))
+            self.cur_undo = None
+            self.update_undo_menus()
+            self.clear_redo()
+
+    def action_undo(self):
+        """
+        Handle our "undo" action
+        """
+        if len(self.undo) > 0:
+            undo = self.undo.pop()
+            self.toolbar.mapcombo.setCurrentIndex(undo.index)
+            self.redo.append(UndoAction(undo.index,
+                self.scene.mapobj.duplicate(),
+                undo.description))
+            self.replace_map(undo.index, undo.mapobj.duplicate())
+            self.scene.recreate()
+            self.update_undo_menus()
+
+    def action_redo(self):
+        """
+        Handle our "redo" action
+        """
+        if len(self.redo) > 0:
+            redo = self.redo.pop()
+            self.toolbar.mapcombo.setCurrentIndex(redo.index)
+            self.undo.append(UndoAction(redo.index,
+                self.scene.mapobj.duplicate(),
+                redo.description))
+            self.replace_map(redo.index, redo.mapobj.duplicate())
+            self.scene.recreate()
+            self.update_undo_menus()
+
+    def update_undo_menus(self):
+        """
+        Updates our undo/redo menu states
+        """
+        if len(self.undo) == 0:
+            self.undo_menu_item.setEnabled(False)
+            self.undo_menu_item.setText('&Undo')
+        else:
+            self.undo_menu_item.setEnabled(True)
+            self.undo_menu_item.setText('&Undo "{}"'.format(self.undo[-1].description))
+        if len(self.redo) == 0:
+            self.redo_menu_item.setEnabled(False)
+            self.redo_menu_item.setText('&Redo')
+        else:
+            self.redo_menu_item.setEnabled(True)
+            self.redo_menu_item.setText('&Redo "{}"'.format(self.redo[-1].description))
+
+    def clear_redo(self):
+        """
+        Clears our redo stacks
+        """
+        self.redo = collections.deque(maxlen=Constants.max_undo_len)
+        self.update_undo_menus()
+
+    def clear_undo(self):
+        """
+        Clears our undo/redo stacks
+        """
+        self.cur_undo = None
+        self.undo = collections.deque(maxlen=Constants.max_undo_len)
+        self.clear_redo()
 
 class HoverArea(QtWidgets.QGraphicsRectItem):
     """
@@ -1665,14 +1803,15 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         """
         self.actionlist.append((report_keys, report_text))
 
-    def add_key_action(self, report_keys, report_text, keylist, action, action_args):
+    def add_key_action(self, report_keys, report_text, keylist, action, action_args, undo_texts):
         """
         Adds a possible keyboard action that we can take.  `report_keys`
         is what the user will see as the available action, and `report_text`
         is how the action will be described.  `keylist` should be a list of
         keys which map to this action.  `action` is the function itself, to call.
         `action_args` should be a list corresponding to `keylist`, with the
-        optional argument(s) to send to the function.
+        optional argument(s) to send to the function.  `undo_texts`, likewise,
+        should be a list of the text to report in our undo/redo menus
 
         If our Scene has multi-selections enabled, those keys will always override
         keyboard controls otherwise usually available, so we will check for that
@@ -1683,21 +1822,22 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
             return
         self.actionlist.append((report_keys, report_text))
         if action is not None:
-            for (key, args) in zip(keylist, action_args):
-                self.key_actions_by_key[key] = (action, args)
+            for (key, args, undo) in zip(keylist, action_args, undo_texts):
+                self.key_actions_by_key[key] = (action, args, undo)
 
-    def add_mouse_action(self, report_button, report_text, button, action, action_args):
+    def add_mouse_action(self, report_button, report_text, button, action, action_args, undo_text):
         """
         Adds a possible keyboard action that we can take.  `report_button`
         is what the user will see as the available action, and `report_text`
         is how the action will be described.  `button` should be the mouse
         button which maps to this action.  `action` is the function itself, to call.
         `action_args` should be a list of optional argument(s) to send to the
-        function.
+        function.  `undo_text` should be the text to report in our undo/redo menus.
         """
         self.actionlist.append((report_button, report_text))
-        if button is not None and action is not None and action_args is not None:
-            self.mouse_actions_by_button[button] = (action, action_args)
+        if button is None or action is None or action_args is None or undo_text is None:
+            return
+        self.mouse_actions_by_button[button] = (action, action_args, undo_text)
 
     def show_actions(self, scene=None):
         """
@@ -1727,8 +1867,10 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         Activates the given keyboard action
         """
         if self.has_key_action(key):
-            (action, args) = self.key_actions_by_key[key]
-            return action(*args)
+            (action, args, undo_text) = self.key_actions_by_key[key]
+            self.mainwindow.start_undo()
+            if action(*args):
+                self.mainwindow.finish_undo(undo_text)
 
     def has_mouse_action(self, button):
         """
@@ -1742,8 +1884,10 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         Activates the given mouse action
         """
         if self.has_mouse_action(button):
-            (action, args) = self.mouse_actions_by_button[button]
-            return action(*args)
+            (action, args, undo_text) = self.mouse_actions_by_button[button]
+            self.mainwindow.start_undo()
+            if action(*args):
+                self.mainwindow.finish_undo(undo_text)
 
     def set_up_actions(self):
         """
@@ -1822,7 +1966,8 @@ class GUIRoomNudgeHover(HoverArea):
         bother checking for that.
         """
         self.add_mouse_action('LMB', 'nudge room', QtCore.Qt.LeftButton,
-                self.nudge_room, [])
+                self.nudge_room, [],
+                'Nudge Room to {}'.format(DIR_2_TXT[self.direction]))
 
     def nudge_room(self):
         """
@@ -1831,6 +1976,9 @@ class GUIRoomNudgeHover(HoverArea):
         scene = self.scene()
         if scene.mapobj.move_room(self.room, self.direction):
             scene.recreate()
+            return True
+        else:
+            return False
 
 class GUIConnectionHover(HoverArea):
 
@@ -1882,33 +2030,43 @@ class GUIConnectionHover(HoverArea):
         """
         scene = self.scene()
         if self.room.get_loopback(self.direction):
-            self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection, [[]])
+            self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection,
+                    [[]], ['Remove Loopback'])
         elif self.conn:
             self.add_mouse_action('RMB', 'move connection', QtCore.Qt.RightButton,
-                    self.move_connection_step_one, [])
-            self.add_key_action('C', 'remove connection', ['c'], self.remove_connection, [[]])
-            self.add_key_action('E', 'add extra', ['e'], self.add_extra_step_one, [[]])
-            self.add_key_action('T', 'type', ['t'], self.cycle_type, [[]])
-            self.add_key_action('P', 'path', ['p'], self.cycle_render_type, [[]])
-            self.add_key_action('O', 'orientation', ['o'], self.cycle_passage, [[]])
-            self.add_key_action('L', 'stub length', ['l'], self.cycle_stub_length, [[]])
+                    self.move_connection_step_one, [], '')
+            self.add_key_action('C', 'remove connection', ['c'], self.remove_connection,
+                    [[]], ['Remove Connection'])
+            self.add_key_action('E', 'add extra', ['e'], self.add_extra_step_one,
+                    [[]], ['Add Extra Connection End'])
+            self.add_key_action('T', 'type', ['t'], self.cycle_type,
+                    [[]], ['Change Conection Type'])
+            self.add_key_action('P', 'path', ['p'], self.cycle_render_type,
+                    [[]], ['Change Connection Path'])
+            self.add_key_action('O', 'orientation', ['o'], self.cycle_passage,
+                    [[]], ['Change Connection Orientation'])
+            self.add_key_action('L', 'stub length', ['l'], self.cycle_stub_length,
+                    [[]], ['Change Connection Stub Length'])
             if self.conn.symmetric:
-                self.add_key_action('S','symmetric OFF', ['s'], self.toggle_symmetric, [[]])
+                self.add_key_action('S','symmetric OFF', ['s'], self.toggle_symmetric,
+                        [[]], ['Toggle Connection Symmetry Off'])
             else:
-                self.add_key_action('S','symmetric ON', ['s'], self.toggle_symmetric, [[]])
+                self.add_key_action('S','symmetric ON', ['s'], self.toggle_symmetric,
+                        [[]], ['Toggle Connection Symmetry On'])
             if not self.conn.is_primary(self.room, self.direction):
-                self.add_key_action('R', 'set primary', ['r'], self.set_primary, [[]])
+                self.add_key_action('R', 'set primary', ['r'], self.set_primary,
+                        [[]], ['Set Primary Connection'])
         else:
             coords = scene.mapobj.dir_coord(self.room, self.direction)
             if coords:
                 other_room = scene.mapobj.get_room_at(coords[0], coords[1])
                 if not other_room:
                     self.add_mouse_action('LMB', 'new room', QtCore.Qt.LeftButton,
-                            self.new_connection_room, [])
+                            self.new_connection_room, [], 'Add new Room')
             self.add_mouse_action('RMB', 'new connection', QtCore.Qt.RightButton,
-                    self.new_connection_step_one, [])
+                    self.new_connection_step_one, [], '')
             self.add_mouse_action('MMB', 'new loopback', QtCore.Qt.MiddleButton,
-                    self.new_loopback, [])
+                    self.new_loopback, [], 'Add new Loopback')
 
     def remove_connection(self):
         """
@@ -1917,6 +2075,7 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.mapobj.detach(self.room, self.direction)
         scene.recreate()
+        return True
 
     def move_connection_step_one(self):
         """
@@ -1925,6 +2084,7 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.two_step_move_connection = (self.room, self.direction)
         self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to move connection')
+        return False
 
     def add_extra_step_one(self):
         """
@@ -1934,6 +2094,7 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.two_step_add_extra = (self.room, self.direction)
         self.gui_room.mainwindow.statusbar.set_two_step_text('E again to add an extra connection to the same room')
+        return False
 
     def cycle_type(self):
         """
@@ -1941,6 +2102,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.cycle_conn_type(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def cycle_render_type(self):
         """
@@ -1948,6 +2110,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.cycle_render_type(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def cycle_passage(self):
         """
@@ -1955,6 +2118,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.cycle_passage()
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def cycle_stub_length(self):
         """
@@ -1962,6 +2126,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.increment_stub_length(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def toggle_symmetric(self):
         """
@@ -1969,6 +2134,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.toggle_symmetric(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def set_primary(self):
         """
@@ -1976,6 +2142,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.conn.set_primary(self.room, self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def new_connection_room(self):
         """
@@ -1986,7 +2153,11 @@ class GUIConnectionHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+            rv = True
+        else:
+            rv = False
         self.gui_room.mainwindow.activateWindow()
+        return rv
 
     def new_connection_step_one(self):
         """
@@ -1996,6 +2167,7 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         scene.two_step_new_connection = (self.room, self.direction)
         self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to link to existing room')
+        return False
 
     def new_loopback(self):
         """
@@ -2003,6 +2175,7 @@ class GUIConnectionHover(HoverArea):
         """
         self.room.set_loopback(self.direction)
         self.scene().recreate((self.room, self.direction))
+        return True
 
     def mousePressEvent(self, event):
         """
@@ -2018,8 +2191,10 @@ class GUIConnectionHover(HoverArea):
                 (orig_room, orig_dir) = scene.two_step_move_connection
                 scene.clear_two_step_actions()
                 conn = orig_room.get_conn(orig_dir)
+                self.gui_room.mainwindow.start_undo()
                 if conn.move_end(orig_room, orig_dir, new_room, new_dir):
                     scene.recreate()
+                    self.gui_room.mainwindow.finish_undo('Move Connection')
                 return
         if scene.two_step_new_connection:
             button = event.button()
@@ -2028,9 +2203,11 @@ class GUIConnectionHover(HoverArea):
                 new_dir = self.direction
                 (orig_room, orig_dir) = scene.two_step_new_connection
                 scene.clear_two_step_actions()
+                self.gui_room.mainwindow.start_undo()
                 if new_room != orig_room:
                     scene.mapobj.connect(orig_room, orig_dir, new_room, new_dir)
                     scene.recreate()
+                    self.gui_room.mainwindow.finish_undo('Create New Connection')
                 return
         super().mousePressEvent(event)
 
@@ -2049,7 +2226,9 @@ class GUIConnectionHover(HoverArea):
                 new_dir = self.direction
                 scene.clear_two_step_actions()
                 try:
+                    self.gui_room.mainwindow.start_undo()
                     conn.connect_extra(new_room, new_dir)
+                    self.gui_room.mainwindow.finish_undo('Add Extra Connection')
                 except Exception as e:
                     pass
                 scene.recreate()
@@ -2085,29 +2264,34 @@ class GUIRoomHover(HoverArea):
         scene = self.scene()
         if self.mainwindow.is_readonly():
             self.add_mouse_action('LMB', 'view details', QtCore.Qt.LeftButton,
-                    self.view_details, [])
+                    self.view_details, [], '')
         else:
             self.add_mouse_action('LMB', 'edit room', QtCore.Qt.LeftButton,
-                    self.edit_room, [])
+                    self.edit_room, [], 'Edit Room')
             if scene.is_selected(self.gui_room.room):
                 self.add_label_action('shift-click', 'deselect')
             else:
                 self.add_label_action('shift-click', 'select')
             self.add_key_action('WASD', 'nudge room', ['w', 'a', 's', 'd'],
-                self.nudge_room, [[DIR_N], [DIR_W], [DIR_S], [DIR_E]])
-            self.add_key_action('X', 'delete', ['x'], self.delete_room, [[]])
+                self.nudge_room, [[DIR_N], [DIR_W], [DIR_S], [DIR_E]],
+                ['Nudge Room to N', 'Nudge Room to W', 'Nudge Room to S', 'Nudge Room to E'])
+            self.add_key_action('X', 'delete', ['x'], self.delete_room,
+                    [[]], ['Delete Room'])
             self.add_key_action('H/V', 'toggle horiz/vert offset', ['h', 'v'],
-                self.toggle_offset, [[False], [True]])
-            self.add_key_action('T', 'change type', ['t'], self.change_type, [[]])
-            self.add_key_action('R', 'change color', ['r'], self.change_color, [[]])
+                self.toggle_offset, [[False], [True]],
+                ['Toggle Room Horizontal Offset', 'Toggle Room Vertical Offset'])
+            self.add_key_action('T', 'change type', ['t'], self.change_type,
+                    [[]], ['Change Room Type'])
+            self.add_key_action('R', 'change color', ['r'], self.change_color,
+                    [[]], ['Change Room Color'])
             if self.gui_room.room.group:
                 self.add_key_action('G', 'change group render', ['g'],
-                        self.change_group_render, [[]])
+                        self.change_group_render, [[]], ['Change Group Render Color'])
                 self.add_key_action('O', 'remove from group', ['o'],
-                        self.remove_from_group, [[]])
+                        self.remove_from_group, [[]], ['Remove Room from Group'])
             else:
                 self.add_key_action('G', 'add to group', ['g'],
-                        self.add_to_group_step_one, [[]])
+                        self.add_to_group_step_one, [[]], ['Add Room to Group'])
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -2127,6 +2311,7 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         scene.mapobj.move_room(room, direction)
         scene.recreate(room)
+        return True
 
     def change_type(self):
         """
@@ -2136,6 +2321,7 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         room.increment_type()
         scene.recreate(room)
+        return True
 
     def change_color(self):
         """
@@ -2145,6 +2331,7 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         room.increment_color()
         scene.recreate(room)
+        return True
 
     def toggle_offset(self, vertical=False):
         """
@@ -2157,6 +2344,7 @@ class GUIRoomHover(HoverArea):
         else:
             room.offset_x = not room.offset_x
         scene.recreate(room)
+        return True
 
     def delete_room(self):
         """
@@ -2168,10 +2356,11 @@ class GUIRoomHover(HoverArea):
         if len(mapobj.rooms) < 2:
             self.mainwindow.dialog_error('Unable to remove room',
                     'You cannot remove the last room from a map')
-            return
+            return False
         mapobj.del_room(room)
         self.hoverLeaveEvent()
         scene.recreate()
+        return True
 
     def change_group_render(self):
         """
@@ -2181,6 +2370,7 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         room.group.increment_style()
         scene.recreate(room)
+        return True
 
     def remove_from_group(self):
         """
@@ -2190,6 +2380,9 @@ class GUIRoomHover(HoverArea):
         room = self.gui_room.room
         if scene.mapobj.remove_room_from_group(room):
             scene.recreate(room)
+            return True
+        else:
+            return False
 
     def add_to_group_step_one(self):
         """
@@ -2198,6 +2391,7 @@ class GUIRoomHover(HoverArea):
         scene = self.scene()
         scene.two_step_group_first = self.gui_room.room
         self.gui_room.mainwindow.statusbar.set_two_step_text('G again to add to a group')
+        return False
 
     def view_details(self):
         """
@@ -2206,6 +2400,7 @@ class GUIRoomHover(HoverArea):
         d = RoomDetailsDialog(self.gui_room.mainwindow, self.gui_room.room)
         d.exec()
         self.gui_room.mainwindow.activateWindow()
+        return False
 
     def edit_room(self):
         """
@@ -2215,7 +2410,11 @@ class GUIRoomHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+            rv = True
+        else:
+            rv = False
         self.gui_room.mainwindow.activateWindow()
+        return rv
 
     def keyPressEvent(self, event):
         """
@@ -2229,8 +2428,10 @@ class GUIRoomHover(HoverArea):
                 room = self.gui_room.room
                 other_room = scene.two_step_group_first
                 scene.clear_two_step_actions()
+                self.gui_room.mainwindow.start_undo()
                 if scene.mapobj.group_rooms(room, other_room):
                     scene.recreate(room)
+                    self.gui_room.mainwindow.finish_undo('Group Rooms')
                 return
         super().keyPressEvent(event)
 
@@ -2486,7 +2687,8 @@ class GUINewRoomHover(HoverArea):
         scene = self.scene()
         self.add_label_action('LMB', 'click-and-drag')
         if not self.mainwindow.is_readonly():
-            self.add_key_action('N', 'new room', ['n'], self.new_room, [[]])
+            self.add_key_action('N', 'new room', ['n'], self.new_room,
+                    [[]], ['Add new room'])
 
     def hoverLeaveEvent(self, event=None):
         """
@@ -2518,7 +2720,11 @@ class GUINewRoomHover(HoverArea):
         res = d.exec()
         if res == d.Accepted:
             self.scene().recreate()
+            rv = True
+        else:
+            rv = False
         self.gui_newroom.mainwindow.activateWindow()
+        return rv
 
 class GUINewRoom(QtWidgets.QGraphicsRectItem):
 
@@ -3823,6 +4029,12 @@ class EditGameDialog(AppDialog):
         button.clicked.connect(self.remove_map)
         hbox_layout.addWidget(button)
 
+        # Note about Undo/Redo
+        undolabel = QtWidgets.QLabel("""<b>Note:</b> Hitting "OK" on this dialog will
+            reset the undo/redo state.""")
+        undolabel.setWordWrap(True)
+        layout.addWidget(undolabel)
+
     def accept(self):
         """
         User hit "OK" on the dialog
@@ -3858,6 +4070,9 @@ class EditGameDialog(AppDialog):
 
         # Set our currently-selected map
         mainwindow.toolbar.mapcombo.setCurrentIndex(new_map_idx)
+
+        # Clear out our undo/redo states
+        mainwindow.clear_undo()
 
         # And finally, trigger a recreate
         mainwindow.scene.recreate()
@@ -4698,34 +4913,40 @@ class MapScene(QtWidgets.QGraphicsScene):
         if self.has_selections() and not self.mainwindow.is_readonly():
             self.multi_select_actions.add_key_action('WASD', 'nudge rooms',
                     ['w', 'a', 's', 'd'], self.multi_nudge_rooms,
-                    [[DIR_N], [DIR_W], [DIR_S], [DIR_E]])
+                    [[DIR_N], [DIR_W], [DIR_S], [DIR_E]],
+                    ['Nudge Rooms to N', 'Nudge Rooms to W',
+                        'Nudge Rooms to S', 'Nudge Rooms to E'])
             self.multi_select_actions.add_key_action('H/V', 'toggle horiz/vert offsets',
-                    ['h', 'v'], self.multi_toggle_offsets, [[False], [True]])
+                    ['h', 'v'], self.multi_toggle_offsets, [[False], [True]],
+                    ['Toggle Rooms Horizontal Offset', 'Toggle Rooms Vertical Offset'])
             self.multi_select_actions.add_key_action('T', 'change types',
-                    ['t'], self.multi_change_types, [[]])
+                    ['t'], self.multi_change_types, [[]], ['Change Room Types'])
             self.multi_select_actions.add_key_action('R', 'change colors',
-                    ['r'], self.multi_change_colors, [[]])
+                    ['r'], self.multi_change_colors, [[]], ['Change Room Colors'])
             if len(self.selected) > 1:
                 (num_nogroup, num_unique_groups, group) = self.get_group_info(self.selected)
                 if num_nogroup == 0:
                     if num_unique_groups == 1:
                         self.multi_select_actions.add_key_action('G', 'change group render',
-                                ['g'], self.multi_change_group_render, [[group]])
+                                ['g'], self.multi_change_group_render, [[group]],
+                                ['Change Group Render Color'])
                 else:
                     if num_unique_groups < 2:
                         self.multi_select_actions.add_key_action('G', 'group selected',
-                                ['g'], self.multi_group_selected, [[group]])
+                                ['g'], self.multi_group_selected, [[group]],
+                                ['Group Selected Rooms'])
 
                 if num_unique_groups > 0:
                     self.multi_select_actions.add_key_action('O', 'ungroup selected',
-                            ['o'], self.multi_ungroup_selected, [[]])
+                            ['o'], self.multi_ungroup_selected, [[]], ['Ungroup Rooms'])
             else:
                 selected_room = next(iter(self.selected))
                 if selected_room.group:
                     self.multi_select_actions.add_key_action('G', 'change group render',
-                            ['g'], self.multi_change_group_render, [[selected_room.group]])
+                            ['g'], self.multi_change_group_render, [[selected_room.group]],
+                            ['Change Group Render Color'])
                     self.multi_select_actions.add_key_action('O', 'ungroup selected',
-                            ['o'], self.multi_ungroup_selected, [[]])
+                            ['o'], self.multi_ungroup_selected, [[]], ['Ungroup Rooms'])
 
     def keyPressEvent(self, event):
         """
@@ -4748,6 +4969,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         if self.mapobj.nudge(direction, self.selected):
             self.recreate()
+            return True
+        else:
+            return False
 
     def multi_toggle_offsets(self, vertical=False):
         """
@@ -4779,6 +5003,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             else:
                 room.offset_x = set_value
         self.recreate()
+        return True
 
     def multi_change_types(self):
         """
@@ -4802,6 +5027,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             for room in self.selected:
                 room.type = room_to_increment.type
         self.recreate()
+        return True
 
     def multi_change_colors(self):
         """
@@ -4825,6 +5051,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             for room in self.selected:
                 room.color = room_to_increment.color
         self.recreate()
+        return True
 
     def multi_change_group_render(self, group):
         """
@@ -4832,6 +5059,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         group.increment_style()
         self.recreate()
+        return True
 
     def multi_group_selected(self, group):
         """
@@ -4846,6 +5074,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             for room in roomlist[1:]:
                 self.mapobj.group_rooms(roomlist[0], room)
         self.recreate()
+        return True
 
     def multi_ungroup_selected(self):
         """
@@ -4857,6 +5086,9 @@ class MapScene(QtWidgets.QGraphicsScene):
                 need_gfx_update = True
         if need_gfx_update:
             self.recreate()
+            return True
+        else:
+            return False
 
 class MapArea(QtWidgets.QGraphicsView):
     """
