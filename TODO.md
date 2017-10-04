@@ -3,7 +3,7 @@ Bugs to fix:
  * If one of these Qt bugs ever gets fixed:
     https://bugreports.qt.io/browse/QTBUG-63322
     https://bugreports.qt.io/browse/QTBUG-63386
-   ... get rid of our draw_dashed_line function and go back to
+   ... get rid of our `draw_dashed_line` function and go back to
    using setDashPattern() like I'd love to be doing.
 
  * There's some very minor rendering oddities I'd like to get sorted out
@@ -82,6 +82,9 @@ Things to consider:
    doesn't really matter, but it's still pretty inefficient.  Really we
    should be just updating what's changed and keeping the rest of the scene
    intact.  That's more work than I cared to deal with, since we'd have a
-   lot of QGraphics*Items lying around all over the place, but it's
+   lot of QGraphicsFooItems lying around all over the place, but it's
    something to consider for the future.
+
+ * It would probably make sense to move from a custom binary savefile
+   format to using gzipped JSON or something.
 
