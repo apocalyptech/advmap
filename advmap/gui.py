@@ -3536,7 +3536,7 @@ class AboutDialog(QtWidgets.QDialog):
         icon_label_2 = QtWidgets.QLabel("""<span>The other icons are designed by
             <a href="https://smashicons.com/">Smashicons</a>, from
             <a href="https://www.flaticon.com/authors/smashicons">Flaticon</a>, and
-            are available bia the Flaticon free license.</span>""")
+            are available via the Flaticon free license.</span>""")
         icon_label_2.setOpenExternalLinks(True)
         icon_label_2.setWordWrap(True)
         icon_label_2.setFixedWidth(300)
