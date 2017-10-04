@@ -28,9 +28,6 @@ Features to implement:
  * Different ways to draw nonsymmetric links (thinking "rounded" and
    "midpoint" at the least)
 
- * Expand our room tooltips - should be able to summarize most of the
-   info in there, I'd think.
-
  * Should really draw some little icons for mouseovers, instead of just
    highlighting in green
 

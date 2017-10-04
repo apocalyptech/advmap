@@ -2587,12 +2587,21 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                     Constants.room_text_padding*2
             cur_notes_y = self.title.offset_height() - Constants.room_text_padding
 
+            # Set up some tooltip text
+            tooltip_data = []
+
             # Find out how many in/out/up/down labels we may have, and figure out a
             # bit of label geometry based on that
             extra_labels = 0
-            for label in [room.up, room.down, room.door_in, room.door_out]:
+            for (label, text) in [
+                    (room.up, 'Up'),
+                    (room.down, 'Down'),
+                    (room.door_in, 'In'),
+                    (room.door_out, 'Out'),
+                    ]:
                 if label and label != '':
                     extra_labels += 1
+                    tooltip_data.append('<div><b>{}</b>: {}</div>'.format(text, label))
             if extra_labels == 0:
                 reserved_for_extras = 0
             else:
@@ -2611,7 +2620,11 @@ class GUIRoom(QtWidgets.QGraphicsRectItem):
                         room_data_height - reserved_for_extras)
 
                 self.notes = GUIRoomNotesTextItem(self, max_notes_height)
-                self.setToolTip('<span>{}</span>'.format(self.room.notes))
+                tooltip_data.append('<p><b>Notes:</b> {}</p>'.format(self.room.notes))
+
+            # Set our tooltip, if we have one.
+            if len(tooltip_data) > 0:
+                self.setToolTip(''.join(tooltip_data))
 
             # Set up positioning vars for both notes and extra labels.  If there's
             # just one of the two, center it across the whole space.  Otherwise,
