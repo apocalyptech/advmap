@@ -7,10 +7,7 @@ etc).
 
 It's got some good points and bad points; a lot of it's a little bizarre.
 Regardless, I've been using it off and on since 2010, whenever I go on an
-adventure game bender, and it's continued to perform well for me.  (Though
-the odd game will end up prompting more feature enhancements to support
-more mapping possibilities -- the Zork series in particular prompted more
-features than just about the rest combined.)
+adventure game bender, and it's continued to perform well for me.
 
 The file format itself is currently a custom binary format.  This may end
 up eventually changing to something like gzipped json, though I'm not sure
@@ -25,12 +22,9 @@ Running
 -------
 
 This application is written in Python 3 (only tested with Python 3.6), using
-PyQt5 as its GUI toolkit.  Previous versions of the app used PyGTK2 and used
-only supported Python 2.  The old Gtk+ version is available in the
-`obsolete_pygtk` branch on GitHub, for convenience, but note that there won't
-be any more updates to it, and it's already lagging behind.
+PyQt5 as its GUI toolkit.
 
-I've developed this and run it exclusively on Linux, but it should work on
+This has been developed and run exclusively on Linux, but it should work on
 anything you can get PyQt to work on.  I believe that this should be possible
 on both Windows and OSX, though I have no experience trying with either.
 
@@ -39,11 +33,6 @@ load up a file in the `data` directory, or start making your own.
 
 Abilities
 ---------
-
-This app should be able to serve for most mapping needs, though it's sometimes
-a bit clumsy.  Mapping out the maze from Zork I, for instance, is an
-"interesting" process and takes a bunch of finagling to look good.  In general
-this does a great job, though.
 
 The app supports containing multiple maps within the same game, accessible
 via a dropdown and button in the upper right:
@@ -62,9 +51,9 @@ I'm fond of using the Dark setting for dark rooms in the Zork series, for instan
 Rooms can also be colored with any one of eight colors: black+white, green, blue,
 red, yellow, purple/magenta, cyan, and orange.  A number of text labels can be
 attached to rooms, and will be rendered with appropriate icons: up/down/in/out.
-A "notes" field exists for more general gameplay notes, and is useful for mapping
-things like the Zork I maze.  The screenshot below includes all room types, including
-a Connection Helper connecting "In A Tree" to "Outside Cave."
+A "notes" field exists for more general gameplay notes.  The screenshot below
+includes all room types, including a Connection Helper connecting "In A Tree"
+to "Outside Cave."
 
 ![Room Styling](screenshots/screenshot-roomstyles.png)
 
@@ -131,6 +120,10 @@ to be pasted.  For instance, if you've just selected the following rooms:
 `Ctrl-V` somewhere else would cause the three rooms to be pasted "around" the spot
 you're hovering, as shown in the screenshot.  Any connections and groups which the
 rooms share will be included in the paste activity.
+
+The app also supports undo/redo, with a current undo depth of 30 actions.  The one
+limitation is that using the "Game Edit" dialog (where your collection of maps can
+be altered) will reset the Undo history.
 
 Controls while highlighting an empty spot on the map:
 
