@@ -60,9 +60,6 @@ Features to implement:
    any valid two-step actions while selecting, so it shouldn't get in the
    way of anything)
 
- * Should allow copying a single room without having to explicitly select
-   it
-
 Things to consider:
 
  * Should we still be able to edit Notes in readonly mode?

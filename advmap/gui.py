@@ -1640,7 +1640,13 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "copy" action
         """
-        self.clipboard.copy(self.scene.mapobj, self.scene.selected)
+        if len(self.scene.selected) > 0:
+            self.clipboard.copy(self.scene.mapobj, self.scene.selected)
+        elif (self.scene.hover_current and
+                type(self.scene.hover_current) == GUIRoomHover):
+            self.clipboard.copy(self.scene.mapobj, [self.scene.hover_current.gui_room.room])
+        else:
+            return
         if not self.is_readonly():
             self.paste_menu_item.setEnabled(True)
         count = self.clipboard.room_count()
@@ -1685,6 +1691,9 @@ class GUI(QtWidgets.QMainWindow):
         """
         if self.scene:
             if self.scene.has_selections():
+                self.copy_menu_item.setEnabled(True)
+            elif (self.scene.hover_current and
+                    type(self.scene.hover_current) == GUIRoomHover):
                 self.copy_menu_item.setEnabled(True)
             else:
                 self.copy_menu_item.setEnabled(False)
@@ -2256,6 +2265,7 @@ class GUIRoomHover(HoverArea):
         self.setFocus()
         self.mainwindow.maparea.setFocus()
         self.show_actions()
+        self.gui_room.mainwindow.update_copy_menu()
 
     def set_up_actions(self):
         """
@@ -2302,6 +2312,7 @@ class GUIRoomHover(HoverArea):
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
         self.scene().default_actions()
+        self.gui_room.mainwindow.update_copy_menu()
 
     def nudge_room(self, direction):
         """
