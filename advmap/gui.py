@@ -2100,7 +2100,7 @@ class GUIConnectionHover(HoverArea):
         """
         scene = self.scene()
         scene.two_step_move_connection = (self.room, self.direction)
-        self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to move connection')
+        scene.start_two_step_action('Right-click to move connection')
         return False
 
     def add_extra_step_one(self):
@@ -2110,7 +2110,7 @@ class GUIConnectionHover(HoverArea):
         """
         scene = self.scene()
         scene.two_step_add_extra = (self.room, self.direction)
-        self.gui_room.mainwindow.statusbar.set_two_step_text('E again to add an extra connection to the same room')
+        scene.start_two_step_action('E again to add an extra connection to the same room')
         return False
 
     def cycle_type(self):
@@ -2183,7 +2183,7 @@ class GUIConnectionHover(HoverArea):
         """
         scene = self.scene()
         scene.two_step_new_connection = (self.room, self.direction)
-        self.gui_room.mainwindow.statusbar.set_two_step_text('Right-click to link to existing room')
+        scene.start_two_step_action('Right-click to link to existing room')
         return False
 
     def new_loopback(self):
@@ -2409,7 +2409,7 @@ class GUIRoomHover(HoverArea):
         """
         scene = self.scene()
         scene.two_step_group_first = self.gui_room.room
-        self.gui_room.mainwindow.statusbar.set_two_step_text('G again to add to a group')
+        scene.start_two_step_action('G again to add to a group')
         return False
 
     def view_details(self):
@@ -4921,6 +4921,16 @@ class MapScene(QtWidgets.QGraphicsScene):
         else:
             return False
 
+    def start_two_step_action(self, text):
+        """
+        Global things to do when we start a two-step action.  At the moment
+        this is just setting the application cursor so there's a bit more visual
+        feedback that something's going on, and setting our status text.
+        """
+        # PointingHandCursor is also all right, though I think I prefer CrossCursor
+        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
+        self.mainwindow.statusbar.set_two_step_text(text)
+
     def clear_two_step_actions(self):
         """
         Clears the vars used to store our two-step process state
@@ -4930,6 +4940,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.two_step_add_extra = None
         self.two_step_new_connection = None
         self.mainwindow.statusbar.clear_two_step_text()
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def have_two_step_action(self):
         """
