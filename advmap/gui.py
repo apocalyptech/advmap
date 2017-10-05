@@ -217,7 +217,7 @@ class Constants(object):
     c_connection = QtGui.QColor(0, 0, 0, 255)
     c_borders = QtGui.QColor(0, 0, 0, 255)
     c_label = QtGui.QColor(178, 178, 178, 255)
-    c_highlight = QtGui.QColor(127, 255, 127, 51)
+    c_highlight = QtGui.QColor(140, 255, 140, 51)
     c_highlight_nudge = QtGui.QColor(178, 178, 178, 51)
     c_highlight_modify = QtGui.QColor(200, 127, 255, 51)
     c_highlight_new = QtGui.QColor(127, 127, 255, 51)
@@ -227,7 +227,7 @@ class Constants(object):
     c_group_map = {
             Group.STYLE_NORMAL: QtGui.QColor(216, 216, 216, 255),
             Group.STYLE_RED: QtGui.QColor(242, 216, 216, 255),
-            Group.STYLE_GREEN: QtGui.QColor(216, 242, 216, 255),
+            Group.STYLE_GREEN: QtGui.QColor(190, 232, 190, 255),
             Group.STYLE_BLUE: QtGui.QColor(216, 216, 242, 255),
             Group.STYLE_YELLOW: QtGui.QColor(242, 242, 216, 255),
             Group.STYLE_PURPLE: QtGui.QColor(242, 216, 242, 255),
