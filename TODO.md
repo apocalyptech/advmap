@@ -27,10 +27,7 @@ Features to implement:
    more manageable than our previous Advanced tab on Room Edit)
 
  * Better one-way arrows for ladder connections.  What we do right now
-   is technically Good Enough, but it doesn't really look great.  Better
-   one-way arrows in general; right now the arrowhead grows with the
-   size of the line that's underneath it.  Would like to have it be the
-   same size regardless.
+   is technically Good Enough, but it doesn't really look great.
 
  * I'd really like to start unit-testing the GUI; apparently there
    *is* a QTest class, or something, which can assist with this.

@@ -64,6 +64,9 @@ class Constants(object):
     # will be drawn, not the space between them.
     arrow_head_width = 8
 
+    # How "long" the arrowhead should be, away from the point
+    arrow_head_length = room_space*1.5
+
     # Connection offsets - where to find the given connection based on
     # the room's initial (x,y) coord.
     connection_offset = {}
@@ -3265,17 +3268,30 @@ class GUIConnectionFactory(object):
 
         return coord_list
 
-    def arrow_coords(self, x1, y1, x2, y2):
+    def arrow_coords(self, x1, y1, x2, y2, adjust=True):
         """
         Given two points (x1, y1) and (x2, y2), this will provide
         coordinates necessary to draw an arrowhead centered on (x1, y1)
         It'll return a list with two 2-element tuples, representing
         the (x, y) coordinates.
+
+        When `adjust` is `True` (the default), (x2, y2) is only used
+        to provide a direction; the arrowhead will always be rendered
+        at a fixed size.  If it is `False`, the length of the arrowhead
+        will be determined by the length of (x1, y1) to (x2, y2)
         """
+
+        if adjust:
+            dx_orig = x2-x1
+            dy_orig = y2-y1
+            dist = math.sqrt(dx_orig**2 + dy_orig**2)
+            x2 = x1 + ((Constants.arrow_head_length*dx_orig)/dist)
+            y2 = y1 + ((Constants.arrow_head_length*dy_orig)/dist)
 
         dx_orig = x2-x1
         dy_orig = y2-y1
         dist = math.sqrt(dx_orig**2 + dy_orig**2)
+
         dx = dx_orig / dist
         dy = dy_orig / dist
         coord_list = []
@@ -3534,7 +3550,7 @@ class GUIConnectionFactory(object):
         x4 = coord[0] + (dist*dy)
         y4 = coord[1] - (dist*dx)
         self.draw_conn_segment(x4, y4, x3, y3, fakeend)
-        for coord_arrow in self.arrow_coords(x3, y3, x4, y4):
+        for coord_arrow in self.arrow_coords(x3, y3, x4, y4, adjust=False):
             self.draw_conn_segment(coord_arrow[0], coord_arrow[1], x4, y4, fakeend)
 
 class GUIGroup(QtWidgets.QGraphicsRectItem):
