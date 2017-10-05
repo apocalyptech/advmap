@@ -34,6 +34,9 @@ class Constants(object):
     of classes
     """
 
+    # Size of icons in our toolbar
+    toolbar_icon_size = 24
+
     # Geometry of our rooms, etc
     room_size = 110
     room_size_half = room_size/2
@@ -41,6 +44,8 @@ class Constants(object):
     room_space_half = room_space/2
     connhelper_corner_length = room_size_half*.2
     group_padding = 10
+    conn_hover_size = room_space
+    conn_hover_size_half = room_space_half
 
     # Border around the room where we theoretically want to not have text
     room_text_padding = 4
@@ -174,6 +179,21 @@ class Constants(object):
     gfx_icon_cancel = None
     gfx_icon_close = None
 
+    gfx_hover_add_conn = None
+    gfx_hover_edit_conn = None
+
+    gfx_hover_nudge_nw = None
+    gfx_hover_nudge_n = None
+    gfx_hover_nudge_ne = None
+    gfx_hover_nudge_e = None
+    gfx_hover_nudge_se = None
+    gfx_hover_nudge_s = None
+    gfx_hover_nudge_sw = None
+    gfx_hover_nudge_w = None
+    gfx_hover_icon_map = {}
+
+    gfx_hover_new_room = None
+
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -199,7 +219,7 @@ class Constants(object):
     c_label = QtGui.QColor(178, 178, 178, 255)
     c_highlight = QtGui.QColor(127, 255, 127, 51)
     c_highlight_nudge = QtGui.QColor(178, 178, 178, 51)
-    c_highlight_del = QtGui.QColor(255, 127, 127, 51)
+    c_highlight_modify = QtGui.QColor(200, 127, 255, 51)
     c_highlight_new = QtGui.QColor(127, 127, 255, 51)
     c_grid = QtGui.QColor(229, 229, 229, 255)
     c_transparent = QtGui.QColor(0, 0, 0, 0)
@@ -895,6 +915,15 @@ class GUI(QtWidgets.QMainWindow):
         super().__init__()
         self.initUI(initfile, readonly)
 
+    def icon_scale(self, pixmap, size):
+        """
+        Scales an icon to our specified size.  Just a convenience function so
+        we can do this stuff a little less wordily.
+        """
+        return pixmap.scaled(size, size,
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation)
+
     def initUI(self, initfile, readonly):
 
         # Set up a scene object in case something is looking for it.  This'll
@@ -952,38 +981,40 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_ladder_down_rev = QtGui.QPixmap(self.resfile('ladder_down_rev.png'))
         Constants.gfx_icon_width = Constants.gfx_door_in.width()
         Constants.other_max_width = Constants.room_size - Constants.room_text_padding*2 - Constants.gfx_icon_width - Constants.icon_label_space
-        Constants.gfx_nudge_nw = QtGui.QPixmap(self.resfile('dir_nw.png'))
-        Constants.gfx_nudge_n = QtGui.QPixmap(self.resfile('dir_n.png'))
-        Constants.gfx_nudge_ne = QtGui.QPixmap(self.resfile('dir_ne.png'))
-        Constants.gfx_nudge_e = QtGui.QPixmap(self.resfile('dir_e.png'))
-        Constants.gfx_nudge_se = QtGui.QPixmap(self.resfile('dir_se.png'))
-        Constants.gfx_nudge_s = QtGui.QPixmap(self.resfile('dir_s.png'))
-        Constants.gfx_nudge_sw = QtGui.QPixmap(self.resfile('dir_sw.png'))
-        Constants.gfx_nudge_w = QtGui.QPixmap(self.resfile('dir_w.png'))
-        Constants.gfx_resize_up = QtGui.QPixmap(self.resfile('dir_exp_up.png'))
-        Constants.gfx_resize_down = QtGui.QPixmap(self.resfile('dir_exp_down.png'))
-        Constants.gfx_resize_left = QtGui.QPixmap(self.resfile('dir_exp_left.png'))
-        Constants.gfx_resize_right = QtGui.QPixmap(self.resfile('dir_exp_right.png'))
-        Constants.gfx_grid = QtGui.QPixmap(self.resfile('grid.png'))
-        Constants.gfx_readonly = QtGui.QPixmap(self.resfile('lock.png'))
-        Constants.gfx_nudge = QtGui.QPixmap(self.resfile('direction.png'))
+
+        gfx_nudge_src_nw = QtGui.QPixmap(self.resfile('dir_nw.png'))
+        gfx_nudge_src_n = QtGui.QPixmap(self.resfile('dir_n.png'))
+        gfx_nudge_src_ne = QtGui.QPixmap(self.resfile('dir_ne.png'))
+        gfx_nudge_src_e = QtGui.QPixmap(self.resfile('dir_e.png'))
+        gfx_nudge_src_se = QtGui.QPixmap(self.resfile('dir_se.png'))
+        gfx_nudge_src_s = QtGui.QPixmap(self.resfile('dir_s.png'))
+        gfx_nudge_src_sw = QtGui.QPixmap(self.resfile('dir_sw.png'))
+        gfx_nudge_src_w = QtGui.QPixmap(self.resfile('dir_w.png'))
+
+        Constants.gfx_nudge_nw = self.icon_scale(gfx_nudge_src_nw, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_n = self.icon_scale(gfx_nudge_src_n, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_ne = self.icon_scale(gfx_nudge_src_ne, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_e = self.icon_scale(gfx_nudge_src_e, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_se = self.icon_scale(gfx_nudge_src_se, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_s = self.icon_scale(gfx_nudge_src_s, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_sw = self.icon_scale(gfx_nudge_src_sw, Constants.toolbar_icon_size)
+        Constants.gfx_nudge_w = self.icon_scale(gfx_nudge_src_w, Constants.toolbar_icon_size)
+
+        Constants.gfx_resize_up = self.icon_scale(QtGui.QPixmap(self.resfile('dir_exp_up.png')), Constants.toolbar_icon_size)
+        Constants.gfx_resize_down = self.icon_scale(QtGui.QPixmap(self.resfile('dir_exp_down.png')), Constants.toolbar_icon_size)
+        Constants.gfx_resize_left = self.icon_scale(QtGui.QPixmap(self.resfile('dir_exp_left.png')), Constants.toolbar_icon_size)
+        Constants.gfx_resize_right = self.icon_scale(QtGui.QPixmap(self.resfile('dir_exp_right.png')), Constants.toolbar_icon_size)
+        Constants.gfx_grid = self.icon_scale(QtGui.QPixmap(self.resfile('grid.png')), Constants.toolbar_icon_size)
+        Constants.gfx_readonly = self.icon_scale(QtGui.QPixmap(self.resfile('lock.png')), Constants.toolbar_icon_size)
+        Constants.gfx_nudge = self.icon_scale(QtGui.QPixmap(self.resfile('direction.png')), Constants.toolbar_icon_size)
 
         # Icons used by QMessageBox for the main dialog icon
         Constants.gfx_error_full = QtGui.QPixmap(self.resfile('smashicons-error.png'))
-        Constants.gfx_error = Constants.gfx_error_full.scaled(Constants.messagebox_icon_size,
-                Constants.messagebox_icon_size,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation)
+        Constants.gfx_error = self.icon_scale(Constants.gfx_error_full, Constants.messagebox_icon_size)
         Constants.gfx_question_full = QtGui.QPixmap(self.resfile('smashicons-info.png'))
-        Constants.gfx_question = Constants.gfx_question_full.scaled(Constants.messagebox_icon_size,
-                Constants.messagebox_icon_size,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation)
+        Constants.gfx_question = self.icon_scale(Constants.gfx_question_full, Constants.messagebox_icon_size)
         Constants.gfx_information_full = QtGui.QPixmap(self.resfile('smashicons-idea.png'))
-        Constants.gfx_information = Constants.gfx_information_full.scaled(Constants.messagebox_icon_size,
-                Constants.messagebox_icon_size,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation)
+        Constants.gfx_information = self.icon_scale(Constants.gfx_information_full, Constants.messagebox_icon_size)
 
         # Icons used primarily by menus and message dialog buttons
         Constants.gfx_icon_new = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-file-1.png')))
@@ -1000,18 +1031,50 @@ class GUI(QtWidgets.QMainWindow):
         Constants.gfx_icon_notes_all = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-notebook-4.png')))
         Constants.gfx_icon_about = QtGui.QIcon(Constants.gfx_question_full)
         Constants.gfx_icon_license = Constants.gfx_icon_notes_single
-        Constants.gfx_icon_plus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-plus.png')))
+        plus_pixmap = QtGui.QPixmap(self.resfile('smashicons-plus.png'))
+        Constants.gfx_icon_plus = QtGui.QIcon(plus_pixmap)
         Constants.gfx_icon_minus = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-minus.png')))
         Constants.gfx_icon_copy = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-upload.png')))
         Constants.gfx_icon_paste = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-download.png')))
         Constants.gfx_icon_undo = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-previous.png')))
         Constants.gfx_icon_redo = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-skip.png')))
 
+        # Icons used in our "standard" dialogs
         Constants.gfx_icon_ok = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-success.png')))
         Constants.gfx_icon_yes = Constants.gfx_icon_ok
         Constants.gfx_icon_no = QtGui.QIcon(Constants.gfx_error_full)
         Constants.gfx_icon_cancel = Constants.gfx_icon_no
         Constants.gfx_icon_close = QtGui.QIcon(QtGui.QPixmap(self.resfile('smashicons-multiply-1.png')))
+
+        # Graphics used by hovering over a connection point
+        Constants.gfx_hover_add_conn = self.icon_scale(plus_pixmap, Constants.conn_hover_size_half)
+        Constants.gfx_hover_edit_conn = self.icon_scale(QtGui.QPixmap(self.resfile('smashicons-menu-1.png')),
+                Constants.conn_hover_size_half)
+
+        # Graphics used by hovering over a room nudge point
+        Constants.gfx_hover_nudge_nw = self.icon_scale(gfx_nudge_src_nw, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_n = self.icon_scale(gfx_nudge_src_n, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_ne = self.icon_scale(gfx_nudge_src_ne, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_e = self.icon_scale(gfx_nudge_src_e, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_se = self.icon_scale(gfx_nudge_src_se, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_s = self.icon_scale(gfx_nudge_src_s, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_sw = self.icon_scale(gfx_nudge_src_sw, Constants.conn_hover_size)
+        Constants.gfx_hover_nudge_w = self.icon_scale(gfx_nudge_src_w, Constants.conn_hover_size)
+        Constants.gfx_hover_icon_map = {
+                DIR_N: Constants.gfx_hover_nudge_n,
+                DIR_NE: Constants.gfx_hover_nudge_ne,
+                DIR_E: Constants.gfx_hover_nudge_e,
+                DIR_SE: Constants.gfx_hover_nudge_se,
+                DIR_S: Constants.gfx_hover_nudge_s,
+                DIR_SW: Constants.gfx_hover_nudge_sw,
+                DIR_W: Constants.gfx_hover_nudge_w,
+                DIR_NW: Constants.gfx_hover_nudge_nw,
+                }
+
+        # Graphics used by hovering over a new room area
+        Constants.gfx_hover_new_room = self.icon_scale(
+                QtGui.QPixmap(self.resfile('smashicons-add-2.png')),
+                Constants.conn_hover_size)
 
         # Making sure our view memory vars exist early
         self.clear_view_memory()
@@ -1941,18 +2004,22 @@ class GUIRoomNudgeHover(HoverArea):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setZValue(Constants.z_value_edge_hover)
-        self.setRect(0, 0, Constants.room_space, Constants.room_space)
+        self.setRect(0, 0, Constants.conn_hover_size, Constants.conn_hover_size)
         offset_x = Constants.connection_offset[direction][0]
         offset_y = Constants.connection_offset[direction][1]
         if direction in [DIR_N, DIR_S]:
-            offset_x -= Constants.room_space_half
+            offset_x -= Constants.conn_hover_size_half
         if direction in [DIR_NE, DIR_E, DIR_SE]:
-            offset_x -= Constants.room_space
+            offset_x -= Constants.conn_hover_size
         if direction in [DIR_W, DIR_E]:
-            offset_y -= Constants.room_space_half
+            offset_y -= Constants.conn_hover_size_half
         if direction in [DIR_SW, DIR_S, DIR_SE]:
-            offset_y -= Constants.room_space
+            offset_y -= Constants.conn_hover_size
         self.setPos(offset_x, offset_y)
+
+        # Add a hover icon
+        self.hover_icon = QtWidgets.QGraphicsPixmapItem(Constants.gfx_hover_icon_map[self.direction], self)
+        self.hover_icon.hide()
 
     def hoverEnterEvent(self, event=None):
         """
@@ -1960,6 +2027,7 @@ class GUIRoomNudgeHover(HoverArea):
         """
         scene = self.scene()
         scene.hover_start(self)
+        self.hover_icon.show()
         self.setBrush(QtGui.QBrush(Constants.c_highlight_nudge))
         self.setPen(QtGui.QPen(Constants.c_highlight_nudge))
         self.setFocus()
@@ -1971,6 +2039,7 @@ class GUIRoomNudgeHover(HoverArea):
         We've left hovering
         """
         self.scene().hover_end()
+        self.hover_icon.hide()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
@@ -2008,10 +2077,30 @@ class GUIConnectionHover(HoverArea):
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.setZValue(Constants.z_value_connection_hover)
-        self.setRect(0, 0, Constants.room_space, Constants.room_space)
+        self.setRect(0, 0, Constants.conn_hover_size, Constants.conn_hover_size)
         offset_x = Constants.connection_offset[direction][0]
         offset_y = Constants.connection_offset[direction][1]
-        self.setPos(offset_x - Constants.room_space_half, offset_y - Constants.room_space_half)
+        self.setPos(offset_x - Constants.conn_hover_size_half, offset_y - Constants.conn_hover_size_half)
+
+        # Set up a hover icon
+        if self.room.get_conn(self.direction) or self.room.get_loopback(self.direction):
+            pixmap = Constants.gfx_hover_edit_conn
+        else:
+            pixmap = Constants.gfx_hover_add_conn
+        self.hover_icon = QtWidgets.QGraphicsPixmapItem(pixmap, self)
+        icon_size = self.hover_icon.pixmap().width()
+        hover_x = 0
+        hover_y = 0
+        if direction in [DIR_N, DIR_S]:
+            hover_x += (Constants.conn_hover_size - icon_size) / 2
+        elif direction in [DIR_NE, DIR_E, DIR_SE]:
+            hover_x += Constants.conn_hover_size - icon_size
+        if direction in [DIR_W, DIR_E]:
+            hover_y += (Constants.conn_hover_size - icon_size) / 2
+        elif direction in [DIR_SW, DIR_S, DIR_SE]:
+            hover_y += Constants.conn_hover_size - icon_size
+        self.hover_icon.setPos(hover_x, hover_y)
+        self.hover_icon.hide()
 
     def hoverEnterEvent(self, event=None):
         """
@@ -2019,9 +2108,10 @@ class GUIConnectionHover(HoverArea):
         """
         scene = self.scene()
         scene.hover_start(self)
+        self.hover_icon.show()
         if self.room.get_conn(self.direction) or self.room.get_loopback(self.direction):
-            self.setBrush(QtGui.QBrush(Constants.c_highlight_del))
-            self.setPen(QtGui.QPen(Constants.c_highlight_del))
+            self.setBrush(QtGui.QBrush(Constants.c_highlight_modify))
+            self.setPen(QtGui.QPen(Constants.c_highlight_modify))
         else:
             self.setBrush(QtGui.QBrush(Constants.c_highlight_new))
             self.setPen(QtGui.QPen(Constants.c_highlight_new))
@@ -2034,6 +2124,7 @@ class GUIConnectionHover(HoverArea):
         We've left hovering
         """
         self.scene().hover_end()
+        self.hover_icon.hide()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
@@ -2688,11 +2779,19 @@ class GUINewRoomHover(HoverArea):
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setZValue(Constants.z_value_new_room_hover)
 
+        # Set up a hover icon
+        self.hover_icon = QtWidgets.QGraphicsPixmapItem(Constants.gfx_hover_new_room, self)
+        hover_x = (Constants.room_size - self.hover_icon.pixmap().width()) / 2
+        hover_y = (Constants.room_size - self.hover_icon.pixmap().height()) / 2
+        self.hover_icon.setPos(hover_x, hover_y)
+        self.hover_icon.hide()
+
     def hoverEnterEvent(self, event=None):
         """
         We've entered hovering
         """
         self.scene().hover_start(self)
+        self.hover_icon.show()
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
@@ -2714,6 +2813,7 @@ class GUINewRoomHover(HoverArea):
         We've left hovering
         """
         self.scene().hover_end()
+        self.hover_icon.hide()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()

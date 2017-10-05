@@ -23,9 +23,6 @@ Features to implement:
    interesting, though, since all our current code (such as with dashed
    lines) assumes straight lines.
 
- * Should really draw some little icons for mouseovers, instead of just
-   highlighting in green
-
  * Popup when LMB on a connection to edit conn attributes (should be much
    more manageable than our previous Advanced tab on Room Edit)
 
