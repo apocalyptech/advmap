@@ -14,6 +14,9 @@ Bugs to fix:
    hope.  If you zoom in to a screenshot, you can see easily where the
    two brush strokes meet and leave a tiny gap at the corners.
 
+ * One-way ladder connections overwrite Group backgrounds, if the arrow
+   happens to be drawn over a Group background area.
+
 Features to implement:
 
  * Write whole set of game maps out to PNGs.  I assume it only makes sense
@@ -25,9 +28,6 @@ Features to implement:
 
  * Popup when LMB on a connection to edit conn attributes (should be much
    more manageable than our previous Advanced tab on Room Edit)
-
- * Better one-way arrows for ladder connections.  What we do right now
-   is technically Good Enough, but it doesn't really look great.
 
  * I'd really like to start unit-testing the GUI; apparently there
    *is* a QTest class, or something, which can assist with this.

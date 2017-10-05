@@ -3168,10 +3168,11 @@ class GUIConnLine(QtWidgets.QGraphicsLineItem):
             #pen.setDashPattern([dash_len, dash_len])
         self.setPen(pen)
 
-class GUIConnectionFactory(object):
+class GUIConnectionGenerator(object):
     """
     It's a bit stupid to have this as a class, but I'd like it to be contained
-    as well as possible.
+    as well as possible.  Basically this is just used to generate the various graphical
+    elements which make up our connection lines.
     """
 
     def __init__(self, scene):
@@ -3184,6 +3185,23 @@ class GUIConnectionFactory(object):
         # TODO: If Qt's dashPattern bugs ever get fixed, we don't need to pass scene.
         line_obj = GUIConnLine(x1, y1, x2, y2, self.scene, width=width, dashed=dashed)
         self.scene.addItem(line_obj)
+
+    def draw_tri_cover(self, x1, y1, x2, y2, x3, y3, z_value=None):
+        """
+        Draws a triangle which "covers up" some of the drawing.  Used currently
+        just to make one-way ladder connections look good.  If `z_value` is
+        `None`, we will default to being on the connection layer
+        """
+        poly = QtGui.QPolygonF()
+        poly.append(QtCore.QPointF(x1, y1))
+        poly.append(QtCore.QPointF(x2, y2))
+        poly.append(QtCore.QPointF(x3, y3))
+        poly.append(QtCore.QPointF(x1, y1))
+        item = QtWidgets.QGraphicsPolygonItem(poly)
+        item.setPen(QtGui.QPen(Constants.c_background))
+        item.setBrush(QtGui.QBrush(Constants.c_background))
+        item.setZValue(Constants.z_value_connection)
+        self.scene.addItem(item)
 
     def is_primary_adjacent(self, conn):
         """
@@ -3268,19 +3286,37 @@ class GUIConnectionFactory(object):
 
         return coord_list
 
-    def arrow_coords(self, x1, y1, x2, y2, adjust=True):
+    def arrow_coords(self, x1, y1, x2, y2, adjust=True, ladder=False):
         """
         Given two points (x1, y1) and (x2, y2), this will provide
         coordinates necessary to draw an arrowhead centered on (x1, y1)
-        It'll return a list with two 2-element tuples, representing
-        the (x, y) coordinates.
+        It'll return a list with two 4-element tuples.  The first two
+        elements represent the the (x, y) coordinates you'll use to
+        draw the line, and the second two define a third point in the
+        triangle created by the line.  (This second set is useful for
+        ladder one-way connections, and probably not useful otherwise.)
+
+        If `ladder` is `True`, the geometry will be slightly altered
+        to account for ladder width.
 
         When `adjust` is `True` (the default), (x2, y2) is only used
         to provide a direction; the arrowhead will always be rendered
         at a fixed size.  If it is `False`, the length of the arrowhead
-        will be determined by the length of (x1, y1) to (x2, y2)
+        will be determined by the length of (x1, y1) to (x2, y2).  Note
+        that `adjust` will always be set to `True` if `ladder` is `True`.
         """
 
+        # A couple of vars which differ when we're dealing with ladders
+        if ladder:
+            adjust = True
+            spacing_ratio = .7
+            width_h = Constants.arrow_head_width + (Constants.ladder_width/2)
+        else:
+            spacing_ratio = .5
+            width_h = Constants.arrow_head_width
+
+        # Check to see if we should adjust for our "base" line that we
+        # compute off of
         if adjust:
             dx_orig = x2-x1
             dy_orig = y2-y1
@@ -3288,6 +3324,7 @@ class GUIConnectionFactory(object):
             x2 = x1 + ((Constants.arrow_head_length*dx_orig)/dist)
             y2 = y1 + ((Constants.arrow_head_length*dy_orig)/dist)
 
+        # And now proceed with the computation.
         dx_orig = x2-x1
         dy_orig = y2-y1
         dist = math.sqrt(dx_orig**2 + dy_orig**2)
@@ -3296,14 +3333,19 @@ class GUIConnectionFactory(object):
         dy = dy_orig / dist
         coord_list = []
 
-        x_spacing = dx_orig * .5
-        y_spacing = dy_orig * .5
+        x_spacing = dx_orig * spacing_ratio
+        y_spacing = dy_orig * spacing_ratio
         cur_x = x1 + (x_spacing/2)
         cur_y = y1 + (y_spacing/2)
 
-        width_h = Constants.arrow_head_width
-        coord_list.append( (cur_x+(width_h*dy), cur_y-(width_h*dx)) )
-        coord_list.append( (cur_x-(width_h*dy), cur_y+(width_h*dx)) )
+        coord_list.append((
+            cur_x+(width_h*dy), cur_y-(width_h*dx),
+            x1+(width_h*dy), y1-(width_h*dx),
+            ))
+        coord_list.append((
+            cur_x-(width_h*dy), cur_y+(width_h*dx),
+            x1-(width_h*dy), y1+(width_h*dx),
+            ))
 
         return coord_list
 
@@ -3343,17 +3385,6 @@ class GUIConnectionFactory(object):
             dst_x = src_x - (dx*end.stub_length)
             dst_y = src_y - (dy*end.stub_length)
 
-        # When drawing arrows, we want to render based on the length of
-        # the stub *before* we cut it in half, just so it's more noticeable.
-        # This is most important for ladder one-way connections with short
-        # stublengths.
-        # TODO: really what we should do is enforce a minimum+maximum here
-        # rather than doing this blindly - longer stublengths make for weird
-        # looking arrows.  And as for ladders, the BEST thing to do would be
-        # to make those look better anyway
-        ladder_dst_x = dst_x
-        ladder_dst_y = dst_y
-
         # aaaand we actually only want to render a line half this long.
         dst_x = (src_x+dst_x)/2
         dst_y = (src_y+dst_y)/2
@@ -3364,35 +3395,45 @@ class GUIConnectionFactory(object):
             src_x = gui_room.gfx_x + Constants.room_size_half
             src_y = gui_room.gfx_y + Constants.room_size_half
 
-        # draw one-way connections.  This will look weird if it's going
-        # into a connhelper room, but then again that's probably not
-        # what you'd want to be doing anyway
-        if conn.is_oneway_a() and room == conn.r1:
-            for coord in self.arrow_coords(src_x, src_y, ladder_dst_x, ladder_dst_y):
-                self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
-        if conn.is_oneway_b() and room == conn.r2:
-            for coord in self.arrow_coords(src_x, src_y, ladder_dst_x, ladder_dst_y):
-                self.draw_conn_segment(coord[0], coord[1], src_x, src_y, end)
-
         # Draw the actual stub
         self.draw_conn_segment(src_x, src_y, dst_x, dst_y, end)
+
+        # draw one-way connections.
+        if (conn.is_oneway_a() and room == conn.r1) or (conn.is_oneway_b() and room == conn.r2):
+            is_ladder = end.is_ladder()
+            for (arrow_x,
+                    arrow_y,
+                    cover_x,
+                    cover_y) in self.arrow_coords(src_x, src_y, dst_x, dst_y, ladder=is_ladder):
+                if is_ladder:
+                    self.draw_tri_cover(src_x, src_y, arrow_x, arrow_y, cover_x, cover_y)
+                self.draw_conn_segment(arrow_x, arrow_y, src_x, src_y, end, ladder_arrow=is_ladder)
 
         # ... and return the destination point
         return (dst_x, dst_y)
 
-    def draw_conn_segment(self, x1, y1, x2, y2, end):
+    def draw_conn_segment(self, x1, y1, x2, y2, end, ladder_arrow=False):
         """
         Draws a connection segment from `(x1, y1)` to `(x2, y2)`, using the
         style provided by the passed-in ConnectionEnd `end`.  Ordinarily
         this is just a single line, but if `is_ladder` is True, then it'll
         build a Ladder graphic between the two, instead.
+
+        If `ladder_arrow` is `True`, and our end type is a ladder, we'll
+        draw an ordinary line (but with ladder thickness) rather than the
+        full ladder structure.  This is used for drawing one-way arrows
+        on ladder connections.
         """
         if end.is_ladder():
-            coords = self.ladder_coords(x1, y1, x2, y2)
-            for coord in coords:
-                self.line(coord[0][0], coord[0][1],
-                        coord[1][0], coord[1][1],
+            if ladder_arrow:
+                self.line(x1, y1, x2, y2, dashed=end.is_dotted(),
                         width=Constants.ladder_line_width)
+            else:
+                coords = self.ladder_coords(x1, y1, x2, y2)
+                for coord in coords:
+                    self.line(coord[0][0], coord[0][1],
+                            coord[1][0], coord[1][1],
+                            width=Constants.ladder_line_width)
         else:
             self.line(x1, y1, x2, y2, dashed=end.is_dotted())
 
@@ -3455,11 +3496,23 @@ class GUIConnectionFactory(object):
                 self.draw_conn_segment(x1, y1, midpoint_x, midpoint_y, end_close)
                 self.draw_conn_segment(midpoint_x, midpoint_y, x2, y2, end_far)
             if conn.is_oneway_a():
-                for coord in self.arrow_coords(x1, y1, x2, y2):
-                    self.draw_conn_segment(coord[0], coord[1], x1, y1, end_close)
+                is_ladder = end_close.is_ladder()
+                for (arrow_x,
+                        arrow_y,
+                        cover_x,
+                        cover_y) in self.arrow_coords(x1, y1, x2, y2, ladder=is_ladder):
+                    if is_ladder:
+                        self.draw_tri_cover(x1, y1, arrow_x, arrow_y, cover_x, cover_y)
+                    self.draw_conn_segment(arrow_x, arrow_y, x1, y1, end_close, ladder_arrow=is_ladder)
             elif conn.is_oneway_b():
-                for coord in self.arrow_coords(x2, y2, x1, y1):
-                    self.draw_conn_segment(coord[0], coord[1], x2, y2, end_far)
+                is_ladder = end_far.is_ladder()
+                for (arrow_x,
+                        arrow_y,
+                        cover_x,
+                        cover_y) in self.arrow_coords(x2, y2, x1, y1, ladder=is_ladder):
+                    if is_ladder:
+                        self.draw_tri_cover(x2, y2, arrow_x, arrow_y, cover_x, cover_y)
+                    self.draw_conn_segment(arrow_x, arrow_y, x2, y2, end_far, ladder_arrow=is_ladder)
 
         else:
 
@@ -4868,9 +4921,9 @@ class MapScene(QtWidgets.QGraphicsScene):
                 l = self.addLine(0, y, total_w, y, QtGui.QPen(Constants.c_grid))
                 l.setZValue(Constants.z_value_background)
 
-        # Create a GUIConnectionFactory, used to draw connections and
+        # Create a GUIConnectionGenerator, used to draw connections and
         # loopbacks
-        cf = GUIConnectionFactory(self)
+        cf = GUIConnectionGenerator(self)
 
         # TODO: It shouldn't be possible to have selected rooms disappear
         # on us during a recreate, but it wouldn't hurt to check for it
