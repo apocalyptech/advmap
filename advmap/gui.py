@@ -3186,23 +3186,6 @@ class GUIConnectionGenerator(object):
         line_obj = GUIConnLine(x1, y1, x2, y2, self.scene, width=width, dashed=dashed)
         self.scene.addItem(line_obj)
 
-    def draw_tri_cover(self, x1, y1, x2, y2, x3, y3, z_value=None):
-        """
-        Draws a triangle which "covers up" some of the drawing.  Used currently
-        just to make one-way ladder connections look good.  If `z_value` is
-        `None`, we will default to being on the connection layer
-        """
-        poly = QtGui.QPolygonF()
-        poly.append(QtCore.QPointF(x1, y1))
-        poly.append(QtCore.QPointF(x2, y2))
-        poly.append(QtCore.QPointF(x3, y3))
-        poly.append(QtCore.QPointF(x1, y1))
-        item = QtWidgets.QGraphicsPolygonItem(poly)
-        item.setPen(QtGui.QPen(Constants.c_background))
-        item.setBrush(QtGui.QBrush(Constants.c_background))
-        item.setZValue(Constants.z_value_connection)
-        self.scene.addItem(item)
-
     def is_primary_adjacent(self, conn):
         """
         Returns True if the primary connection between two rooms are
@@ -3290,11 +3273,9 @@ class GUIConnectionGenerator(object):
         """
         Given two points (x1, y1) and (x2, y2), this will provide
         coordinates necessary to draw an arrowhead centered on (x1, y1)
-        It'll return a list with two 4-element tuples.  The first two
-        elements represent the the (x, y) coordinates you'll use to
-        draw the line, and the second two define a third point in the
-        triangle created by the line.  (This second set is useful for
-        ladder one-way connections, and probably not useful otherwise.)
+        It'll return a list with two 2-element tuples, describing the
+        extra (x, y) coordinates you'll need to draw from (x1, y1) in
+        order to draw the arrowhead.
 
         If `ladder` is `True`, the geometry will be slightly altered
         to account for ladder width.
@@ -3338,14 +3319,8 @@ class GUIConnectionGenerator(object):
         cur_x = x1 + (x_spacing/2)
         cur_y = y1 + (y_spacing/2)
 
-        coord_list.append((
-            cur_x+(width_h*dy), cur_y-(width_h*dx),
-            x1+(width_h*dy), y1-(width_h*dx),
-            ))
-        coord_list.append((
-            cur_x-(width_h*dy), cur_y+(width_h*dx),
-            x1-(width_h*dy), y1+(width_h*dx),
-            ))
+        coord_list.append( (cur_x+(width_h*dy), cur_y-(width_h*dx)) )
+        coord_list.append( (cur_x-(width_h*dy), cur_y+(width_h*dx)) )
 
         return coord_list
 
@@ -3361,6 +3336,35 @@ class GUIConnectionGenerator(object):
                 x1 + int((x2 - x1) * percent),
                 y1 + int((y2 - y1) * percent),
             )
+
+    def resize_line(self, x1, y1, x2, y2, length_change=None, to_length=None):
+        """
+        Given a pair of coordinates (x1, y1) and (x2, y2), returns
+        an alternate set of (x2, y2) which change the length of
+        the line.
+
+        If you specify `length_change`, the current length of the line
+        will be changed by that amount.  If you specify `to_length`
+        instead, the line will be set to that length exactly.  If you're
+        foolish enough to specify both, `to_length` will override
+        `length_change`.
+        """
+
+        # TODO: Currently we're only using this function during one-way arrowhead
+        # rendering.  I expect we could be using it elsewhere as well.
+
+        dx = x2-x1
+        dy = y2-y1
+        cur_length = math.sqrt(dx**2 + dy**2)
+
+        if not to_length:
+            to_length = cur_length + length_change
+
+        length_diff = to_length/cur_length
+        new_dx = length_diff*dx
+        new_dy = length_diff*dy
+
+        return (x1 + new_dx, y1 + new_dy)
 
     def draw_stub_conn(self, room, direction, conn):
         """
@@ -3395,19 +3399,30 @@ class GUIConnectionGenerator(object):
             src_x = gui_room.gfx_x + Constants.room_size_half
             src_y = gui_room.gfx_y + Constants.room_size_half
 
+        # Mark down whether we're a ladder stub or not.
+        is_ladder = end.is_ladder()
+
+        # See if we're a one-way connection or not
+        stub_src_x = src_x
+        stub_src_y = src_y
+        if (conn.is_oneway_a() and room == conn.r1) or (conn.is_oneway_b() and room == conn.r2):
+            is_oneway = True
+
+            # If we're *also* a ladder, alter our main connection geometry a bit.
+            if is_ladder:
+                (stub_src_x, stub_src_y) = self.resize_line(
+                        dst_x, dst_y, src_x, src_y,
+                        length_change=-(Constants.conn_hover_size_half*.5))
+        else:
+            is_oneway = False
+
         # Draw the actual stub
-        self.draw_conn_segment(src_x, src_y, dst_x, dst_y, end)
+        self.draw_conn_segment(stub_src_x, stub_src_y, dst_x, dst_y, end)
 
         # draw one-way connections.
-        if (conn.is_oneway_a() and room == conn.r1) or (conn.is_oneway_b() and room == conn.r2):
-            is_ladder = end.is_ladder()
-            for (arrow_x,
-                    arrow_y,
-                    cover_x,
-                    cover_y) in self.arrow_coords(src_x, src_y, dst_x, dst_y, ladder=is_ladder):
-                if is_ladder:
-                    self.draw_tri_cover(src_x, src_y, arrow_x, arrow_y, cover_x, cover_y)
-                self.draw_conn_segment(arrow_x, arrow_y, src_x, src_y, end, ladder_arrow=is_ladder)
+        if is_oneway:
+            for coords in self.arrow_coords(src_x, src_y, dst_x, dst_y, ladder=is_ladder):
+                self.draw_conn_segment(coords[0], coords[1], src_x, src_y, end, ladder_arrow=is_ladder)
 
         # ... and return the destination point
         return (dst_x, dst_y)
@@ -3488,31 +3503,38 @@ class GUIConnectionGenerator(object):
                 (x2, y2) = gui_room2.get_global_connection_xy(dir2)
             secondary_midpoints[room1] = (x2, y2)
             secondary_midpoints[room2] = (x1, y1)
+
+            # Do some massaging of data if either side is both a ladder and
+            # one-way, since we have to render that a bit differently than
+            # everything else.
+            main_x1 = x1
+            main_y1 = y1
+            main_x2 = x2
+            main_y2 = y2
+            if end_close.is_ladder() and conn.is_oneway_a():
+                (main_x1, main_y1) = self.resize_line(
+                        x2, y2, x1, y1,
+                        length_change=-(Constants.conn_hover_size_half*.5))
+            if end_far.is_ladder() and conn.is_oneway_b():
+                (main_x2, main_y2) = self.resize_line(
+                        x1, y1, x2, y2,
+                        length_change=-(Constants.conn_hover_size_half*.5))
+
             if end_close.conn_type == end_far.conn_type:
-                self.draw_conn_segment(x1, y1, x2, y2, end_close)
+                self.draw_conn_segment(main_x1, main_y1, main_x2, main_y2, end_close)
             else:
                 midpoint_x = (x1 + x2) / 2
                 midpoint_y = (y1 + y2) / 2
-                self.draw_conn_segment(x1, y1, midpoint_x, midpoint_y, end_close)
-                self.draw_conn_segment(midpoint_x, midpoint_y, x2, y2, end_far)
+                self.draw_conn_segment(main_x1, main_y1, midpoint_x, midpoint_y, end_close)
+                self.draw_conn_segment(midpoint_x, midpoint_y, main_x2, main_y2, end_far)
             if conn.is_oneway_a():
                 is_ladder = end_close.is_ladder()
-                for (arrow_x,
-                        arrow_y,
-                        cover_x,
-                        cover_y) in self.arrow_coords(x1, y1, x2, y2, ladder=is_ladder):
-                    if is_ladder:
-                        self.draw_tri_cover(x1, y1, arrow_x, arrow_y, cover_x, cover_y)
-                    self.draw_conn_segment(arrow_x, arrow_y, x1, y1, end_close, ladder_arrow=is_ladder)
+                for coords in self.arrow_coords(x1, y1, x2, y2, ladder=is_ladder):
+                    self.draw_conn_segment(coords[0], coords[1], x1, y1, end_close, ladder_arrow=is_ladder)
             elif conn.is_oneway_b():
                 is_ladder = end_far.is_ladder()
-                for (arrow_x,
-                        arrow_y,
-                        cover_x,
-                        cover_y) in self.arrow_coords(x2, y2, x1, y1, ladder=is_ladder):
-                    if is_ladder:
-                        self.draw_tri_cover(x2, y2, arrow_x, arrow_y, cover_x, cover_y)
-                    self.draw_conn_segment(arrow_x, arrow_y, x2, y2, end_far, ladder_arrow=is_ladder)
+                for coords in self.arrow_coords(x2, y2, x1, y1, ladder=is_ladder):
+                    self.draw_conn_segment(coords[0], coords[1], x2, y2, end_far, ladder_arrow=is_ladder)
 
         else:
 

@@ -14,9 +14,6 @@ Bugs to fix:
    hope.  If you zoom in to a screenshot, you can see easily where the
    two brush strokes meet and leave a tiny gap at the corners.
 
- * One-way ladder connections overwrite Group backgrounds, if the arrow
-   happens to be drawn over a Group background area.
-
 Features to implement:
 
  * Write whole set of game maps out to PNGs.  I assume it only makes sense
