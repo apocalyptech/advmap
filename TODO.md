@@ -18,6 +18,12 @@ Bugs to fix:
    processing undo/redo - look in to that and make sure we're not
    recentering inappropriately, etc.
 
+ * Also, would be nice if the New/Quit/Revert confirmation dialogs don't
+   show up when the user hasn't made any changes.  We'll have to be a *bit*
+   fuzzy about that 'cause our undo/redo doesn't take into account potential
+   changes on the Game Edit dialog, and we'd have to figure out a way to
+   know when we're at a certain map state, but I'd think it would be doable.
+
 Features to implement:
 
  * Write whole set of game maps out to PNGs.  I assume it only makes sense
