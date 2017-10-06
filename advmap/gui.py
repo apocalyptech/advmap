@@ -195,8 +195,6 @@ class Constants(object):
     gfx_hover_nudge_w = None
     gfx_hover_icon_map = {}
 
-    gfx_hover_new_room = None
-
     # Z-values we'll use in the scene - layers, effectively.  This makes
     # sure that our hovers are prioritized the way we want them to, and also
     # makes connection+room rendering show up in a consistent way.
@@ -1051,7 +1049,7 @@ class GUI(QtWidgets.QMainWindow):
 
         # Graphics used by hovering over a connection point
         Constants.gfx_hover_add_conn = self.icon_scale(plus_pixmap, Constants.conn_hover_size_half)
-        Constants.gfx_hover_edit_conn = self.icon_scale(QtGui.QPixmap(self.resfile('smashicons-menu-1.png')),
+        Constants.gfx_hover_edit_conn = self.icon_scale(QtGui.QPixmap(self.resfile('smashicons-edit.png')),
                 Constants.conn_hover_size_half)
 
         # Graphics used by hovering over a room nudge point
@@ -1073,11 +1071,6 @@ class GUI(QtWidgets.QMainWindow):
                 DIR_W: Constants.gfx_hover_nudge_w,
                 DIR_NW: Constants.gfx_hover_nudge_nw,
                 }
-
-        # Graphics used by hovering over a new room area
-        Constants.gfx_hover_new_room = self.icon_scale(
-                QtGui.QPixmap(self.resfile('smashicons-add-2.png')),
-                Constants.conn_hover_size)
 
         # Making sure our view memory vars exist early
         self.clear_view_memory()
@@ -2087,21 +2080,34 @@ class GUIConnectionHover(HoverArea):
 
         # Set up a hover icon
         if self.room.get_conn(self.direction) or self.room.get_loopback(self.direction):
+            use_add_positioning = False
             pixmap = Constants.gfx_hover_edit_conn
         else:
+            use_add_positioning = True
             pixmap = Constants.gfx_hover_add_conn
         self.hover_icon = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         icon_size = self.hover_icon.pixmap().width()
         hover_x = 0
         hover_y = 0
-        if direction in [DIR_N, DIR_S]:
-            hover_x += (Constants.conn_hover_size - icon_size) / 2
-        elif direction in [DIR_NE, DIR_E, DIR_SE]:
-            hover_x += Constants.conn_hover_size - icon_size
-        if direction in [DIR_W, DIR_E]:
-            hover_y += (Constants.conn_hover_size - icon_size) / 2
-        elif direction in [DIR_SW, DIR_S, DIR_SE]:
-            hover_y += Constants.conn_hover_size - icon_size
+        # Our icon positioning is different depending on the icon
+        if use_add_positioning:
+            if direction in [DIR_N, DIR_S]:
+                hover_x += (Constants.conn_hover_size - icon_size) / 2
+            elif direction in [DIR_NE, DIR_E, DIR_SE]:
+                hover_x += Constants.conn_hover_size - icon_size
+            if direction in [DIR_W, DIR_E]:
+                hover_y += (Constants.conn_hover_size - icon_size) / 2
+            elif direction in [DIR_SW, DIR_S, DIR_SE]:
+                hover_y += Constants.conn_hover_size - icon_size
+        else:
+            if direction in [DIR_NW, DIR_W, DIR_SW]:
+                hover_x += Constants.conn_hover_size - icon_size
+            elif direction in [DIR_N, DIR_S]:
+                hover_x += (Constants.conn_hover_size - icon_size) / 2
+            if direction in [DIR_NW, DIR_N, DIR_NE]:
+                hover_y += Constants.conn_hover_size - icon_size
+            elif direction in [DIR_W, DIR_E]:
+                hover_y += (Constants.conn_hover_size - icon_size) / 2
         self.hover_icon.setPos(hover_x, hover_y)
         self.hover_icon.hide()
 
@@ -2782,19 +2788,11 @@ class GUINewRoomHover(HoverArea):
         self.setRect(0, 0, Constants.room_size, Constants.room_size)
         self.setZValue(Constants.z_value_new_room_hover)
 
-        # Set up a hover icon
-        self.hover_icon = QtWidgets.QGraphicsPixmapItem(Constants.gfx_hover_new_room, self)
-        hover_x = (Constants.room_size - self.hover_icon.pixmap().width()) / 2
-        hover_y = (Constants.room_size - self.hover_icon.pixmap().height()) / 2
-        self.hover_icon.setPos(hover_x, hover_y)
-        self.hover_icon.hide()
-
     def hoverEnterEvent(self, event=None):
         """
         We've entered hovering
         """
         self.scene().hover_start(self)
-        self.hover_icon.show()
         self.setBrush(QtGui.QBrush(Constants.c_highlight))
         self.setPen(QtGui.QPen(Constants.c_highlight))
         self.setFocus()
@@ -2816,7 +2814,6 @@ class GUINewRoomHover(HoverArea):
         We've left hovering
         """
         self.scene().hover_end()
-        self.hover_icon.hide()
         self.setBrush(QtGui.QBrush(Constants.c_transparent))
         self.setPen(QtGui.QPen(Constants.c_transparent))
         self.clearFocus()
