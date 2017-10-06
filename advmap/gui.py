@@ -1183,7 +1183,8 @@ class GUI(QtWidgets.QMainWindow):
                 self.dialog_error('Unable to load file', str(e))
 
     def dialog_user(self, message, infotext, pixmap,
-            show_yes=False, show_no=False, show_ok=False, parent=None):
+            show_yes=False, show_no=False, show_ok=False,
+            default_yes=False, parent=None):
         """
         Shows a dialog to the user with the specified information and
         returns its result.  Note that we use a QMessageBox for this, but
@@ -1194,6 +1195,8 @@ class GUI(QtWidgets.QMainWindow):
             msgbox = QtWidgets.QMessageBox(self)
         else:
             msgbox = QtWidgets.QMessageBox(parent)
+        msgbox.setWindowTitle(message)
+        message = '<p><b>{}</b></p>'.format(message)
         if infotext and infotext != '':
             text = "{}\n\n{}".format(message, "\n".join(textwrap.wrap(infotext, width=100)))
         else:
@@ -1206,14 +1209,17 @@ class GUI(QtWidgets.QMainWindow):
             msgbox.addButton(ok, msgbox.AcceptRole)
             msgbox.setDefaultButton(ok)
         if show_yes:
-            msgbox.addButton(YesButton(msgbox), msgbox.YesRole)
+            yes = YesButton(msgbox)
+            msgbox.addButton(yes, msgbox.YesRole)
+            if default_yes:
+                msgbox.setDefaultButton(yes)
         if show_no:
             no = NoButton(msgbox)
             msgbox.addButton(no, msgbox.NoRole)
-            msgbox.setDefaultButton(no)
+            if not default_yes:
+                msgbox.setDefaultButton(no)
 
         msgbox.setIconPixmap(pixmap)
-        msgbox.setWindowTitle(message)
         msgbox.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
 
         # Rather than returning the exec() value, return the role of the
@@ -1222,14 +1228,14 @@ class GUI(QtWidgets.QMainWindow):
         msgbox.exec()
         return msgbox.buttonRole(msgbox.clickedButton())
 
-    def dialog_confirm(self, message, infotext=None):
+    def dialog_confirm(self, message, infotext=None, default_yes=False):
         """
         Asks the user to confirm an action.  Returns `True` or
         `False`.
         """
         res = self.dialog_user(message, infotext,
                 Constants.gfx_question,
-                show_yes=True, show_no=True)
+                show_yes=True, show_no=True, default_yes=default_yes)
         self.activateWindow()
         if res == QtWidgets.QMessageBox.YesRole:
             return True
@@ -1645,10 +1651,11 @@ class GUI(QtWidgets.QMainWindow):
         """
         Handle our "Quit" action.
         """
-        # TODO: would be nice to have confirmation, though that
-        # probably ties into undo/redo so that we know not to do
-        # it if there's not been changes.
-        self.close()
+        proceed = self.dialog_confirm('Quit',
+                'Any unsaved changes to the current file will be lost.  Continue?',
+                default_yes=True)
+        if proceed:
+            self.close()
 
     def action_game_settings(self):
         """
