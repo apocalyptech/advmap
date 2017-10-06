@@ -14,6 +14,10 @@ Bugs to fix:
    hope.  If you zoom in to a screenshot, you can see easily where the
    two brush strokes meet and leave a tiny gap at the corners.
 
+ * I think that scrollbar positioning doesn't Do The Right Thing when
+   processing undo/redo - look in to that and make sure we're not
+   recentering inappropriately, etc.
+
 Features to implement:
 
  * Write whole set of game maps out to PNGs.  I assume it only makes sense
