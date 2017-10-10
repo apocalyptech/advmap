@@ -3927,7 +3927,7 @@ class NotesDialog(QtWidgets.QDialog):
                             <span class="roomname">{}</span>
                             <span class="roomcoords">at ({}, {})</span>
                         </div>""".format(
-                        room.name, room.x, room.y,
+                        room.name, room.x+1, room.y+1,
                         ))
                     cursor.insertBlock(format_indent)
                     self.browser.insertHtml('<div class="roomnotes">{}</div>'.format(room.notes))
