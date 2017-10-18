@@ -4241,8 +4241,21 @@ class EditGameDialog(AppDialog):
         self.gridlayout.addWidget(vbox, self.cur_row, 1)
 
         # Then a label
-        label = QtWidgets.QLabel('<i>Doubleclick to edit names, drag to reorder.</i>')
-        layout.addWidget(label)
+        if QtCore.qVersion() == '5.9.2':
+            label = QtWidgets.QLabel('<i>Doubleclick to edit names.</i>')
+            layout.addWidget(label)
+            label2 = QtWidgets.QLabel("""<b>Note:</b> the
+                version of Qt you're using (5.9.2) has a bug which prevents drag-and-drop
+                from working in here.  The only known workaround is to downgrade to Qt
+                5.9.1.  If you attempt a drag-and-drop and the GUI seems to lock up,
+                hitting Escape should return control. See
+                <a href="https://bugreports.qt.io/browse/QTBUG-63846">QTBUG-63846</a>.""")
+            label2.setWordWrap(True)
+            label2.setOpenExternalLinks(True)
+            layout.addWidget(label2)
+        else:
+            label = QtWidgets.QLabel('<i>Doubleclick to edit names, drag to reorder.</i>')
+            layout.addWidget(label)
 
         # Now the actual QTableView
         self.table = MapListTable(self, self.game)
