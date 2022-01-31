@@ -169,23 +169,28 @@ class Savefile(object):
         self.df.write(pack('d', floatval))
 
     def readstr(self):
-        """ Read a string from the savefile, read the string length first """
+        """
+        Read a string from the savefile.  Read the byte length first (which
+        may not be the ultimate string length)
+        """
         if (not self.opened_r):
             raise IOError('File is not open for reading')
         length = self.readshort()
         if (length == 0):
             string = ''
         else:
-            string = str(self.df.read(length), encoding='utf-8')
-        if (len(string) != length):
-            raise LoadException('Error reading string, expected %d, read %d' % (length, len(string)))
+            byteval = self.df.read(length)
+            if (len(byteval) != length):
+                raise LoadException('Error reading string, expected %d, read %d' % (length, len(byteval)))
+            string = byteval.decode('utf-8')
         # Discard the NULL byte
         self.readchar()
         return string
 
     def writestr(self, strval):
         """
-        Write a string to the savefile, prepended by the length.
+        Write a string to the savefile, prepended by the byte length.
+        This may not be the actual string length due to text encoding.
         It's a bit silly to both prepend with the length and then pad with a
         NULL, but personally I like having the length, and other C-based apps
         are more comfortable with NULL.  So, whatever.  We can afford one more
@@ -195,6 +200,7 @@ class Savefile(object):
             raise IOError('File is not open for writing')
         if (len(strval) > 65535):
             raise IOError('Maximum string length is currently 65535')
-        self.writeshort(len(strval))
-        self.df.write(bytes(strval, 'utf-8'))
+        byteval = strval.encode('utf-8')
+        self.writeshort(len(byteval))
+        self.df.write(byteval)
         self.df.write(b"\0")
