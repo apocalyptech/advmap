@@ -595,8 +595,8 @@ class HTMLWidgetHelper(object):
             opt = QtWidgets.QStyleOptionButton()
             self.initStyleOption(opt)
             self.stored_size = QtCore.QSize(
-                    size.width() + opt.iconSize.width() + 4,
-                    max(size.height(), opt.iconSize.height()))
+                    int(size.width() + opt.iconSize.width() + 4),
+                    int(max(size.height(), opt.iconSize.height())))
         return self.stored_size
 
     def minimumSizeHint(self):
@@ -4204,7 +4204,7 @@ class MapListTable(QtWidgets.QTableView):
         # the padding at all with CSS.  Lame.  So, instead, I'm setting a fixed
         # height based on some calculations done on GUI startup.
         self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.verticalHeader().setDefaultSectionSize(Constants.maplist_row_height)
+        self.verticalHeader().setDefaultSectionSize(int(Constants.maplist_row_height))
 
 class EditGameDialog(AppDialog):
     """
