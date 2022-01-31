@@ -921,7 +921,7 @@ class GUI(QtWidgets.QMainWindow):
         Scales an icon to our specified size.  Just a convenience function so
         we can do this stuff a little less wordily.
         """
-        return pixmap.scaled(size, size,
+        return pixmap.scaled(int(size), int(size),
                 QtCore.Qt.KeepAspectRatio,
                 QtCore.Qt.SmoothTransformation)
 
@@ -1358,10 +1358,10 @@ class GUI(QtWidgets.QMainWindow):
             vbar = self.maparea.verticalScrollBar()
             hmin = hbar.minimum()
             hmax = hbar.maximum()
-            hbar.setValue((hmin+hmax)/2)
+            hbar.setValue(int((hmin+hmax)/2))
             vmin = vbar.minimum()
             vmax = vbar.maximum()
-            vbar.setValue((vmin+vmax)/2)
+            vbar.setValue(int((vmin+vmax)/2))
 
     def create_new_game(self):
         """
