@@ -38,4 +38,4 @@ args = parser.parse_args()
 
 # Run the GUI
 gui = Application(args.filename, args.readonly)
-sys.exit(gui.exec_())
+sys.exit(gui.exec())

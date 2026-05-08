@@ -21,8 +21,8 @@ games which I'd used the map as a general- purpose note-taking device as well.
 Running
 -------
 
-This application is written in Python 3 (only tested with Python 3.6), using
-PyQt5 as its GUI toolkit.
+This application is written in Python 3 (tested on Python 3.6+), using
+PyQt6 as its GUI toolkit.
 
 This has been developed and run exclusively on Linux, but it should work on
 anything you can get PyQt to work on.  I believe that this should be possible
@@ -232,3 +232,16 @@ is current, of course) but will always save in the most recent:
 
 * No format differences - version bump used to fix some internal data
   inconsistency.
+
+Changelog
+---------
+
+It seems that I never actually properly made a changelog for this app,
+presumably for similar reasons that I'd never made a "proper" release of
+it in the first place.  Still, apparently May 2026 is the time to start.
+So here goes!
+
+- *2026-05-08*
+  - Converted to PyQt6 (from PyQt5).  Only very cursory testing has been
+    done so far, though the obvious crashes should be dealt with.
+

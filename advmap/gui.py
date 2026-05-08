@@ -23,7 +23,7 @@ import os.path
 import operator
 import textwrap
 import collections
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt6 import QtWidgets, QtGui, QtCore
 
 from advmap import version
 from advmap.data import *
@@ -360,7 +360,7 @@ def draw_dashed_line(x1, y1, x2, y2, dash_pixels, pen,
             new_y = cur_y + y_delta
         if (i % 2) == 0:
             line = QtWidgets.QGraphicsLineItem(cur_x, cur_y, new_x, new_y, parent)
-            pen.setCapStyle(QtCore.Qt.FlatCap)
+            pen.setCapStyle(QtCore.Qt.PenCapStyle.FlatCap)
             line.setPen(pen)
             if zvalue:
                 line.setZValue(zvalue)
@@ -396,7 +396,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
 
         # Save our current pen if we need to
         saved_pen = None
-        if text_role != QtGui.QPalette.NoRole:
+        if text_role != QtGui.QPalette.ColorRole.NoRole:
             saved_pen = painter.pen()
             painter.setPen(QtGui.QPen(pal.brush(text_role), saved_pen.widthF()))
 
@@ -413,7 +413,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
         painter.restore()
 
         # Restore our previous pen if we need to
-        if text_role != QtGui.QPalette.NoRole:
+        if text_role != QtGui.QPalette.ColorRole.NoRole:
             painter.setPen(saved_pen)
 
     def sizeFromContents(self, contents_type, option, size, widget=None):
@@ -424,7 +424,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
         """
         width = size.width()
         height = size.height()
-        if contents_type == self.CT_ComboBox and widget and type(widget) == HTMLComboBox:
+        if contents_type == self.ContentsType.CT_ComboBox and widget and type(widget) == HTMLComboBox:
             size = widget.sizeHint()
             width = size.width() + widget.width_adjust_contents
         return super().sizeFromContents(contents_type,
@@ -480,21 +480,21 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
         # text specified - this is to render the background, basically, so
         # that when we're mousing over one of the items the bg changes.
         options.text = ''
-        style.drawControl(QtWidgets.QStyle.CE_ItemViewItem, options, painter)
+        style.drawControl(QtWidgets.QStyle.ControlElement.CE_ItemViewItem, options, painter)
 
         # Grab a PaintContext and set our text color depending on if we're
         # selected or not
         ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-        if option.state & QtWidgets.QStyle.State_Selected:
-            ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+        if option.state & QtWidgets.QStyle.StateFlag.State_Selected:
+            ctx.palette.setColor(QtGui.QPalette.ColorRole.Text, option.palette.color(
+                QtGui.QPalette.ColorGroup.Active, QtGui.QPalette.ColorRole.HighlightedText))
         else:
-            ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                QtGui.QPalette.Active, QtGui.QPalette.Text))
+            ctx.palette.setColor(QtGui.QPalette.ColorRole.Text, option.palette.color(
+                QtGui.QPalette.ColorGroup.Active, QtGui.QPalette.ColorRole.Text))
 
         # Calculating some rendering geometry.
         textRect = style.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemText, options)
+            QtWidgets.QStyle.SubElement.SE_ItemViewItemText, options)
         textRect.adjust(3, 0, 0, 0)
         painter.translate(textRect.topLeft())
         painter.setClipRect(textRect.translated(-textRect.topLeft()))
@@ -651,7 +651,7 @@ class MainStatusBar(QtWidgets.QStatusBar):
 
         # The QLabel which shows what actions are available
         self.hover_label = QtWidgets.QLabel(self)
-        self.hover_label.setAlignment(QtCore.Qt.AlignHCenter)
+        self.hover_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
 
         # The "real" inner QStatusBar which updates go to
         self.inner_sb = QtWidgets.QStatusBar(self)
@@ -723,7 +723,7 @@ class MapCombo(QtWidgets.QComboBox):
         super().__init__(parent)
         self.maingui = maingui
         self.currentIndexChanged.connect(self.index_changed)
-        self.setSizeAdjustPolicy(self.AdjustToContents)
+        self.setSizeAdjustPolicy(self.SizeAdjustPolicy.AdjustToContents)
         self.loading = False
 
     def clear_maplist(self):
@@ -818,13 +818,13 @@ class MainToolBar(QtWidgets.QToolBar):
         # Game Label (which happens to be a spacer which will push everything after to be
         # right-aligned)
         self.game_label = QtWidgets.QLabel()
-        self.game_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.game_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.game_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.game_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         self.addWidget(self.game_label)
 
         # Map Selection Combo
         self.mapcombo = MapCombo(self, parent)
-        self.mapcombo.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        self.mapcombo.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Preferred)
         self.addWidget(self.mapcombo)
 
         # Edit Game
@@ -923,8 +923,8 @@ class GUI(QtWidgets.QMainWindow):
         we can do this stuff a little less wordily.
         """
         return pixmap.scaled(int(size), int(size),
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation)
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation)
 
     def initUI(self, initfile, readonly):
 
@@ -1090,41 +1090,41 @@ class GUI(QtWidgets.QMainWindow):
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
         filemenu.addAction(Constants.gfx_icon_new,
-                '&New', self.action_new, 'Ctrl+N')
+                '&New', 'Ctrl+N', self.action_new)
         filemenu.addAction(Constants.gfx_icon_open,
-                '&Open', self.action_open, 'Ctrl+O')
+                '&Open', 'Ctrl+O', self.action_open)
         self.revert_menu_item = filemenu.addAction(Constants.gfx_icon_revert,
-                '&Revert', self.action_revert, 'Ctrl+R')
+                '&Revert', 'Ctrl+R', self.action_revert)
         filemenu.addAction(Constants.gfx_icon_save,
-                '&Save', self.action_save, 'Ctrl+S')
+                '&Save', 'Ctrl+S', self.action_save)
         filemenu.addAction(Constants.gfx_icon_save_as,
                 'Save &As', self.action_save_as)
         filemenu.addSeparator()
         filemenu.addAction(Constants.gfx_icon_import,
-                '&Import Maps', self.action_import, 'Ctrl+I')
+                '&Import Maps', 'Ctrl+I', self.action_import)
         filemenu.addSeparator()
         filemenu.addAction(Constants.gfx_icon_export,
-                '&Export Image', self.action_export, 'Ctrl+E')
+                '&Export Image', 'Ctrl+E', self.action_export)
         filemenu.addSeparator()
         filemenu.addAction(Constants.gfx_icon_quit,
-                '&Quit', self.action_quit, 'Ctrl+Q')
+                '&Quit', 'Ctrl+Q', self.action_quit)
 
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
         self.undo_menu_item = editmenu.addAction(Constants.gfx_icon_undo,
-                '&Undo', self.action_undo, 'Ctrl+Z')
+                '&Undo', 'Ctrl+Z', self.action_undo)
         self.undo_menu_item.setEnabled(False)
         self.redo_menu_item = editmenu.addAction(Constants.gfx_icon_redo,
-                '&Redo', self.action_redo, 'Ctrl+Y')
+                '&Redo', 'Ctrl+Y', self.action_redo)
         self.redo_menu_item.setEnabled(False)
         editmenu.addSeparator()
         editmenu.addAction(Constants.gfx_icon_save_as,
-                'Select &All', self.action_select_all, 'Ctrl+A')
+                'Select &All', 'Ctrl+A', self.action_select_all)
         self.copy_menu_item = editmenu.addAction(Constants.gfx_icon_copy,
-                '&Copy', self.action_copy, 'Ctrl+C')
+                '&Copy', 'Ctrl+C', self.action_copy)
         self.copy_menu_item.setEnabled(False)
         self.paste_menu_item = editmenu.addAction(Constants.gfx_icon_paste,
-                '&Paste', self.action_paste, 'Ctrl+V')
+                '&Paste', 'Ctrl+V', self.action_paste)
         self.paste_menu_item.setEnabled(False)
         editmenu.addSeparator()
         editmenu.addAction(Constants.gfx_icon_gameedit,
@@ -1207,21 +1207,21 @@ class GUI(QtWidgets.QMainWindow):
         # Show our custom buttons
         if show_ok:
             ok = OKButton(msgbox)
-            msgbox.addButton(ok, msgbox.AcceptRole)
+            msgbox.addButton(ok, msgbox.ButtonRole.AcceptRole)
             msgbox.setDefaultButton(ok)
         if show_yes:
             yes = YesButton(msgbox)
-            msgbox.addButton(yes, msgbox.YesRole)
+            msgbox.addButton(yes, msgbox.ButtonRole.YesRole)
             if default_yes:
                 msgbox.setDefaultButton(yes)
         if show_no:
             no = NoButton(msgbox)
-            msgbox.addButton(no, msgbox.NoRole)
+            msgbox.addButton(no, msgbox.ButtonRole.NoRole)
             if not default_yes:
                 msgbox.setDefaultButton(no)
 
         msgbox.setIconPixmap(pixmap)
-        msgbox.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        msgbox.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextBrowserInteraction)
 
         # Rather than returning the exec() value, return the role of the
         # button which was chosen, so we can match on that (needed because
@@ -1238,7 +1238,7 @@ class GUI(QtWidgets.QMainWindow):
                 Constants.gfx_question,
                 show_yes=True, show_no=True, default_yes=default_yes)
         self.activateWindow()
-        if res == QtWidgets.QMessageBox.YesRole:
+        if res == QtWidgets.QMessageBox.ButtonRole.YesRole:
             return True
         else:
             return False
@@ -1633,9 +1633,9 @@ class GUI(QtWidgets.QMainWindow):
             # Write out the image
             painter = None
             try:
-                image = QtGui.QImage(int(self.scene.width()), int(self.scene.height()), QtGui.QImage.Format_ARGB32)
+                image = QtGui.QImage(int(self.scene.width()), int(self.scene.height()), QtGui.QImage.Format.Format_ARGB32)
                 painter = QtGui.QPainter(image)
-                painter.setRenderHints(QtGui.QPainter.Antialiasing)
+                painter.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing)
                 self.scene.render(painter)
                 image.save(filename)
                 self.dialog_info('Image exported', 'Image exported to {}'.format(filename))
@@ -1865,7 +1865,7 @@ class HoverArea(QtWidgets.QGraphicsRectItem):
         super().__init__(parent)
         self.mainwindow = mainwindow
         self.setAcceptHoverEvents(True)
-        self.setFlags(self.ItemIsFocusable)
+        self.setFlags(self.GraphicsItemFlag.ItemIsFocusable)
         self.key_actions_by_key = {}
         self.mouse_actions_by_button = {}
         self.actionlist = []
@@ -2055,7 +2055,7 @@ class GUIRoomNudgeHover(HoverArea):
         actually exist if we're in readonly mode, so we're not going to
         bother checking for that.
         """
-        self.add_mouse_action('LMB', 'nudge room', QtCore.Qt.LeftButton,
+        self.add_mouse_action('LMB', 'nudge room', QtCore.Qt.MouseButton.LeftButton,
                 self.nudge_room, [],
                 'Nudge Room to {}'.format(DIR_2_TXT[self.direction]))
 
@@ -2158,7 +2158,7 @@ class GUIConnectionHover(HoverArea):
             self.add_key_action('C', 'remove loopback', ['c'], self.remove_connection,
                     [[]], ['Remove Loopback'])
         elif self.conn:
-            self.add_mouse_action('RMB', 'move connection', QtCore.Qt.RightButton,
+            self.add_mouse_action('RMB', 'move connection', QtCore.Qt.MouseButton.RightButton,
                     self.move_connection_step_one, [], '')
             self.add_key_action('C', 'remove connection', ['c'], self.remove_connection,
                     [[]], ['Remove Connection'])
@@ -2186,11 +2186,11 @@ class GUIConnectionHover(HoverArea):
             if coords:
                 other_room = scene.mapobj.get_room_at(coords[0], coords[1])
                 if not other_room:
-                    self.add_mouse_action('LMB', 'new room', QtCore.Qt.LeftButton,
+                    self.add_mouse_action('LMB', 'new room', QtCore.Qt.MouseButton.LeftButton,
                             self.new_connection_room, [], 'Add new Room')
-            self.add_mouse_action('RMB', 'new connection', QtCore.Qt.RightButton,
+            self.add_mouse_action('RMB', 'new connection', QtCore.Qt.MouseButton.RightButton,
                     self.new_connection_step_one, [], '')
-            self.add_mouse_action('MMB', 'new loopback', QtCore.Qt.MiddleButton,
+            self.add_mouse_action('MMB', 'new loopback', QtCore.Qt.MouseButton.MiddleButton,
                     self.new_loopback, [], 'Add new Loopback')
 
     def remove_connection(self):
@@ -2276,7 +2276,7 @@ class GUIConnectionHover(HoverArea):
         d = NewEditRoomDialog(self.gui_room.mainwindow, editing=False,
                 room=self.room, from_direction=self.direction)
         res = d.exec()
-        if res == d.Accepted:
+        if res == d.DialogCode.Accepted:
             self.scene().recreate()
             rv = True
         else:
@@ -2310,7 +2310,7 @@ class GUIConnectionHover(HoverArea):
         scene = self.scene()
         if scene.two_step_move_connection:
             button = event.button()
-            if button == QtCore.Qt.RightButton:
+            if button == QtCore.Qt.MouseButton.RightButton:
                 new_room = self.room
                 new_dir = self.direction
                 (orig_room, orig_dir) = scene.two_step_move_connection
@@ -2323,7 +2323,7 @@ class GUIConnectionHover(HoverArea):
                 return
         if scene.two_step_new_connection:
             button = event.button()
-            if button == QtCore.Qt.RightButton:
+            if button == QtCore.Qt.MouseButton.RightButton:
                 new_room = self.room
                 new_dir = self.direction
                 (orig_room, orig_dir) = scene.two_step_new_connection
@@ -2389,10 +2389,10 @@ class GUIRoomHover(HoverArea):
         """
         scene = self.scene()
         if self.mainwindow.is_readonly():
-            self.add_mouse_action('LMB', 'view details', QtCore.Qt.LeftButton,
+            self.add_mouse_action('LMB', 'view details', QtCore.Qt.MouseButton.LeftButton,
                     self.view_details, [], '')
         else:
-            self.add_mouse_action('LMB', 'edit room', QtCore.Qt.LeftButton,
+            self.add_mouse_action('LMB', 'edit room', QtCore.Qt.MouseButton.LeftButton,
                     self.edit_room, [], 'Edit Room')
             if scene.is_selected(self.gui_room.room):
                 self.add_label_action('shift-click', 'deselect')
@@ -2535,7 +2535,7 @@ class GUIRoomHover(HoverArea):
         """
         d = NewEditRoomDialog(self.gui_room.mainwindow, editing=True, room=self.gui_room.room)
         res = d.exec()
-        if res == d.Accepted:
+        if res == d.DialogCode.Accepted:
             self.scene().recreate()
             rv = True
         else:
@@ -2569,8 +2569,8 @@ class GUIRoomHover(HoverArea):
         """
         if not self.gui_room.mainwindow.is_readonly():
             mods = event.modifiers()
-            if (event.button() == QtCore.Qt.LeftButton and
-                    (mods & QtCore.Qt.ShiftModifier) == QtCore.Qt.ShiftModifier):
+            if (event.button() == QtCore.Qt.MouseButton.LeftButton and
+                    (mods & QtCore.Qt.KeyboardModifier.ShiftModifier) == QtCore.Qt.KeyboardModifier.ShiftModifier):
                 scene = self.scene()
                 room = self.gui_room.room
                 scene.select_room(room)
@@ -2596,8 +2596,8 @@ class GUIRoomTitleAsNotesTextItem(QtWidgets.QGraphicsTextItem):
         self.setTextWidth(max_width)
         doc = self.document()
         options = doc.defaultTextOption()
-        options.setAlignment(QtCore.Qt.AlignHCenter)
-        options.setWrapMode(options.WordWrap)
+        options.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        options.setWrapMode(options.WrapMode.WordWrap)
         doc.setDefaultTextOption(options)
 
         for font_size in Constants.notes_font_sizes:
@@ -2640,14 +2640,14 @@ class GUIRoomNotesTextItem(QtWidgets.QGraphicsTextItem):
         self.setDefaultTextColor(parent.color_text)
         doc = self.document()
         options = doc.defaultTextOption()
-        options.setWrapMode(options.WordWrap)
-        options.setAlignment(QtCore.Qt.AlignHCenter)
+        options.setWrapMode(options.WrapMode.WordWrap)
+        options.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         doc.setDefaultTextOption(options)
 
         # Figure out our sizing information
         rect = self.boundingRect()
         if rect.width() > (Constants.title_max_width + (Constants.notes_padding_x[Constants.default_note_size]*2)):
-            options.setWrapMode(options.WrapAtWordBoundaryOrAnywhere)
+            options.setWrapMode(options.WrapMode.WrapAtWordBoundaryOrAnywhere)
             doc.setDefaultTextOption(options)
             rect = self.boundingRect()
 
@@ -2699,8 +2699,8 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
         self.setDefaultTextColor(parent.color_text)
         doc = self.document()
         options = doc.defaultTextOption()
-        options.setAlignment(QtCore.Qt.AlignHCenter)
-        options.setWrapMode(options.WordWrap)
+        options.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        options.setWrapMode(options.WrapMode.WordWrap)
         doc.setDefaultTextOption(options)
 
         # Loop through font sizes, trying to find one which fits
@@ -2721,7 +2721,7 @@ class GUIRoomTitleTextItem(QtWidgets.QGraphicsTextItem):
         # If we got here and we still exceed our recommended width, switch word wrapping
         # mode so that we don't go out of the room boundaries.
         if exceeds_width:
-            options.setWrapMode(options.WrapAtWordBoundaryOrAnywhere)
+            options.setWrapMode(options.WrapMode.WrapAtWordBoundaryOrAnywhere)
             doc.setDefaultTextOption(options)
 
         # Find out if we've exceeded three lines.  If so, truncate.
@@ -2845,7 +2845,7 @@ class GUINewRoomHover(HoverArea):
         """
         d = NewEditRoomDialog(self.gui_newroom.mainwindow, editing=False, x=self.x, y=self.y)
         res = d.exec()
-        if res == d.Accepted:
+        if res == d.DialogCode.Accepted:
             self.scene().recreate()
             rv = True
         else:
@@ -3161,7 +3161,7 @@ class GUIConnLine(QtWidgets.QGraphicsLineItem):
             pen.setWidthF(1.1)
         else:
             pen.setWidthF(width)
-        pen.setCapStyle(QtCore.Qt.FlatCap)
+        pen.setCapStyle(QtCore.Qt.PenCapStyle.FlatCap)
         if dashed:
             dash_pen = QtGui.QPen(pen)
             dash_pen.setWidthF(width+.5)
@@ -3690,7 +3690,7 @@ class AboutDialog(QtWidgets.QDialog):
         self.setSizeGripEnabled(True)
         # This attribute seems to be needed before we can return focus to the main
         # window...
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setMinimumSize(400, 230)
         self.setWindowTitle('About Adventure Game Mapper')
 
@@ -3701,17 +3701,17 @@ class AboutDialog(QtWidgets.QDialog):
         # Dialog Title
         title_label = QtWidgets.QLabel('Adventure Game Mapper v{}'.format(version), self)
         title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
-        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Link to project website (eventually)
         url_label = QtWidgets.QLabel('<a href="{}">{}</a>'.format(self.url, self.url))
         url_label.setOpenExternalLinks(True)
-        layout.addWidget(url_label, 0, QtCore.Qt.AlignCenter)
+        layout.addWidget(url_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Frame to contain icon credits
         frame = QtWidgets.QFrame()
-        frame.setFrameShadow(frame.Sunken)
-        frame.setFrameShape(frame.Panel)
+        frame.setFrameShadow(frame.Shadow.Sunken)
+        frame.setFrameShape(frame.Shape.Panel)
         frame.setLineWidth(2)
         frame.setAutoFillBackground(True)
         layout.addWidget(frame)
@@ -3722,8 +3722,8 @@ class AboutDialog(QtWidgets.QDialog):
         # TODO: should really figure out how to do the "appropriate" thing
         # given the style, rather than blindly ligtening
         pal = frame.palette()
-        bgcolor = pal.color(pal.Window)
-        pal.setColor(pal.Window, bgcolor.lighter())
+        bgcolor = pal.color(pal.ColorRole.Window)
+        pal.setColor(pal.ColorRole.Window, bgcolor.lighter())
         frame.setPalette(pal)
 
         # Icon credits
@@ -3734,7 +3734,7 @@ class AboutDialog(QtWidgets.QDialog):
         icon_label.setOpenExternalLinks(True)
         icon_label.setWordWrap(True)
         icon_label.setFixedWidth(300)
-        framelayout.addWidget(icon_label, 0, QtCore.Qt.AlignCenter)
+        framelayout.addWidget(icon_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # More icon credits
         icon_label_2 = QtWidgets.QLabel("""<span>The other icons are designed by
@@ -3744,7 +3744,7 @@ class AboutDialog(QtWidgets.QDialog):
         icon_label_2.setOpenExternalLinks(True)
         icon_label_2.setWordWrap(True)
         icon_label_2.setFixedWidth(300)
-        framelayout.addWidget(icon_label_2, 1, QtCore.Qt.AlignCenter)
+        framelayout.addWidget(icon_label_2, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # An HBox to contain two separate buttonboxes
         w = QtWidgets.QWidget()
@@ -3755,18 +3755,18 @@ class AboutDialog(QtWidgets.QDialog):
         # Our custom button box
         style = self.style()
         self.custombb = QtWidgets.QDialogButtonBox(self)
-        hbox.addWidget(self.custombb, 0, QtCore.Qt.AlignLeft)
+        hbox.addWidget(self.custombb, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         # License
         self.license = QtWidgets.QPushButton(Constants.gfx_icon_license, 'License')
         self.license.clicked.connect(self.open_license)
-        self.custombb.addButton(self.license, self.custombb.ActionRole)
+        self.custombb.addButton(self.license, self.custombb.ButtonRole.ActionRole)
 
         # "Standard" Button box
         self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
-        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.ButtonRole.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
-        hbox.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+        hbox.addWidget(self.buttonbox, 0, QtCore.Qt.AlignmentFlag.AlignRight)
 
     def open_license(self, event):
         """
@@ -3787,7 +3787,7 @@ class LicenseDialog(QtWidgets.QDialog):
         self.setSizeGripEnabled(True)
         # This attribute seems to be needed before we can return focus to the main
         # window...
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setMinimumSize(600, 440)
         self.setWindowTitle('Adventure Game Mapper License')
 
@@ -3814,9 +3814,9 @@ class LicenseDialog(QtWidgets.QDialog):
 
         # Button box
         self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
-        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.ButtonRole.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
-        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignmentFlag.AlignRight)
 
     def showEvent(self, event):
         """
@@ -3845,7 +3845,7 @@ class NotesDialog(QtWidgets.QDialog):
         self.setSizeGripEnabled(True)
         # This attribute seems to be needed before we can return focus to the main
         # window...
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setMinimumSize(420, 440)
         if mapobj is None:
             title = 'Room Notes (for all maps)'
@@ -3860,7 +3860,7 @@ class NotesDialog(QtWidgets.QDialog):
         # Dialog Title
         title_label = QtWidgets.QLabel(title, self)
         title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
-        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Main place where we're showing the info
         self.browser = QtWidgets.QTextBrowser(self)
@@ -3903,12 +3903,12 @@ class NotesDialog(QtWidgets.QDialog):
         # This actually is the only way I've found to set margins, too.  I think
         # the CSS processing there isn't as powerful as I'd hope?
         format_center = QtGui.QTextBlockFormat()
-        format_center.setAlignment(QtCore.Qt.AlignHCenter)
+        format_center.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         format_center.setBottomMargin(15)
         format_left = QtGui.QTextBlockFormat()
-        format_left.setAlignment(QtCore.Qt.AlignLeft)
+        format_left.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         format_indent = QtGui.QTextBlockFormat()
-        format_indent.setAlignment(QtCore.Qt.AlignLeft)
+        format_indent.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         format_indent.setLeftMargin(20)
         format_indent.setBottomMargin(15)
         have_notes = False
@@ -3938,9 +3938,9 @@ class NotesDialog(QtWidgets.QDialog):
 
         # Button box
         self.buttonbox = QtWidgets.QDialogButtonBox(parent=self)
-        self.buttonbox.addButton(CloseButton(self), self.buttonbox.RejectRole)
+        self.buttonbox.addButton(CloseButton(self), self.buttonbox.ButtonRole.RejectRole)
         self.buttonbox.rejected.connect(self.reject)
-        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignmentFlag.AlignRight)
 
     def showEvent(self, event):
         """
@@ -3968,12 +3968,12 @@ class AppDialog(QtWidgets.QDialog):
         # Workaround for https://bugreports.qt.io/browse/QTBUG-63846
         # Rather than being fully modal (w/ ApplicationModal), use WindowModal
         #self.setModal(True)
-        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
         self.setSizeGripEnabled(True)
         # This attribute seems to be needed before we can return focus to the main
         # window...
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setMinimumSize(size_x, size_y)
         self.setWindowTitle(title)
         self.cur_row = -1
@@ -3985,14 +3985,14 @@ class AppDialog(QtWidgets.QDialog):
         # Dialog Title
         title_label = QtWidgets.QLabel('{}'.format(title), self)
         title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
-        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Scrollable, if we've been told to
         if scrollable:
 
             scrollarea = QtWidgets.QScrollArea(self)
-            scrollarea.setFrameShadow(scrollarea.Sunken)
-            scrollarea.setFrameShape(scrollarea.Panel)
+            scrollarea.setFrameShadow(scrollarea.Shadow.Sunken)
+            scrollarea.setFrameShape(scrollarea.Shape.Panel)
             scrollarea.setLineWidth(2)
             scrollarea.setMidLineWidth(2)
             scrollarea.setWidgetResizable(True)
@@ -4014,12 +4014,12 @@ class AppDialog(QtWidgets.QDialog):
 
         # Button box
         self.buttonbox = QtWidgets.QDialogButtonBox(self)
-        self.buttonbox.addButton(OKButton(self.buttonbox), self.buttonbox.AcceptRole)
+        self.buttonbox.addButton(OKButton(self.buttonbox), self.buttonbox.ButtonRole.AcceptRole)
         if use_cancel:
-            self.buttonbox.addButton(CancelButton(self.buttonbox), self.buttonbox.RejectRole)
+            self.buttonbox.addButton(CancelButton(self.buttonbox), self.buttonbox.ButtonRole.RejectRole)
         self.buttonbox.accepted.connect(self.accept)
         self.buttonbox.rejected.connect(self.reject)
-        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignRight)
+        layout.addWidget(self.buttonbox, 0, QtCore.Qt.AlignmentFlag.AlignRight)
 
         # Construct the actual dialog contents
         self.create_contents()
@@ -4052,7 +4052,7 @@ class AppDialog(QtWidgets.QDialog):
         self.cur_row += 1
         label = QtWidgets.QLabel('{}:'.format(text), self)
         label.setMargin(3)
-        self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
+        self.gridlayout.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop)
         return label
 
     def add_text(self, text):
@@ -4061,7 +4061,7 @@ class AppDialog(QtWidgets.QDialog):
         in case you'd like to apply extra formatting to it.
         """
         label = QtWidgets.QLabel(text)
-        self.gridlayout.addWidget(label, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(label, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return label
 
     def add_textbox(self, width=None):
@@ -4073,7 +4073,7 @@ class AppDialog(QtWidgets.QDialog):
         edit.setMaxLength(200)
         if width:
             edit.setFixedWidth(width)
-        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return edit
 
     def add_checkbox(self, text):
@@ -4081,7 +4081,7 @@ class AppDialog(QtWidgets.QDialog):
         Adds a checkbox at the current row
         """
         cb = HTMLCheckBox(text, self)
-        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return cb
 
     def add_plaintext_edit(self, width, height):
@@ -4090,7 +4090,7 @@ class AppDialog(QtWidgets.QDialog):
         """
         edit = QtWidgets.QPlainTextEdit(self)
         edit.setMinimumSize(QtCore.QSize(width, height))
-        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(edit, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return edit
 
 class MapListModel(QtGui.QStandardItemModel):
@@ -4118,7 +4118,7 @@ class MapListStyle(QtWidgets.QProxyStyle):
     """
 
     def drawPrimitive(self, element, option, painter, widget=None):
-        if element == self.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
+        if element == self.PrimitiveElement.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
             option_new = QtWidgets.QStyleOption(option)
             option_new.rect.setLeft(0)
             if widget:
@@ -4144,8 +4144,8 @@ class MapListTable(QtWidgets.QTableView):
     Gtk+ version.
     """
 
-    object_role = QtCore.Qt.UserRole + 1
-    cur_idx_role = QtCore.Qt.UserRole + 2
+    object_role = QtCore.Qt.ItemDataRole.UserRole + 1
+    cur_idx_role = QtCore.Qt.ItemDataRole.UserRole + 2
 
     def __init__(self, parent, game):
         """
@@ -4164,9 +4164,9 @@ class MapListTable(QtWidgets.QTableView):
         self.setStyleSheet('QTableView::item { padding-right: .5em; }')
 
         # These vars are what enables our basic drag-n-drop reordering
-        self.setSelectionBehavior(self.SelectRows)
-        self.setSelectionMode(self.SingleSelection)
-        self.setDragDropMode(self.InternalMove)
+        self.setSelectionBehavior(self.SelectionBehavior.SelectRows)
+        self.setSelectionMode(self.SelectionMode.SingleSelection)
+        self.setDragDropMode(self.DragDropMode.InternalMove)
         self.setDragDropOverwriteMode(False)
 
         # Set up our style (this fixes the between-row drop indicator)
@@ -4196,15 +4196,15 @@ class MapListTable(QtWidgets.QTableView):
 
         # Set up our column stretching parameters; this has to be done
         # after the columns already exist.
-        self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
         # For the vertical header, ResizeToContents nearly does what I want, but
         # make it so the rows word-wrap rather than getting truncated with ellipses.
         # If I use anything other than ResizeToContents, though, I can't style
         # the padding at all with CSS.  Lame.  So, instead, I'm setting a fixed
         # height based on some calculations done on GUI startup.
-        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
         self.verticalHeader().setDefaultSectionSize(int(Constants.maplist_row_height))
 
 class EditGameDialog(AppDialog):
@@ -4332,11 +4332,11 @@ class EditGameDialog(AppDialog):
                 item_name = QtGui.QStandardItem(mapname)
                 item_name.setData(None, self.table.object_role)
                 item_name.setEditable(True)
-                item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+                item_name.setFlags(item_name.flags() ^ QtCore.Qt.ItemFlag.ItemIsDropEnabled)
 
                 item_rooms = QtGui.QStandardItem('0 rooms')
                 item_rooms.setEditable(False)
-                item_rooms.setFlags(item_rooms.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+                item_rooms.setFlags(item_rooms.flags() ^ QtCore.Qt.ItemFlag.ItemIsDropEnabled)
 
                 self.table.model.appendRow([item_name, item_rooms])
 
@@ -4601,7 +4601,7 @@ class NewEditRoomDialog(AppDialog):
             else:
                 self.input_notes.setFocus()
                 curs = self.input_notes.textCursor()
-                curs.movePosition(curs.End, curs.MoveAnchor)
+                curs.movePosition(curs.MoveOperation.End, curs.MoveMode.MoveAnchor)
                 self.input_notes.setTextCursor(curs)
 
         else:
@@ -4629,7 +4629,7 @@ class NewEditRoomDialog(AppDialog):
         l = QtWidgets.QGridLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
         w.setLayout(l)
-        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.input_roomtype_normal = QtWidgets.QRadioButton('Normal', w)
         l.addWidget(self.input_roomtype_normal, 0, 0)
@@ -4654,7 +4654,7 @@ class NewEditRoomDialog(AppDialog):
         l = QtWidgets.QGridLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
         w.setLayout(l)
-        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.input_roomcolor_bw = QtWidgets.QRadioButton('B/W', w)
         l.addWidget(self.input_roomcolor_bw, 0, 0)
@@ -4689,7 +4689,7 @@ class NewEditRoomDialog(AppDialog):
         cb = QtWidgets.QComboBox(self)
         for direction in DIR_LIST:
             cb.addItem(DIR_2_TXT[direction], direction)
-        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return cb
 
     def add_conntype_radios(self):
@@ -4700,7 +4700,7 @@ class NewEditRoomDialog(AppDialog):
         l = QtWidgets.QGridLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
         w.setLayout(l)
-        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.input_conntype_regular = QtWidgets.QRadioButton('Regular', w)
         l.addWidget(self.input_conntype_regular, 0, 0)
@@ -4722,7 +4722,7 @@ class NewEditRoomDialog(AppDialog):
         l = QtWidgets.QGridLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
         w.setLayout(l)
-        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(w, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.input_passage_twoway = QtWidgets.QRadioButton('Two-Way', w)
         l.addWidget(self.input_passage_twoway, 0, 0)
@@ -4750,7 +4750,7 @@ class NewEditRoomDialog(AppDialog):
             if room.group and cur_group and room.group != cur_group:
                 continue
             cb.addItem('<b>{}</b><i> at ({}, {})</i>'.format(room.name, room.x+1, room.y+1), room)
-        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignLeft)
+        self.gridlayout.addWidget(cb, self.cur_row, 1, QtCore.Qt.AlignmentFlag.AlignLeft)
         return cb
 
     def accept(self):
@@ -5027,7 +5027,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         Start dragging the scene around
         """
         self.dragging = True
-        self.parent().setCursor(QtCore.Qt.ClosedHandCursor)
+        self.parent().setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
 
     def stop_dragging(self):
         """
@@ -5129,7 +5129,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         feedback that something's going on, and setting our status text.
         """
         # PointingHandCursor is also all right, though I think I prefer CrossCursor
-        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
+        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.CrossCursor))
         self.mainwindow.statusbar.set_two_step_text(text)
 
     def clear_two_step_actions(self):
@@ -5357,11 +5357,11 @@ class MapArea(QtWidgets.QGraphicsView):
         self.mainwindow = parent
         # If we notice issues with text rendering in the
         # future, 'or' in the TextAntialiasing hint too
-        self.setRenderHints(QtGui.QPainter.Antialiasing)
+        self.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing)
         self.scene = MapScene(self, parent)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(Constants.c_background_out_of_scene))
-        self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
 
 class Application(QtWidgets.QApplication):
     """
