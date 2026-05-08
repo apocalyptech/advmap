@@ -244,4 +244,10 @@ So here goes!
 - *2026-05-08*
   - Converted to PyQt6 (from PyQt5).  Only very cursory testing has been
     done so far, though the obvious crashes should be dealt with.
+- *before then...*
+  - Who can say?  This was originally pygtk+ but I grew to despise gtk+,
+    so it was ported to PyQt5 at some point.  And of course you can sort
+    of follow the general order-of-features-added via the savefile format
+    reference above.  For details you'll have to start looking at git
+    commits, though!
 
